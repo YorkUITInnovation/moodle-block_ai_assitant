@@ -62,19 +62,15 @@ class block_ai_assistant extends block_base {
         return $this->content;
     }
 
-    /**
-     * Defines configuration data.
-     *
-     * The function is called immediately after init().
-     */
-    public function specialization() {
-
-        // Load user defined title and make sure it's never empty.
-        if (empty($this->config->title)) {
-            $this->title = get_string('pluginname', 'block_ai_assistant');
-        } else {
-            $this->title = $this->config->title;
-        }
+    // my moodle can only have SITEID and it's redundant here, so take it away
+    public function applicable_formats()
+    {
+        return array(
+            'site-index' => false,
+            'my' => false,
+            'course-view' => true,
+            'mod' => false
+        );
     }
 
     /**
@@ -86,13 +82,5 @@ class block_ai_assistant extends block_base {
         return true;
     }
 
-    /**
-     * Sets the applicable formats for the block.
-     *
-     * @return string[] Array of pages and permissions.
-     */
-    public function applicable_formats() {
-        return array(
-        );
-    }
+
 }
