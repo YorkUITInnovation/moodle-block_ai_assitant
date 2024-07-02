@@ -53,6 +53,12 @@ class block_ai_assistant extends block_base {
         $this->content->icons = array();
         $this->content->footer = '';
 
+        if (has_capability('block/ai_assistant:teacher', $this->context)) {
+            $this->content->footer = 'Teacher';
+        } else {
+            $this->content->footer = 'Student';
+        }
+
         $params = array(
             'blockid' => $this->instance->id,
             'courseid' => $this->page->course->id,
