@@ -25,4 +25,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+$string['for_block_id'] = 'For block with id: ';
 $string['pluginname'] = 'Al Course Assistant';
+$string['title'] = 'A title';

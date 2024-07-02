@@ -55,7 +55,8 @@ class block_ai_assistant extends block_base {
 
         $params = array(
             'blockid' => $this->instance->id,
-            'title' => 'This is a title',
+            'courseid' => $this->page->course->id,
+            'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
             );
 
