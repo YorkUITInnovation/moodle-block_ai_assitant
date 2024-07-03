@@ -61,7 +61,7 @@ if ($mform->is_cancelled()) {
          $courseid,
          array('subdirs' => 0, 'maxfiles' => 1)
      );
- 
+    
      // Generate URL for the uploaded file
      $file = $fs->get_file(
          $context->id,
@@ -85,9 +85,9 @@ if ($mform->is_cancelled()) {
     );
 
     // Redirect or display the URL as needed.
-    redirect($url);
+        redirect($url);
          // Redirect with success message
-         redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
+         //redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
         
      } else {
          // Redirect with error message
