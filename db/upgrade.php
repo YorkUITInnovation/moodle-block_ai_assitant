@@ -60,7 +60,7 @@ function xmldb_block_ai_assistant_upgrade($oldversion) {
         }
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2024070201, 'ai_assistant');
+        upgrade_block_savepoint(true, 2024070303, 'ai_assistant');
     }
     return true;
 }

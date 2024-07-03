@@ -28,3 +28,12 @@ defined('MOODLE_INTERNAL') || die();
 $string['for_block_id'] = 'For block with id: ';
 $string['pluginname'] = 'Al Course Assistant';
 $string['title'] = 'A title';
+$string['syllabus'] = 'Add Syllabus File' ;
+$string['ques'] = 'Add Questions File' ;
+$string['format'] = '.xlsx, .docx only accepted';
+$string['save'] = 'Save changes ';
+$string['access'] = '  Student Access';
+$string['test'] = 'Test your AI assistant, chat now!';
+
+
+
