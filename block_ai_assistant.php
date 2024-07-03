@@ -21,12 +21,14 @@
  * @copyright   2022 UIT Innovation  <thibaud@yorku.ca>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class block_ai_assistant extends block_base {
+class block_ai_assistant extends block_base
+{
 
     /**
      * Initializes class member variables.
      */
-    public function init() {
+    public function init()
+    {
         // Needed by Moodle to differentiate between blocks.
         $this->title = get_string('pluginname', 'block_ai_assistant');
     }
@@ -36,7 +38,8 @@ class block_ai_assistant extends block_base {
      *
      * @return stdClass The block contents.
      */
-    public function get_content() {
+    public function get_content()
+    {
         global $OUTPUT;
 
         if ($this->content !== null) {
@@ -53,23 +56,21 @@ class block_ai_assistant extends block_base {
         $this->content->icons = array();
         $this->content->footer = '';
 
-        if (has_capability('block/ai_assistant:teacher', $this->context)) {
-            $this->content->footer = 'Teacher';
-        } else {
-            $this->content->footer = 'Student';
-        }
-
         $params = array(
             'blockid' => $this->instance->id,
             'courseid' => $this->page->course->id,
             'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
-            );
+        );
 
         if (!empty($this->config->text)) {
             $this->content->text = $this->config->text;
         } else {
-            $text = $OUTPUT->render_from_template('block_ai_assistant/default', $params);
+            if (has_capability('block/ai_assistant:teacher', $this->context)) {
+                $text = $OUTPUT->render_from_template('block_ai_assistant/default', $params);
+            } else {
+                $text = $OUTPUT->render_from_template('block_ai_assistant/student', $params);
+            }
             $this->content->text = $text;
         }
 
@@ -92,9 +93,8 @@ class block_ai_assistant extends block_base {
      *
      * @return bool True if the global configuration is enabled.
      */
-    public function has_config() {
+    public function has_config()
+    {
         return true;
     }
-
-
 }
