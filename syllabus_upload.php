@@ -30,9 +30,9 @@ require_login(1, false);
 
 // Set page title
 if ($id != 0) {
-    $page_title = get_string('edit_content', 'local_cria');
+    $page_title = get_string('edit_content', 'block_ai_assistant');
 } else {
-    $page_title = get_string('add_content', 'local_cria');
+    $page_title = get_string('add_content', 'block_ai_assistant');
 }
 
 $formdata = new stdClass();
@@ -40,10 +40,98 @@ $formdata->courseid = $courseid;
 
 // Create form
 $mform = new \block_ai_assistant\syllabus_upload_form(null, array('formdata' => $formdata));
+
 if ($mform->is_cancelled()) {
     //Handle form cancel operation, if cancel button is present on form
-    redirect($CFG->wwwroot . '/course/view.php?id=' . $data->courseid);;
+    redirect($CFG->wwwroot . '/course/view.php?id=' . $data->courseid);
+
 } else if ($data = $mform->get_data()) {
+
+
+     // Process uploaded file
+     $fs = get_file_storage();
+     $draftitemid = $data->syllabus_upload;
+
+
+     file_save_draft_area_files(
+         $draftitemid,
+         $context->id,
+         'block_ai_assistant',
+         'syllabus',
+         $courseid,
+         array('subdirs' => 0, 'maxfiles' => 1)
+     );
+ 
+     // Generate URL for the uploaded file
+     $file = $fs->get_file(
+         $context->id,
+         'block_ai_assistant',
+         'syllabus',
+         $courseid,
+         '/',
+         $mform->get_new_filename('syllabus_upload')
+     );
+ 
+     if ($file) {
+        
+        $url = moodle_url::make_pluginfile_url(
+        $file->get_contextid(),
+        $file->get_component(),
+        $file->get_filearea(),
+        $file->get_itemid(),
+        $file->get_filepath(),
+        $file->get_filename(),
+        false // Whether to force download or not.
+    );
+
+    // Redirect or display the URL as needed.
+    redirect($url);
+         // Redirect with success message
+         redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
+        
+     } else {
+         // Redirect with error message
+         redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_upload_failed', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_ERROR);
+     }
+ } else {
+     // Show form
+     $mform->set_data($formdata);
+ }
+ 
+ $PAGE->set_context($context);
+ $PAGE->set_url(new moodle_url('/blocks/ai_assistant/syllabus_upload.php', ['courseid' => $courseid]));
+ $PAGE->set_title(get_string('syllabus', 'block_ai_assistant'));
+ $PAGE->set_heading(get_string('syllabus', 'block_ai_assistant'));
+ 
+ echo $OUTPUT->header();
+ $mform->display();
+ echo $OUTPUT->footer();
+ 
+ ?>
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- 
+
     // Get local_cria config
 
     // If id, then simple upload the file using file picker
@@ -52,6 +140,41 @@ if ($mform->is_cancelled()) {
 //        $data->path = $path;
 //        $data->file_content = $mform->get_file_content('importedFile');
         // Redirect to content page
+
+        $content = $mform->get_file_content('userfile');
+        $name = $mform->get_new_filename('userfile');
+        $success = $mform->save_file('userfile', $fullpath, $override);
+
+
+        $url = moodle_url::make_pluginfile_url(
+            $file->get_contextid(),
+            $file->get_component(),
+            $file->get_filearea(),
+            $file->get_itemid(),
+            $file->get_filepath(),
+            $file->get_filename(),
+            true                     // Do not force download of the file.
+        );
+
+
+        
+
+
+
+      
+        // if ($success) {
+        //     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
+        // } else {
+        //     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_upload_failed', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_ERROR);
+        // }
+
+
+
+
+
+
+
+
         redirect($CFG->wwwroot . '/course/view.php?id=' . $data->courseid);
     } else {
 
@@ -109,4 +232,4 @@ $mform->display();
 //*** DISPLAY FOOTER ***
 //**********************
 echo $OUTPUT->footer();
-?>
+?> -->
