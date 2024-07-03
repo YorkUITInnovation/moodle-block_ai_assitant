@@ -27,6 +27,9 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['access'] = '  Student Access';
 $string['for_block_id'] = 'For block with id: ';
+$string['file_uploaded_successfully'] = 'File uploaded successfully.';
+$string['file_upload_failed'] = 'File upload failed.';
+
 $string['pluginname'] = 'Al Course Assistant';
 $string['title'] = 'A title';
 $string['syllabus'] = 'Add Syllabus File';
@@ -34,4 +37,6 @@ $string['ques'] = 'Add Questions File';
 $string['format'] = '.xlsx, .docx only accepted';
 $string['save'] = 'Save changes ';
 $string['test'] = 'Test your AI assistant, chat now!';
-$string['download_syllabus'] = 'Download Syllabus';
+
+
+

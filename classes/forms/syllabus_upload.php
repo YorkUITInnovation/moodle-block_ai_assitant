@@ -27,7 +27,7 @@ class syllabus_upload_form extends \moodleform
             'id',
             PARAM_INT
         );
-        // Intent id
+       
         $mform->addElement(
             'hidden',
             'courseid'
@@ -40,7 +40,7 @@ class syllabus_upload_form extends \moodleform
         $mform->addElement(
             'header',
             'syllabus',
-            get_string('syllabus', 'bloak_ai_assistant')
+            get_string('syllabus', 'block_ai_assistant')
         );
 
         $mform->addElement(
