@@ -41,6 +41,7 @@ class block_ai_assistant extends block_base
     public function get_content()
     {
         global $OUTPUT;
+        global $PAGE;
 
         if ($this->content !== null) {
             return $this->content;
@@ -55,6 +56,8 @@ class block_ai_assistant extends block_base
         $this->content->items = array();
         $this->content->icons = array();
         $this->content->footer = '';
+        $PAGE->requires->js_call_amd('block_ai_assistant/delete_file', 'init');
+
 
         $course_context = \context_course::instance($this->page->course->id);
         // get file from file area

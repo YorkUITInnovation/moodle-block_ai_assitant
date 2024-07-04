@@ -20,9 +20,9 @@
             </a>
         <!-- Delete syllabus -->
         <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_delete.php?courseid={{courseid}}"
-            class="btn btn-link btn-sm"
+            class="btn btn-link btn-sm delete-button"
             title="{{#str}}delete_syllabus, block_ai_assistant{{/str}}"
-            >
+            data-confirm="{{#str}}confirm_file_deletion, block_ai_assistant{{/str}}">
             <i class="fa fa-trash"></i>
         </a>
         {{/syllabus_url}}
@@ -47,10 +47,10 @@
             <i class="fa fa-download"></i>
             </a>
         <!-- Delete questions -->
-        <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_delete.php?courseid={{courseid}}"
-            class="btn btn-link btn-sm"
+          <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_delete.php?courseid={{courseid}}"
+            class="btn btn-link btn-sm delete-button"
             title="{{#str}}delete_questions, block_ai_assistant{{/str}}"
-            >
+            data-confirm="{{#str}}confirm_file_deletion, block_ai_assistant{{/str}}">
             <i class="fa fa-trash"></i>
         </a>
         {{/questions_url}}

@@ -26,6 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['access'] = '  Student Access';
+$string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
 $string['delete_syllabus'] = 'Delete Syllabus';
 $string['delete_questions'] = 'Delete Questions';
 $string['download_syllabus'] = 'Download Syllabus';
