@@ -59,14 +59,16 @@ class block_ai_assistant extends block_base
         $course_context = \context_course::instance($this->page->course->id);
         // get file from file area
         $fs = get_file_storage();
-        $files = $fs->get_area_files(
+        //syllabus files
+        $syllabus_files = $fs->get_area_files(
             $course_context->id,
             'block_ai_assistant',
-            'syllabus', $this->page->course->id
+            'syllabus',
+            $this->page->course->id
         );
         // Set syllabus_url
         $syllabus_url = '';
-        foreach ($files as $file) {
+        foreach ($syllabus_files as $file) {
             if ($file->get_filename() != '.') {
                 $syllabus_file = moodle_url::make_pluginfile_url(
                     $file->get_contextid(),
@@ -78,7 +80,28 @@ class block_ai_assistant extends block_base
                 );
                 $syllabus_url = $syllabus_file->out();
             }
-
+        }
+        //questions files
+        $questions_files = $fs->get_area_files(
+            $course_context->id,
+            'block_ai_assistant',
+            'questions',
+            $this->page->course->id
+        );
+        // Set questions_url
+        $questions_url = '';
+        foreach ($questions_files as $file) {
+            if ($file->get_filename() != '.') {
+                $questions_file = moodle_url::make_pluginfile_url(
+                    $file->get_contextid(),
+                    $file->get_component(),
+                    $file->get_filearea(),
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename()
+                );
+                $questions_url = $questions_file->out();
+            }
         }
 
         $params = array(
@@ -87,6 +110,7 @@ class block_ai_assistant extends block_base
             'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
             'syllabus_url' => $syllabus_url,
+            'questions_url' => $questions_url,
         );
 
         if (!empty($this->config->text)) {

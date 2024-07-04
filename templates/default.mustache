@@ -27,6 +27,34 @@
         </a>
         {{/syllabus_url}}
     </div>
+    <div class="col-md-12">
+
+        {{^questions_url}}
+            <label for="upload-questions">{{#str}}upload_questions, block_ai_assistant{{/str}}</label>
+            <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_upload.php?courseid={{courseid}}"
+            class="btn btn-link btn-sm"
+            title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
+            >
+            <i class="fa fa-upload"></i>
+            </a>
+        {{/questions_url}}
+        {{#questions_url}}
+            <label for="download-questions">{{#str}}questions, block_ai_assistant{{/str}}</label>
+            <a href="{{questions_url}}"
+            class="btn btn-link btn-sm"
+            title="{{#str}}download_questions, block_ai_assistant{{/str}}"
+            >
+            <i class="fa fa-download"></i>
+            </a>
+        <!-- Delete questions -->
+        <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_delete.php?courseid={{courseid}}"
+            class="btn btn-link btn-sm"
+            title="{{#str}}delete_questions, block_ai_assistant{{/str}}"
+            >
+            <i class="fa fa-trash"></i>
+        </a>
+        {{/questions_url}}
+    </div>
 </div>
 
 
