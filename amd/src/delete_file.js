@@ -1,14 +1,16 @@
-define(['jquery', 'core/str'], function($) {
+define(['core/str'], function() {
     return {
         init: function() {
-            $('.delete-button').on('click', function(e) {
-                e.preventDefault();
-                var url = $(this).attr('href');
-                var confirmMessage = $(this).data('confirm');
- 
-                if (confirm(confirmMessage)) {
-                    window.location.href = url;
-                }
+            var deleteButtons = document.querySelectorAll('.delete-button');
+            deleteButtons.forEach(function(button) {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var url = button.getAttribute('href');
+                    var confirmMessage = button.getAttribute('data-confirm');
+                    if (confirm(confirmMessage)) {
+                        window.location.href = url;
+                    }
+                });
             });
         }
     };
