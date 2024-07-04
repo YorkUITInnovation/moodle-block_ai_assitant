@@ -26,17 +26,22 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['access'] = '  Student Access';
-$string['for_block_id'] = 'For block with id: ';
-$string['file_uploaded_successfully'] = 'File uploaded successfully.';
-$string['file_upload_failed'] = 'File upload failed.';
-
-$string['pluginname'] = 'Al Course Assistant';
-$string['title'] = 'A title';
-$string['syllabus'] = 'Add Syllabus File';
-$string['ques'] = 'Add Questions File';
+$string['delete_syllabus'] = 'Delete Syllabus';
+$string['download_syllabus'] = 'Download Syllabus';
+$string['file_deleted_successfully'] = 'File deleted successfully';
+$string['file_uploaded_successfully'] = 'File uploaded successfully';
 $string['format'] = '.xlsx, .docx only accepted';
+$string['pluginname'] = 'Al Course Assistant';
+$string['required'] = 'This field is required';
 $string['save'] = 'Save changes ';
+$string['syllabus'] = 'Syllabus';
 $string['test'] = 'Test your AI assistant, chat now!';
+$string['title'] = 'A title';
+$string['upload_question'] = 'Upload question file';
+$string['upload_syllabus'] = 'Upload Syllabus';
+
+
+
 
 
 

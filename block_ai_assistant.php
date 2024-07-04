@@ -56,18 +56,44 @@ class block_ai_assistant extends block_base
         $this->content->icons = array();
         $this->content->footer = '';
 
+        $course_context = \context_course::instance($this->page->course->id);
+        // get file from file area
+        $fs = get_file_storage();
+        $files = $fs->get_area_files(
+            $course_context->id,
+            'block_ai_assistant',
+            'syllabus', $this->page->course->id
+        );
+        // Set syllabus_url
+        $syllabus_url = '';
+        foreach ($files as $file) {
+            if ($file->get_filename() != '.') {
+                $syllabus_file = moodle_url::make_pluginfile_url(
+                    $file->get_contextid(),
+                    $file->get_component(),
+                    $file->get_filearea(),
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename()
+                );
+                $syllabus_url = $syllabus_file->out();
+            }
+
+        }
+
         $params = array(
             'blockid' => $this->instance->id,
             'courseid' => $this->page->course->id,
             'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
+            'syllabus_url' => $syllabus_url,
         );
 
         if (!empty($this->config->text)) {
             $this->content->text = $this->config->text;
         } else {
             if (has_capability('block/ai_assistant:teacher', $this->context)) {
-                $text = $OUTPUT->render_from_template('block_ai_assistant/teacher', $params);
+                $text = $OUTPUT->render_from_template('block_ai_assistant/default', $params);
             } else {
                 $text = $OUTPUT->render_from_template('block_ai_assistant/student', $params);
             }

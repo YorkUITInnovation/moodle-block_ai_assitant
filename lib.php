@@ -3,11 +3,9 @@ function block_ai_assistant_pluginfile($course, $cm, $context, $filearea, $args,
 {
     global $DB;
 
-    if ($context->contextlevel != CONTEXT_SYSTEM) {
+    if ($context->contextlevel != CONTEXT_COURSE) {
         return false;
     }
-
-//    require_login(1, true);
 
     $fileAreas = array(
         'syllabus',
@@ -16,7 +14,6 @@ function block_ai_assistant_pluginfile($course, $cm, $context, $filearea, $args,
     if (!in_array($filearea, $fileAreas)) {
         return false;
     }
-
 
     $itemid = array_shift($args);
     $filename = array_pop($args);
