@@ -1,5 +1,13 @@
 <div class="row">
     <div class="col-md-12">
-        <span>{{#str}}download_syllabus, block_ai_assistant{{/str}} <a href="download.php?courseid={{courseid}}&blockid={{blockid}}"><i class="bi bi-download"></i></a></span>
+        {{#syllabus_url}}
+            <label for="syllabus">{{#str}}syllabus, block_ai_assistant{{/str}}</label>
+            <a href="{{syllabus_url}}"
+            class="btn btn-link btn-sm"
+            title="{{#str}}download_syllabus, block_ai_assistant{{/str}}"
+            >
+            <i class="fa fa-download"></i>
+            </a>
+        {{/syllabus_url}}
     </div>
 </div>

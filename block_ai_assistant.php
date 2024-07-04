@@ -92,7 +92,7 @@ class block_ai_assistant extends block_base
         if (!empty($this->config->text)) {
             $this->content->text = $this->config->text;
         } else {
-            if (has_capability('block/ai_assistant:teacher', $this->context)) {
+            if (has_capability('block/ai_assistant:teacher', $course_context)) {
                 $text = $OUTPUT->render_from_template('block_ai_assistant/default', $params);
             } else {
                 $text = $OUTPUT->render_from_template('block_ai_assistant/student', $params);
