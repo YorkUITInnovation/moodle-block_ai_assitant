@@ -19,8 +19,10 @@
             <i class="fa fa-download"></i>
             </a>
         <!-- Delete syllabus -->
-        <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_delete.php?courseid={{courseid}}"
-            class="btn btn-link btn-sm delete-button"
+        <a href="javascript:void(0);"
+            id="btn-ai-assistant-delete-syllabus"
+            data-courseid="{{courseid}}"
+            class="btn btn-link btn-sm"
             title="{{#str}}delete_syllabus, block_ai_assistant{{/str}}"
             data-confirm="{{#str}}confirm_file_deletion, block_ai_assistant{{/str}}">
             <i class="fa fa-trash"></i>
