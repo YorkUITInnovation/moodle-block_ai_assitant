@@ -13,8 +13,7 @@ function delete_syllabus() {
     document.getElementById('btn-ai-assistant-delete-syllabus').addEventListener('click', function() {
             // get data-courseid from current element
             var courseid = this.getAttribute('data-courseid');
-
-            console.log(Str.get_string('delete_syllabus_help', 'block_ai_assistant'));
+            // Pop up notificaiton to confirm delete
             notification.confirm(Str.get_string('delete', 'block_ai_assistant'),
                 Str.get_string('delete_syllabus_help', 'block_ai_assistant'),
                 Str.get_string('delete', 'block_ai_assistant'),

@@ -28,6 +28,8 @@ defined('MOODLE_INTERNAL') || die();
 $string['access'] = '  Student Access';
 $string['close'] = '  Close';
 $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
+$string['cria_url'] = 'Cria URL';
+$string['cria_url_help'] = 'Enter the URL to your Cria server. You might have to ask your sustem administrator.';
 $string['delete'] = 'Delete';
 $string['delete_syllabus'] = 'Delete Syllabus';
 $string['delete_syllabus_help'] = 'Are you sure you want to delete the syllabus?';

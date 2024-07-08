@@ -28,6 +28,13 @@ defined('MOODLE_INTERNAL') || die();
 if ($hassiteconfig) {
     $settings = new admin_settingpage('block_ai_assistant_settings', new lang_string('pluginname', 'block_ai_assistant'));
 
+    //Bot Server
+    $settings->add( new admin_setting_configtext(
+        'block_ai_assistant/cria_url',
+        get_string('cria_url', 'block_ai_assistant'),
+        get_string('cria_url_help', 'block_ai_assistant'),
+        '', PARAM_TEXT, 255
+    ));
     // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
     if ($ADMIN->fulltree) {
         // TODO: Define actual plugin settings page and add it to the tree - {@link https://docs.moodle.org/dev/Admin_settings}.
