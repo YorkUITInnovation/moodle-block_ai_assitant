@@ -35,38 +35,8 @@ function xmldb_block_ai_assistant_upgrade($oldversion) {
     global $DB;
 
     $dbman = $DB->get_manager();
-
-    if ($oldversion < 2024070201) {
-
-        // Define table block_ai_assistant to be created.
-        $table = new xmldb_table('block_ai_assistant');
-
-        // Adding fields to table block_ai_assistant.
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('blockid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
-        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
-        $table->add_field('published', XMLDB_TYPE_INTEGER, '1', null, null, null, '0');
-        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-
-        // Adding keys to table block_ai_assistant.
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
-
-        // Conditionally launch create table for block_ai_assistant.
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-
-
-        // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2024070303, 'ai_assistant');
-    }
-
-
-    if ($oldversion < 2024070201) {
+    
+    if ($oldversion < 2024070803) {
 
         // Define table block_aia_settings to be created.
         $table = new xmldb_table('block_aia_settings');
@@ -91,11 +61,11 @@ function xmldb_block_ai_assistant_upgrade($oldversion) {
         }
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2024070303, 'ai_assistant');
+        upgrade_block_savepoint(true, 2024070803, 'ai_assistant');
     }
 
 
-    if ($oldversion < 2024070201) {
+    if ($oldversion < 2024070804) {
 
         // Define table block_aia_questions to be created.
         $table = new xmldb_table('block_aia_questions');
@@ -117,7 +87,7 @@ function xmldb_block_ai_assistant_upgrade($oldversion) {
         }
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2024070303, 'ai_assistant');
+        upgrade_block_savepoint(true, 2024070804, 'ai_assistant');
     }
 
     return true;
