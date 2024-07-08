@@ -26,6 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['access'] = '  Student Access';
+$string['answer'] = 'Answer';
 $string['close'] = '  Close';
 $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
 $string['delete'] = 'Delete';
@@ -34,12 +35,18 @@ $string['delete_syllabus_help'] = 'Are you sure you want to delete the syllabus?
 $string['delete_questions'] = 'Delete Questions';
 $string['download_syllabus'] = 'Download Syllabus';
 $string['download_questions'] = 'Download Questions';
+$string['EditQuestions']="Edit your questions";
 $string['file_deleted_successfully'] = 'File deleted successfully';
 $string['file_uploaded_successfully'] = 'File uploaded successfully';
 $string['format'] = '.xlsx, .docx only accepted';
+$string['keywords']="Keywords";
+$string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
+$string['name'] = "Name";
 $string['pluginname'] = 'Al Course Assistant';
 $string['questions'] = 'Questions';
+$string['question'] = 'Question';
 $string['required'] = 'This field is required';
+$string['relatedQuestion'] ="Related Questions";
 $string['save'] = 'Save changes ';
 $string['syllabus'] = 'Syllabus';
 $string['test'] = 'Test your AI assistant, chat now!';
