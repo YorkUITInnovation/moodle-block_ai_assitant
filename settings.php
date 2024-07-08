@@ -69,6 +69,16 @@ if ($hassiteconfig) {
         PARAM_TEXT,
         10
     ));
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/system_message',
+        get_string('system_message', 'block_ai_assistant'),
+        get_string('criadex_rerank_id_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT,
+        10
+    ));
+    set_config('system_message', get_string('system_message', 'block_ai_assistant'), 'block_ai_assistant');
+    set_config('no_context_message', get_string('no_context_message', 'block_ai_assistant'), 'block_ai_assistant');
     // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
     if ($ADMIN->fulltree) {
         // TODO: Define actual plugin settings page and add it to the tree - {@link https://docs.moodle.org/dev/Admin_settings}.
