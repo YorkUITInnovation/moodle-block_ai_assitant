@@ -1,6 +1,6 @@
 <?php
 
-require_once(__DIR__ . '/../../config.php');
+require_once("$CFG->dirroot/config.php");
 
 use block_ai_assistant\webservice;
 
