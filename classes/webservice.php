@@ -11,8 +11,7 @@ class webservice
      */
     public static function exec($method, $data)
     {
-        global $CFG;
-
+        // Get the plugin configuration
         $config = get_config('block_ai_assistant');
         // Set the URL
         $url = $config->cria_url . '/webservice/restful/server.php/' . $method;

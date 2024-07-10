@@ -1,6 +1,6 @@
 <?php
 
-require_once("$CFG->dirroot/config.php");
+namespace block_ai_assistant;
 
 use block_ai_assistant\webservice;
 
