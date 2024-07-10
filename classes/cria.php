@@ -7,21 +7,20 @@ use block_ai_assistant\webservice;
 class cria
 {
 
-    public static function create_bot_instance()
+    public static function create_bot_instance($course_id)
     {
-
         $method = get_string('create_cria_bot_endpoint', 'block_ai_assistant');
-        $data = self::get_create_cria_bot_config();
+        $data = self::get_create_cria_bot_config($course_id);
         $bot_name = webservice::exec($method, $data);
         return $bot_name;
     }
 
-    private function get_create_cria_bot_config()
+    private static function get_create_cria_bot_config($course_id)
     {
-        global $PAGE, $DB;
-        $context = context_course::instance($PAGE->context->instanceid);
-        $courseid = $PAGE->course->id;
-        $course_data = $DB->get_record('course', array('id' => $courseid));
+        global $PAGE, $DB, $COURSE;
+        $context = \context_course::instance($course_id);
+
+        $course_data = $DB->get_record('course', array('id' => $course_id));
         if ($course_data) {
             if ($course_data->idnumber != '') {
                 $name = $course_data->idnumber;
