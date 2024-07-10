@@ -41,7 +41,24 @@ class block_ai_assistant extends block_base
     public function get_content()
     {
         global $OUTPUT;
-        global $PAGE;
+        global $PAGE, $DB;
+        $course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id));
+        $config = get_config('block_ai_assistant');
+
+        if (!$course_record) {
+            $record = new stdClass();
+            $record->courseid = $this->page->course->id;
+            $record->blockid = $this->instance->id;
+            $record->published = 0;
+            $record->usermodified = $this->page->user->id;
+            $record->timecreated = time();
+            $record->timemodified = time();
+            $record->bot_name = cria::create_bot_instance();
+            $record->no_context_message = $config->no_context_message;
+            $record->subtitle = $config->subtitle;
+            $record->welcome_message = $config->welcomemessage;
+            $DB->insert_record('block_aia_settings', $record);
+        }
 
         if ($this->content !== null) {
             return $this->content;
