@@ -1,4 +1,36 @@
 <?php
+
+require_once(__DIR__ . '/classes/cria.php');
+
+class block_ai_assistant_observer
+{
+    public static function create_bot_instance_and_update_db(\core\event\base $event)
+    {
+        global $DB;
+
+        $context = $event->get_context();
+        if ($context->contextlevel != CONTEXT_COURSE) {
+            return;
+        } else {
+            $courseid = $context->instanceid;
+            $course_record = $DB->get_record('block_aia_settings', array('courseid' => $courseid));
+
+            if (!$course_record) {
+                $record = new stdClass();
+                $record->courseid = $courseid;
+                $record->blockid = $event->contextinstanceid;
+                $record->published = 0;
+                $record->usermodified = $event->userid;
+                $record->timecreated = $event->timecreated;
+                $record->timemodified = $event->timecreated;
+                $record->bot_name = cria::create_bot_instance();
+
+                $DB->insert_record('block_aia_settings', $record);
+            }
+        }
+    }
+}
+
 function block_ai_assistant_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = array())
 {
     global $DB;

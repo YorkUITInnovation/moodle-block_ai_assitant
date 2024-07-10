@@ -37,6 +37,7 @@ if ($hassiteconfig) {
         PARAM_TEXT,
         115
     ));
+
     $settings->add(new admin_setting_configtext(
         'block_ai_assistant/cria_token',
         get_string('cria_token', 'block_ai_assistant'),
@@ -45,36 +46,98 @@ if ($hassiteconfig) {
         PARAM_TEXT,
         10
     ));
-    $settings->add(new admin_setting_configtext(
-        'block_ai_assistant/criadex_model_id',
-        get_string('criadex_model_id', 'block_ai_assistant'),
-        get_string('criadex_model_id_help', 'block_ai_assistant'),
-        '',
-        PARAM_TEXT,
-        10
-    ));
+
     $settings->add(new admin_setting_configtext(
         'block_ai_assistant/criadex_embed_id',
         get_string('criadex_embed_id', 'block_ai_assistant'),
         get_string('criadex_embed_id_help', 'block_ai_assistant'),
-        '',
-        PARAM_TEXT,
-        10
+        2,
+        PARAM_INT
     ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/criadex_model_id',
+        get_string('criadex_model_id', 'block_ai_assistant'),
+        get_string('criadex_model_id_help', 'block_ai_assistant'),
+        3,
+        PARAM_INT
+    ));
+
     $settings->add(new admin_setting_configtext(
         'block_ai_assistant/criadex_rerank_id',
         get_string('criadex_rerank_id', 'block_ai_assistant'),
         get_string('criadex_rerank_id_help', 'block_ai_assistant'),
-        '',
-        PARAM_TEXT,
-        10
+        1,
+        PARAM_INT
     ));
 
-    set_config('system_message', get_string('system_message', 'block_ai_assistant'), 'block_ai_assistant');
+    $settings->add(new admin_setting_configtextarea(
+        'block_ai_assistant/no_context_message',
+        get_string('no_context_message', 'block_ai_assistant'),
+        get_string('no_context_message_help', 'block_ai_assistant'),
+        get_string('no_context_message_default', 'block_ai_assistant'),
+        PARAM_TEXT
+    ));
 
-    set_config('no_context_message', get_string('no_context_message', 'block_ai_assistant'), 'block_ai_assistant');
+    $settings->add(new admin_setting_configtextarea(
+        'block_ai_assistant/system_message',
+        get_string('system_message', 'block_ai_assistant'),
+        get_string('system_message_help', 'block_ai_assistant'),
+        get_string('system_message_default', 'block_ai_assistant'),
+        PARAM_TEXT
+    ));
+    $settings->add(new admin_setting_configtextarea(
+        'block_ai_assistant/welcome_message',
+        get_string('welcome_message', 'block_ai_assistant'),
+        get_string('welcome_message_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/title',
+        get_string('title', 'block_ai_assistant'),
+        get_string('title_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/subtitle',
+        get_string('subtitle', 'block_ai_assistant'),
+        get_string('subtitle_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT
+    ));
+
+
     // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
     if ($ADMIN->fulltree) {
         // TODO: Define actual plugin settings page and add it to the tree - {@link https://docs.moodle.org/dev/Admin_settings}.
     }
 }
+
+set_config('description', '', 'block_ai_assistant');
+set_config('bot_type', 1, 'block_ai_assistant');
+set_config('requires_content_prompt', 0, 'block_ai_assistant');
+set_config('requires_user_prompt', 0, 'block_ai_assistant');
+set_config('user_prompt', '', 'block_ai_assistant');
+set_config('theme_color', '#e31837', 'block_ai_assistant');
+set_config('max_tokens', 4000, 'block_ai_assistant');
+set_config('temperature', 0.1, 'block_ai_assistant');
+set_config('top_p', 0.0, 'block_ai_assistant');
+set_config('top_k', 30, 'block_ai_assistant');
+set_config('top_n', 10, 'block_ai_assistant');
+set_config('min_k', 0.6, 'block_ai_assistant');
+set_config('min_relevance', 0.8, 'block_ai_assistant');
+set_config('max_context', 120000, 'block_ai_assistant');
+set_config('no_context_use_message', 1, 'block_ai_assistant');
+set_config('no_context_llm_guess', 0, 'block_ai_assistant');
+set_config('email', '', 'block_ai_assistant');
+set_config('available_child', 0, 'block_ai_assistant');
+set_config('parse_strategy', 'ALSYLLABUS', 'block_ai_assistant');
+set_config('botwatermark', 0, 'block_ai_assistant');
+set_config('embed_position', 1, 'block_ai_assistant');
+set_config('icon_url', '', 'block_ai_assistant');
+set_config('bot_locale', 'en', 'block_ai_assistant');
+set_config('child_bots', '', 'block_ai_assistant');
