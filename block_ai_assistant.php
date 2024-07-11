@@ -59,7 +59,7 @@ class block_ai_assistant extends block_base
             $record->bot_name = cria::create_bot_instance($this->page->course->id);
             $record->no_context_message = $config->no_context_message;
             $record->subtitle = $config->subtitle;
-            $record->welcome_message = $config->welcomemessage;
+            $record->welcome_message = $config->welcome_message;
             $DB->insert_record('block_aia_settings', $record);
         }
 
