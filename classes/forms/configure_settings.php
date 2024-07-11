@@ -43,9 +43,9 @@ class configure_settings extends \moodleform
             get_string('configure_settings', 'block_ai_assistant')
         );
         $attributes = array('size' => '20');
-        $mform->addElement('text', 'name', get_string('subtitle', 'block_ai_assistant'), $attributes);
-        $mform->addElement('textarea', 'introduction', get_string("welcome_message", "block_ai_assistant"), 'wrap="virtual" rows="2" cols="20"');
-        $mform->addElement('textarea', 'introduction', get_string("no_context_message", "block_ai_assistant"), 'wrap="virtual" rows="2" cols="20"');
+        $mform->addElement('text', 'subtitle', get_string('subtitle', 'block_ai_assistant'), $attributes);
+        $mform->addElement('textarea', 'welcome_message', get_string("welcome_message", "block_ai_assistant"), 'wrap="virtual" rows="2" cols="20"');
+        $mform->addElement('textarea', 'no_context_message', get_string("no_context_message", "block_ai_assistant"), 'wrap="virtual" rows="2" cols="20"');
         
     
         $this->add_action_buttons();

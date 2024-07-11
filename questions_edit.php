@@ -13,9 +13,11 @@
  */
 
 
+
+
 require_once("../../config.php");
 
-require_once($CFG->dirroot . "/blocks/ai_assistant/classes/forms/edit_questions.php");
+require_once($CFG->dirroot . "/blocks/ai_assistant/classes/forms/questions_edit.php");
 
 
 global $CFG, $OUTPUT, $USER, $PAGE, $DB;
@@ -31,11 +33,12 @@ $formdata = new stdClass();
 $formdata->courseid = $courseid;
 
 // Create form
-$mform = new \block_ai_assistant\edit_questions(null, array('formdata' => $formdata));
+$mform = new \block_ai_assistant\questions_edit(null, array('formdata' => $formdata));
 if ($mform->is_cancelled()) {
     //Handle form cancel operation, if cancel button is present on form
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else if ($data = $mform->get_data()) {
+    print_object($data);
 
 
    
@@ -47,7 +50,7 @@ if ($mform->is_cancelled()) {
 }
 
 $PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/blocks/ai_assistant/edit_questions.php', ['courseid' => $courseid]));
+$PAGE->set_url(new moodle_url('/blocks/ai_assistant/questions_edit.php', ['courseid' => $courseid]));
 $PAGE->set_title(get_string('questions', 'block_ai_assistant'));
 $PAGE->set_heading(get_string('questions', 'block_ai_assistant'));
 

@@ -25,7 +25,7 @@ class cria
             if ($course_data->idnumber != '') {
                 $name = $course_data->idnumber;
             } else {
-                $name = $course_data->shprtname;
+                $name = $course_data->shortname;
             }
         }
         $config = get_config('block_ai_assistant');

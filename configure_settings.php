@@ -36,6 +36,10 @@ if ($mform->is_cancelled()) {
     //Handle form cancel operation, if cancel button is present on form
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else if ($data = $mform->get_data()) {
+    print_object($data);  
+    set_config('welcome_message', $data->welcome_message, 'block_ai_assistant');
+    set_config('no_context_message', $data->no_context_message,'block_ai_assistant');
+    set_config('subtitle',$data->subtitle, 'block_ai_assistant');
 
 
    

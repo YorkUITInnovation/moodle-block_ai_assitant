@@ -8,7 +8,7 @@ require_once($CFG->dirroot . '/lib/formslib.php');
 require_once($CFG->dirroot . '/config.php');
 
 
-class edit_questions extends \moodleform
+class questions_edit extends \moodleform
 {
     protected function definition()
     {
