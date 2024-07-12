@@ -10,3 +10,15 @@ $functions = array(
         'ajax' => true
     ),
 );
+
+$functions = array(
+    'ai_assistant_delete_question' => array(
+        'classname' => 'block_ai_assistant_question_ws',
+        'methodname' => 'delete',
+        'classpath' => 'blocks/ai_assistant/classes/external/question_ws.php',
+        'description' => 'This web service deletes the question record from the course question table.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+);

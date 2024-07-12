@@ -1,0 +1,30 @@
+<table class="table table-bordered table-hover">
+    <thead>
+        <tr>
+            <th>Question</th>
+            <th>Answer</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{#questions}}
+        <tr>
+            <td>{{question}}</td>
+            <td>{{answer}}</td>
+            <td>
+                <a href="{{edit_question}}" class="btn btn-link btn-sm" title="{{#str}}edit_question, block_ai_assistant{{/str}}">
+                    <i class="fa fa-edit"></i>
+                </a>
+                <a href="javascript:void(0);" 
+                   class="btn btn-link btn-sm delete-question" 
+                   data-questionid="{{id}}" 
+                   data-courseid="{{courseid}}" 
+                   title="{{#str}}delete_question, block_ai_assistant{{/str}}"
+                   data-confirm="{{#str}}confirm_question_deletion, block_ai_assistant{{/str}}">
+                   <i class="fa fa-trash"></i>
+                </a>
+            </td>
+        </tr>
+        {{/questions}}
+    </tbody>
+</table>

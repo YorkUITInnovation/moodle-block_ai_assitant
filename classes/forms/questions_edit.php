@@ -40,7 +40,7 @@ class questions_edit extends \moodleform
         $mform->addElement(
             'header',
             'Edit Questions',
-            get_string('EditQuestions', 'block_ai_assistant')
+            get_string('edit_questions', 'block_ai_assistant')
         );
         $attributes = array('size' => '20');
         $mform->addElement('text', 'name', get_string('name', 'block_ai_assistant'), $attributes);
@@ -53,9 +53,7 @@ class questions_edit extends \moodleform
         );
 
         $mform->addElement('editor', 'answer', get_string('answer', 'block_ai_assistant'), null, $editor_options);
-        $mform->setType('answer', PARAM_RAW); // Use PARAM_RAW for editor fields
-        // Adding a static element as a label
-        // $mform->addElement('static', 'label1', '', get_string('letAIGenerate', 'block_ai_assistant'));
+        $mform->setType('answer', PARAM_RAW);
         $options = [
             'option1' => 'YES',
             'option2' => 'NO'
@@ -66,10 +64,5 @@ class questions_edit extends \moodleform
         $mform->addElement('textarea', 'introduction', get_string("keywords", "block_ai_assistant"), 'wrap="virtual" rows="1" cols="70"');
         $mform->addElement('textarea', 'introduction', get_string("relatedQuestion", "block_ai_assistant"), 'wrap="virtual" rows="2" cols="20"');
         $this->add_action_buttons();
-
-       
     }
-
 }
-    
-

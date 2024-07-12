@@ -48,23 +48,26 @@
             >
             <i class="fa fa-download"></i>
             </a>
-        <!-- Delete questions -->
+        <!-- Delete questions file -->
           <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_delete.php?courseid={{courseid}}"
             class="btn btn-link btn-sm delete-button"
             title="{{#str}}delete_questions, block_ai_assistant{{/str}}"
             data-confirm="{{#str}}confirm_file_deletion, block_ai_assistant{{/str}}">
             <i class="fa fa-trash"></i>
         </a>
+        <!-- edit questions-->
+            <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_list.php?courseid={{courseid}}"
+            class="btn btn-link btn-sm"
+            title="{{#str}}edit_questions, block_ai_assistant{{/str}}"
+            >
+            <i class="fa fa-edit"></i>
+            </a>
         {{/questions_url}}
 
-        <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_edit.php?courseid={{courseid}}"
-        class="btn btn-link btn-sm edit-button">
-        <i class="fa fa-bars"></i>
-        </a>
+         <!--configure settings -->
         <a href="{{config.wwwroot}}/blocks/ai_assistant/configure_settings.php?courseid={{courseid}}"
-        class="btn btn-link btn-sm edit-button">
-        <i class="fa fa-gear"></i>
-       
+            class="btn btn-link btn-sm edit-button">
+            <i class="fa fa-gear"></i>
         </a>
     </div>
 </div>
