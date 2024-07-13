@@ -52,7 +52,10 @@ class questions_list extends \moodleform
                     'courseid' => $formdata->courseid,
                     'question' => $question->name,
                     'answer' => $question->answer,
-                    'edit_question' => redirect($CFG->wwwroot . '/blocks/ai_assistant/questions_edit.php?courseid=' . $formdata->courseid . '&questionid=' . $question->id),
+                    'edit_question' => (new \moodle_url('/blocks/ai_assistant/questions_edit.php', [
+                        'courseid' => $formdata->courseid,
+                        'questionid' => $question->id
+                    ]))->out(false),
                 ];
             }, $questions))
         ];
