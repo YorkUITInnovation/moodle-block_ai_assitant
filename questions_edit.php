@@ -33,13 +33,18 @@ if (!$question) {
 
 $formdata = new stdClass();
 $formdata->courseid = $courseid;
-$formdata->questionid = $questionid;
+$formdata->questionid = $question->id;
 $formdata->name = $question->name;
 $formdata->question = $question->value;
-$formdata->answer = $question->answer;
+$formdata->answer = array(
+    'text' => $question->answer,
+    'format' => FORMAT_HTML,
+);
 
 // Create form
 $mform = new \block_ai_assistant\questions_edit(null, array('formdata' => $formdata));
+$mform->set_data($formdata);
+
 if ($mform->is_cancelled()) {
     // Handle form cancel operation, if cancel button is present on form
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
