@@ -62,6 +62,7 @@ $string['no_context_message_help'] = 'No Context Message help text here';
 $string['pluginname'] = 'Al Course Assistant';
 $string['questions'] = 'Questions';
 $string['question'] = 'Question';
+$string['question_updated_successfully'] = 'Question updated successfully';
 $string['required'] = 'This field is required';
 $string['relatedQuestion'] = "Related Questions";
 $string['save'] = 'Save changes ';

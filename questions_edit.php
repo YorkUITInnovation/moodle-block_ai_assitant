@@ -12,6 +12,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+
 require_once("../../config.php");
 require_once($CFG->dirroot . "/blocks/ai_assistant/classes/forms/questions_edit.php");
 
@@ -50,13 +51,14 @@ if ($mform->is_cancelled()) {
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else if ($data = $mform->get_data()) {
 
-    $DB->update_record('block_ai_assistant_questions', [
-        'name' => $data->name,
-        'value' => $data->question,
-        'answer' => $data->answer,
-    ]);
+    $updatedrecord = new stdClass();
+    $updatedrecord->id = $questionid;
+    $updatedrecord->name = $data->name;
+    $updatedrecord->value = $data->question;
+    $updatedrecord->answer = $data->answer['text'];
+    $DB->update_record('block_aia_questions', $updatedrecord);
 
-    redirect($CFG->wwwroot . '/blocks/ai_assistant/questions_list.php?courseid=' . $courseid);
+    redirect($CFG->wwwroot . '/blocks/ai_assistant/questions_list.php?courseid=' . $courseid, get_string('question_updated_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
 }
 
 $PAGE->set_context($context);
