@@ -1,6 +1,12 @@
 <div class="row">
     <div class="col-md-12">
-
+        <!--configure settings -->
+        <label for="configure-bot-settings">{{#str}}configure_bot_settings, block_ai_assistant{{/str}}</label>
+        <a href={{configure_settings_url}}
+            class="btn btn-link btn-sm edit-button">
+            <i class="fa fa-gear"></i>
+        </a>
+        <!--upload syllabus -->
         {{^syllabus_url}}
             <label for="upload-syllabus">{{#str}}upload_syllabus, block_ai_assistant{{/str}}</label>
             <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_upload.php?courseid={{courseid}}"
@@ -10,6 +16,7 @@
             <i class="fa fa-upload"></i>
             </a>
         {{/syllabus_url}}
+         <!--download syllabus -->
         {{#syllabus_url}}
             <label for="syllabus">{{#str}}syllabus, block_ai_assistant{{/str}}</label>
             <a href="{{syllabus_url}}"
@@ -30,7 +37,7 @@
         {{/syllabus_url}}
     </div>
     <div class="col-md-12">
-
+        <!--upload questions -->
         {{^questions_url}}
             <label for="upload-questions">{{#str}}upload_questions, block_ai_assistant{{/str}}</label>
             <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_upload.php?courseid={{courseid}}"
@@ -40,6 +47,7 @@
             <i class="fa fa-upload"></i>
             </a>
         {{/questions_url}}
+        <!--download questions -->
         {{#questions_url}}
             <label for="download-questions">{{#str}}questions, block_ai_assistant{{/str}}</label>
             <a href="{{questions_url}}"
@@ -62,13 +70,7 @@
             >
             <i class="fa fa-edit"></i>
             </a>
-        {{/questions_url}}
-
-         <!--configure settings -->
-        <a href="{{config.wwwroot}}/blocks/ai_assistant/configure_settings.php?courseid={{courseid}}"
-            class="btn btn-link btn-sm edit-button">
-            <i class="fa fa-gear"></i>
-        </a>
+        {{/questions_url}}  
     </div>
 </div>
 

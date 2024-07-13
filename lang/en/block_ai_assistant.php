@@ -30,6 +30,7 @@ $string['answer'] = 'Answer';
 $string['close'] = '  Close';
 $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
 $string['confirm_question_deletion'] = 'Are you sure you want to delete the question?';
+$string['configure_bot_settings'] = 'Configure Bot Settings';
 $string['configure_settings'] = 'Configure Settings';
 $string['create_cria_bot_endpoint'] = 'cria_create_bot';
 $string['cria_token'] = 'Cria Token';

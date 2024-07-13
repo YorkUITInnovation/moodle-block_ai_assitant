@@ -132,6 +132,9 @@ class block_ai_assistant extends block_base
             'courseid' => $this->page->course->id,
             'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
+            'configure_settings_url' => (new \moodle_url('/blocks/ai_assistant/configure_settings.php', [
+                'courseid' => $this->page->course->id,
+            ]))->out(false),
             'syllabus_url' => $syllabus_url,
             'questions_url' => $questions_url,
         );
