@@ -46,13 +46,13 @@ class questions_list extends \moodleform
         $questions = $DB->get_records('block_aia_questions', array('courseid' => $formdata->courseid));
 
         $templatecontext = (object)[
-            'questions' => array_values(array_map(function ($question) use ($formdata) {
+            'questions' => array_values(array_map(function ($question) use ($formdata, $CFG) {
                 return (object)[
                     'id' => $question->id,
                     'courseid' => $formdata->courseid,
                     'question' => $question->name,
                     'answer' => $question->answer,
-                    'edit_question' => new \moodle_url('/blocks/ai_assistant/edit_question.php', array('courseid' => $formdata->courseid, 'questionid' => $question->id))
+                    'edit_question' => redirect($CFG->wwwroot . '/blocks/ai_assistant/questions_edit.php?courseid=' . $formdata->courseid . '&questionid=' . $question->id),
                 ];
             }, $questions))
         ];

@@ -24,8 +24,19 @@ $context = context_course::instance($courseid);
 
 require_login($courseid);
 
+$questionid = required_param('questionid', PARAM_INT);
+
+$question = $DB->get_record('block_aia_questions', ['id' => $questionid]);
+if (!$question) {
+    throw new moodle_exception('question_not_found', 'block_ai_assistant');
+}
+
 $formdata = new stdClass();
 $formdata->courseid = $courseid;
+$formdata->questionid = $questionid;
+$formdata->name = $question->name;
+$formdata->question = $question->value;
+$formdata->answer = $question->answer;
 
 // Create form
 $mform = new \block_ai_assistant\questions_edit(null, array('formdata' => $formdata));
@@ -33,72 +44,18 @@ if ($mform->is_cancelled()) {
     // Handle form cancel operation, if cancel button is present on form
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else if ($data = $mform->get_data()) {
-    // Sample JSON response
-    $sample_json_response = [
-        "Goodbye " => [
-            "question" => "Goodbye ",
-            "examples" => [
-                "Bye. ",
-                "Ciao. ",
-                "Gotta go. ",
-                "Talk to you later. ",
-                "See you later. ",
-                "Have a nice day. ",
-                "The response to any of these prompts is (be playful and funny): "
-            ],
-            "answer" => "Cheers! Come back and see me\u2026 It's lonely being a bot\u2026",
-            "criaquestionid" => 1
-        ],
-        "Does the video have to be on during a Zoom meeting? " => [
-            "question" => "Does the video have to be on during a Zoom meeting? ",
-            "examples" => [
-                "Switch on video for my class. ",
-                "is video compulsory on zoom? ",
-                "Do I have to turn on my video during a Zoom session? ",
-                "The response to any of these questions or prompts is:"
-            ],
-            "answer" => "You don't have to turn on your video during a Zoom session. It’s up to you. However, interactions would be humanized and improved if your peers could put a face to your name and voice.",
-            "criaquestionid" => 3
-        ]
-    ];
 
-    // Parse the JSON response and process each question-answer pair
-    foreach ($sample_json_response as $key => $data) {
-        $question = $data['question'];
-        $answer = $data['answer'];
-        $examples = $data['examples'];
-        $criaquestionid = $data['criaquestionid']; // Assuming this is included in your API response
+    $DB->update_record('block_ai_assistant_questions', [
+        'name' => $data->name,
+        'value' => $data->question,
+        'answer' => $data->answer,
+    ]);
 
-        // Check if the record already exists
-        $record = $DB->get_record('block_aia_questions', array('criaquestionid' => $criaquestionid, 'courseid' => $courseid));
-
-        if ($record) {
-            // Update the existing record
-            $record->name = $key;
-            $record->value = $question;
-            $record->answer = $answer;
-            $DB->update_record('block_aia_questions', $record);
-        } else {
-            // Insert a new record
-            $new_record = new stdClass();
-            $new_record->courseid = $courseid;
-            $new_record->name = $key;
-            $new_record->value = $question;
-            $new_record->answer = $answer;
-            $new_record->criaquestionid = $criaquestionid;
-            $DB->insert_record('block_aia_questions', $new_record);
-        }
-    }
-
-    // Redirect with success message
-    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
-} else {
-    // Show form
-    $mform->set_data($formdata);
+    redirect($CFG->wwwroot . '/blocks/ai_assistant/questions_list.php?courseid=' . $courseid);
 }
 
 $PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/blocks/ai_assistant/questions_edit.php', ['courseid' => $courseid]));
+$PAGE->set_url(new moodle_url('/blocks/ai_assistant/questions_edit.php', ['courseid' => $courseid, 'questionid' => $questionid]));
 $PAGE->set_title(get_string('questions', 'block_ai_assistant'));
 $PAGE->set_heading(get_string('questions', 'block_ai_assistant'));
 
