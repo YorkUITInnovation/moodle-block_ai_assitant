@@ -34,7 +34,6 @@ $formdata->courseid = $courseid;
 
 // Create form
 $mform = new \block_ai_assistant\questions_list(null, array('formdata' => $formdata));
-$mform->display();
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/blocks/ai_assistant/questions_list.php', ['courseid' => $courseid]));

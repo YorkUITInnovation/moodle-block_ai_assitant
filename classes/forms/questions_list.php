@@ -37,12 +37,6 @@ class questions_list extends \moodleform
             PARAM_INT
         );
 
-        $mform->addElement(
-            'header',
-            'Questions',
-            get_string('questions', 'block_ai_assistant')
-        );
-
         $questions = $DB->get_records('block_aia_questions', array('courseid' => $formdata->courseid));
 
         $templatecontext = (object)[
