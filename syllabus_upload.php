@@ -62,10 +62,10 @@ if ($mform->is_cancelled()) {
     if ($file) {
         $file = reset($file);
         $temppath = $CFG->dataroot . 'temp/' . $courseid . '/cria';
-        if ($$temppath) {
+        if (!$temppath) {
             mkdir($temppath, 0777, true);
-            $file->copy_content_to($temppath . '/' . $file->get_filename());
         }
+        $file->copy_content_to($temppath . '/' . $file->get_filename());
     }
 
     // Redirect with success message
