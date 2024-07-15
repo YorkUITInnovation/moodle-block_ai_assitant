@@ -27,6 +27,9 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['access'] = '  Student Access';
 $string['answer'] = 'Answer';
+$string['bot_tuning'] = 'Agent parameters';
+$string['bottom_left'] = 'Bottom left';
+$string['bottom_right'] = 'Bottom right';
 $string['close'] = '  Close';
 $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
 $string['confirm_question_deletion'] = 'Are you sure you want to delete the question?';
@@ -76,7 +79,31 @@ $string['system_message_help'] = 'System Message help text here';
 $string['test'] = 'Test your AI assistant, chat now!';
 $string['title'] = 'Title';
 $string['title_help'] = 'Title help text here';
+$string['top_left'] = 'Top left';
+$string['top_right'] = 'Top right';
 $string['upload_syllabus'] = 'Upload Syllabus';
 $string['upload_questions'] = 'Upload question file';
 $string['welcome_message'] = 'Welcome Message';
 $string['welcome_message_help'] = 'Welcome Message help text here';
+
+// Bot tuning
+$string['max_tokens'] = 'Max tokens';
+$string['max_tokens_help'] = '4000 for GPT-4o';
+$string['temperature'] = 'Temperature';
+$string['temperature_help'] = '0.1 Precise 0.5 Creative 1.0 Wild';
+$string['top_p'] = 'Top P';
+$string['top_p_help'] = '0 for GPT-4o';
+$string['top_k'] = 'Top K';
+$string['top_k_help'] = '50 for GPT-4o';
+$string['top_n'] = 'Top N';
+$string['top_n_help'] = '10 for GPT-4o';
+$string['min_k'] = 'Min K';
+$string['min_k_help'] = '0.6 for GPT-4o';
+$string['min_relevance'] = 'Min Relevance';
+$string['min_relevance_help'] = '0.8 for GPT-4o';
+$string['max_context'] = 'Max Context';
+$string['max_context_help'] = '120000 for GPT-4o';
+$string['no_context_llm_guess'] = 'No Context LLM Guess';
+$string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when no context is available';
+$string['embed_position'] = 'Embed Position';
+

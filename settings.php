@@ -110,7 +110,96 @@ if ($hassiteconfig) {
         PARAM_TEXT
     ));
 
+    // Add a header
+    $settings->add(new admin_setting_heading(
+        'block_ai_assistant/bot_tuning',
+        get_string('bot_tuning', 'block_ai_assistant'),
+        ''
+    ));
 
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/max_tokens',
+        get_string('max_tokens', 'block_ai_assistant'),
+        '',
+        4000,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/temperature',
+        get_string('temperature', 'block_ai_assistant'),
+        '',
+        0.1,
+        PARAM_FLOAT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/top_p',
+        get_string('top_p', 'block_ai_assistant'),
+        '',
+        0.0,
+        PARAM_FLOAT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/top_k',
+        get_string('top_k', 'block_ai_assistant'),
+        '',
+        30,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/top_n',
+        get_string('top_n', 'block_ai_assistant'),
+        '',
+        10,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/min_k',
+        get_string('min_k', 'block_ai_assistant'),
+        '',
+        0.6,
+        PARAM_FLOAT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/min_relevance',
+        get_string('min_relevance', 'block_ai_assistant'),
+        '',
+        0.8,
+        PARAM_FLOAT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/max_context',
+        get_string('max_context', 'block_ai_assistant'),
+        '',
+        120000,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'block_ai_assistant/no_context_llm_guess',
+        get_string('no_context_llm_guess', 'block_ai_assistant'),
+        '',
+        1
+    ));
+
+    $settings->add(new admin_setting_configselect(
+        'block_ai_assistant/embed_position',
+        get_string('embed_position', 'block_ai_assistant'),
+        '',
+        1,
+        array(
+            1 => get_string('bottom_left', 'block_ai_assistant'),
+            2 => get_string('bottom_right', 'block_ai_assistant'),
+            3 => get_string('top_left', 'block_ai_assistant'),
+            4 => get_string('top_right', 'block_ai_assistant'),
+        )
+    ));
     // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
     if ($ADMIN->fulltree) {
         // TODO: Define actual plugin settings page and add it to the tree - {@link https://docs.moodle.org/dev/Admin_settings}.
@@ -120,16 +209,9 @@ if ($hassiteconfig) {
 set_config('description', '', 'block_ai_assistant');
 set_config('bot_type', 1, 'block_ai_assistant');
 set_config('requires_content_prompt', 0, 'block_ai_assistant');
-set_config('requires_user_prompt', 0, 'block_ai_assistant');
+set_config('requires_user_prompt', 1, 'block_ai_assistant');
 set_config('user_prompt', '', 'block_ai_assistant');
 set_config('theme_color', '#e31837', 'block_ai_assistant');
-set_config('max_tokens', 4000, 'block_ai_assistant');
-set_config('temperature', 0.1, 'block_ai_assistant');
-set_config('top_p', 0.0, 'block_ai_assistant');
-set_config('top_k', 30, 'block_ai_assistant');
-set_config('top_n', 10, 'block_ai_assistant');
-set_config('min_k', 0.6, 'block_ai_assistant');
-set_config('min_relevance', 0.8, 'block_ai_assistant');
 set_config('max_context', 120000, 'block_ai_assistant');
 set_config('no_context_use_message', 1, 'block_ai_assistant');
 set_config('no_context_llm_guess', 0, 'block_ai_assistant');
@@ -137,7 +219,6 @@ set_config('email', '', 'block_ai_assistant');
 set_config('available_child', 0, 'block_ai_assistant');
 set_config('parse_strategy', 'ALSYLLABUS', 'block_ai_assistant');
 set_config('botwatermark', 0, 'block_ai_assistant');
-set_config('embed_position', 1, 'block_ai_assistant');
 set_config('icon_url', '', 'block_ai_assistant');
-set_config('bot_locale', 'en', 'block_ai_assistant');
+set_config('bot_locale', 'us_EN', 'block_ai_assistant');
 set_config('child_bots', '', 'block_ai_assistant');

@@ -11,6 +11,7 @@ class cria
     {
         $method = get_string('create_cria_bot_endpoint', 'block_ai_assistant');
         $data = self::get_create_cria_bot_config($course_id);
+
         $bot_name = webservice::exec($method, $data);
         return $bot_name;
     }
@@ -18,9 +19,12 @@ class cria
     private static function get_create_cria_bot_config($course_id)
     {
         global $PAGE, $DB, $COURSE;
+        // Set parameters
         $context = \context_course::instance($course_id);
-
+        $config = get_config('block_ai_assistant');
         $course_data = $DB->get_record('course', array('id' => $course_id));
+        $system_message = self::get_default_system_message($course_id);
+
         if ($course_data) {
             if ($course_data->idnumber != '') {
                 $name = $course_data->idnumber;
@@ -28,12 +32,12 @@ class cria
                 $name = $course_data->shortname;
             }
         }
-        $config = get_config('block_ai_assistant');
+
         $data = array(
             'name' => $name,
             'description' => $config->description,
             'bot_type' => $config->bot_type,
-            'bot_system_message' => $config->system_message,
+            'bot_system_message' => $system_message,
             'model_id' => $config->criadex_model_id,
             'embedding_id' => $config->criadex_embed_id,
             'rerank_model_id' => $config->criadex_rerank_id,
@@ -50,10 +54,10 @@ class cria
             'min_k' => $config->min_k,
             'min_relevance' => $config->min_relevance,
             'max_context' => $config->max_context,
-            'no_context_message' => $config->no_context_message,
+            'no_context_message' => self::get_default_no_context_message(),
             'no_context_use_message' => $config->no_context_use_message,
             'no_context_llm_guess' => $config->no_context_llm_guess,
-            'email' => $config->email,
+            'email' => implode('; ', self::get_teacher_emails($course_id)),
             'available_child' => $config->available_child,
             'parse_strategy' => $config->parse_strategy,
             'botwatermark' => $config->botwatermark,
@@ -63,7 +67,61 @@ class cria
             'icon_url' => $config->icon_url,
             'bot_locale' => $config->bot_locale,
             'child_bots' => $config->child_bots,
+            'publish' => 0
         );
         return $data;
+    }
+
+    /**
+     * Returns defualt system message
+     * @param int $course_id
+     * @return array|string|string[]
+     * @throws \dml_exception
+     */
+    public static function get_default_system_message($course_id)
+    {
+        global $DB;
+        $course_data = $DB->get_record('course', array('id' => $course_id));
+        $config = get_config('block_ai_assistant');
+        $system_message = $config->system_message;
+        // Replace the [course_number] with the shortname of the course
+        $system_message = str_replace('[course_number]', $course_data->shortname, $system_message);
+        // Replace the [course_title] with the fullname of the course
+        $system_message = str_replace('[course_title]', $course_data->fullname, $system_message);
+        return $system_message;
+    }
+
+    /**
+     * Returns the default no_context_message
+     */
+    public static function get_default_no_context_message()
+    {
+        $config = get_config('block_ai_assistant');
+        return $config->no_context_message;
+    }
+
+    /**
+     * Get teachers in the course
+     * @param int $course_id
+     */
+    public static function get_teachers($course_id)
+    {
+        $context = \context_course::instance($course_id);
+        $teachers = get_users_by_capability($context, 'block/ai_assistant:teacher', 'u.id, u.firstname, u.lastname, u.email', 'u.lastname, u.firstname');
+        return array_values($teachers);
+    }
+
+    /**
+     * Get teacher emails in the course
+     * @param int $course_id
+     */
+    public static function get_teacher_emails($course_id)
+    {
+        $teachers = self::get_teachers($course_id);
+        $emails = array();
+        foreach ($teachers as $teacher) {
+            $emails[] = $teacher->email;
+        }
+        return $emails;
     }
 }
