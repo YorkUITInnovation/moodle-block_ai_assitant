@@ -35,6 +35,6 @@ $params = [
 ];
 print_object($params);
 
-$results = webservice::exec('cria_file_upload', $params);
+$results = webservice::exec('cria_content_upload', $params);
 print_object($results);
 echo $OUTPUT->footer();
