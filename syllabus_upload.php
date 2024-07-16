@@ -71,8 +71,11 @@ if ($mform->is_cancelled()) {
         $file->copy_content_to($filepath);
 
         //get the cria_file_id and update db
-        $file_id = cria::upload_content_to_bot($filepath);
+        $file_id = cria::upload_content_to_bot($filepath, $courseid);
         $DB->set_field('block_ai_assistant', 'cria_file_id', $file_id, ['courseid' => $courseid]);
+
+        //delte the temp folder
+
     }
 
 

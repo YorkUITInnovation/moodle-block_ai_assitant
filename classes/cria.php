@@ -72,22 +72,28 @@ class cria
         return $data;
     }
 
-    public static function upload_content_to_bot($file_path)
+    public static function upload_content_to_bot($file_path, $course_id)
     {
         $method = get_string('upload_content_to_bot_endpoint', 'block_ai_assistant');
-        $data = self::get_upload_content_to_bot_config($file_path);
+        $data = self::get_upload_content_to_bot_config($file_path, $course_id);
         $file_id = webservice::exec($method, $data);
         return $file_id;
     }
 
-    private static function get_upload_content_to_bot_config($file_path)
+    private static function get_upload_content_to_bot_config($file_path, $course_id)
     {
+        global $DB;
         $file_content = file_get_contents($file_path);
         $encoded_content = base64_encode($file_content);
         $filename = basename($file_path);
+        $courserecord = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
+        if ($courserecord) {
+            $bot_name = $courserecord->bot_name;
+            $intentid = explode('_', $bot_name)[1];
+        }
 
         $data = array(
-            "intentid" => 43,
+            "intentid" => $intentid,
             "filename" => $filename,
             "filecontent" => $encoded_content,
         );
