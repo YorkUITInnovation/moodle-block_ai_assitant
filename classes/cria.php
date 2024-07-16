@@ -19,7 +19,25 @@ class cria
         $data = self::get_create_cria_bot_config($course_id);
 
         $bot_name = webservice::exec($method, $data);
+        $bot_name=self::get_bot_name_intent_id($bot_name);
+        print_object($bot_name);
+
         return $bot_name;
+    }
+
+    /**
+     * Create bot instance and returns bot_name
+     * @param int $bot_name
+     * @return string bot_name-intentId
+     */
+
+    public static function get_bot_name_intent_id ($bot_name)
+    {
+        $method=get_string('cria_get_bot_name_endpoint', 'block_ai_assistant');
+        $data=array('bot_id'=>$bot_name);
+        $bot_name_intent_id = webservice::exec($method, $data);
+        print_object($bot_name_intent_id);
+        return $bot_name_intent_id;
     }
 
     /**
@@ -112,11 +130,13 @@ class cria
         $courserecord = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
         if ($courserecord) {
             $bot_name = $courserecord->bot_name;
-            $intentid = explode('_', $bot_name)[1];
+            $intentid = explode('-', $bot_name)[1];
+            // $intentid =  $bot_name;
+
         }
 
         $data = array(
-            "intentid" => $intentid,
+            "intentid" => (int)$intentid,
             "filename" => $filename,
             "filecontent" => $encoded_content,
         );
@@ -136,6 +156,7 @@ class cria
         global $CFG;
         $fs = get_file_storage();
         $files = $fs->get_area_files($contextid, 'block_ai_assistant', 'syllabus', $courseid);
+        // print_object($files);
 
         if ($files) {
             $file = reset($files);
@@ -148,12 +169,15 @@ class cria
                 }
             }
 
-            // Define the file path and copy content
-            $filepath = $temppath . '/' . $file->get_filename();
-            $file->copy_content_to($filepath);
-            return $filepath;
-        }
+            foreach ($files as $file) {
+                if ($file->get_filesize() > 0) { // Ensures it's not a directory
+                    $filepath = $temppath . '/' . $file->get_filename();
+                    $file->copy_content_to($filepath);
+                    return $filepath;
+                }
+            }
     }
+}
     /**
      * Returns default system message
      * @param int $course_id

@@ -89,6 +89,58 @@ function xmldb_block_ai_assistant_upgrade($oldversion) {
         // Ai_assistant savepoint reached.
         upgrade_block_savepoint(true, 2024070804, 'ai_assistant');
     }
+    if ($oldversion < 2024071609) {
+
+        // Define field welcome_message to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('welcome_message', XMLDB_TYPE_CHAR, '100', null, null, null, '0');
+
+        // Conditionally launch add field welcome_message.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field no_context_message to be added to block_aia_settings.
+        $field = new xmldb_field('no_context_message', XMLDB_TYPE_CHAR, '100', null, null, null, '0');
+
+        // Conditionally launch add field no_context_message.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field subtitle to be added to block_aia_settings.
+        $field = new xmldb_field('subtitle', XMLDB_TYPE_CHAR, '10', null, null, null, '0');
+
+        // Conditionally launch add field subtitle.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field cria_file_id to be added to block_aia_settings.
+        $field = new xmldb_field('cria_file_id', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+
+        // Conditionally launch add field cria_file_id.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024071609, 'ai_assistant');
+    }
+    if ($oldversion < 2024071612) {
+
+        // Define field subtitle to be modified in block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('subtitle', XMLDB_TYPE_CHAR, '50', null, null, null, '0');
+    
+        // Conditionally launch alter field subtitle.
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_precision($table, $field);
+        }
+    
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024071612, 'ai_assistant');
+    }
 
     return true;
 }
