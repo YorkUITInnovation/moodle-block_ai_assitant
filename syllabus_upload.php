@@ -61,7 +61,7 @@ if ($mform->is_cancelled()) {
     print_object($file_id);
     $DB->set_field('block_aia_settings', 'cria_file_id', $file_id, ['courseid' => $courseid]);
     // Redirect with success message
-    // redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
+    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
 } else {
     // Show form
     $mform->set_data($formdata);

@@ -101,6 +101,14 @@ class cria
         return $data;
     }
 
+    public static function call_cria_content_delete($contentid){
+        $method=get_string('cria_content_delete','block_ai_assistant');
+        $data=array("id"=>$contentid);
+        $status= webservice::exec($method, $data);
+        return $status;
+
+    }
+
     /**
      * Uploads content to bot and returns file_id
      * @param string $file_path

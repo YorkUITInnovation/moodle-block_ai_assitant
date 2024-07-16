@@ -9,6 +9,7 @@
  */
 require_once($CFG->libdir . "/externallib.php");
 require_once("$CFG->dirroot/config.php");
+use block_ai_assistant\cria;
 
 
 class block_ai_assistant_syllabus_ws extends external_api
@@ -47,6 +48,24 @@ class block_ai_assistant_syllabus_ws extends external_api
         //OPTIONAL but in most web service it should present
         $context = CONTEXT_COURSE::instance($course_id);
         self::validate_context($context);
+
+        // Get the course record to fetch cria_file_id
+        $courserecord = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
+        if (!$courserecord || !isset($courserecord->cria_file_id)) {
+            throw new invalid_parameter_exception('No cria_file_id found for the specified course');
+        }
+
+        $cria_file_id = $courserecord->cria_file_id;
+        print_object($cria_file_id);
+
+        // Call the API to delete the file
+        $api_response = cria::call_cria_content_delete($cria_file_id);
+        print_object($api_response);
+        
+        // Handle the API response
+        if ($api_response !== 'true') {
+            throw new Exception('Failed to delete content via API: ' . $api_response);
+        }
 
         $fs = get_file_storage();
         // Get area files
