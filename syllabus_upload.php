@@ -57,25 +57,32 @@ if ($mform->is_cancelled()) {
     );
 
     //get files from the draft area
-    $fs = get_file_storage();
-    $file = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $courseid);
+   
+    $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $courseid);
 
     //save it to moodledata/tmp/{courseid}/cria folder
-    if ($file) {
-        $file = reset($file);
-        $temppath = $CFG->dataroot . 'temp/' . $courseid . '/cria';
-        if (!$temppath) {
-            mkdir($temppath, 0777, true);
+    if ($files) {
+        $file = reset($files); // Get the first file
+        $temppath = $CFG->dataroot . '/temp/' . $courseid . '/cria';
+
+        // Check if the directory exists, create it if it doesn't
+        if (!is_dir($temppath)) {
+            if (!mkdir($temppath, 0777, true)) {
+                throw new Exception("Failed to create directory: $temppath");
+            }
         }
+
+        // Define the file path and copy content
         $filepath = $temppath . '/' . $file->get_filename();
         $file->copy_content_to($filepath);
 
-        //get the cria_file_id and update db
+        // Get the cria_file_id and update db
         $file_id = cria::upload_content_to_bot($filepath, $courseid);
-        $DB->set_field('block_ai_assistant', 'cria_file_id', $file_id, ['courseid' => $courseid]);
+        $DB->set_field('block_aia_settings', 'cria_file_id', $file_id, ['courseid' => $courseid]);
 
-        //delte the temp folder
-
+        // Optionally delete the temp folder or files if needed
+        // $fs->delete_area_files($context->id, 'block_ai_assistant', 'syllabus', $courseid);
+    
     }
 
 

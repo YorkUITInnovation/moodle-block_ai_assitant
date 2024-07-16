@@ -9,9 +9,6 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
-);
-
-$functions = array(
     'ai_assistant_delete_question' => array(
         'classname' => 'block_ai_assistant_question_ws',
         'methodname' => 'delete',
@@ -22,3 +19,4 @@ $functions = array(
         'ajax' => true
     ),
 );
+
