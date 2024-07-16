@@ -35,7 +35,6 @@ $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
 $string['confirm_question_deletion'] = 'Are you sure you want to delete the question?';
 $string['configure_bot_settings'] = 'Configure Bot Settings';
 $string['configure_settings'] = 'Configure Settings';
-$string['create_cria_bot_endpoint'] = 'cria_create_bot';
 $string['cria_token'] = 'Cria Token';
 $string['cria_url'] = 'Cria URL';
 $string['cria_token_help'] = 'Enter the token to your Cria server. You might have to ask your system administrator.';
@@ -86,6 +85,11 @@ $string['upload_questions'] = 'Upload question file';
 $string['welcome_message'] = 'Welcome Message';
 $string['welcome_message_help'] = 'Welcome Message help text here';
 
+//Bot endpoints
+$string['create_cria_bot_endpoint'] = 'cria_create_bot';
+$string['upload_content_to_bot_endpoint'] = 'cria_content_upload';
+
+
 // Bot tuning
 $string['max_tokens'] = 'Max tokens';
 $string['max_tokens_help'] = '4000 for GPT-4o';
@@ -106,4 +110,3 @@ $string['max_context_help'] = '120000 for GPT-4o';
 $string['no_context_llm_guess'] = 'No Context LLM Guess';
 $string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when no context is available';
 $string['embed_position'] = 'Embed Position';
-

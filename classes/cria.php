@@ -72,6 +72,28 @@ class cria
         return $data;
     }
 
+    public static function upload_content_to_bot($file_path)
+    {
+        $method = get_string('upload_content_to_bot_endpoint', 'block_ai_assistant');
+        $data = self::get_upload_content_to_bot_config($file_path);
+        $file_id = webservice::exec($method, $data);
+        return $file_id;
+    }
+
+    private static function get_upload_content_to_bot_config($file_path)
+    {
+        $file_content = file_get_contents($file_path);
+        $encoded_content = base64_encode($file_content);
+        $filename = basename($file_path);
+
+        $data = array(
+            "intentid" => 43,
+            "filename" => $filename,
+            "filecontent" => $encoded_content,
+        );
+        return $data;
+    }
+
     /**
      * Returns defualt system message
      * @param int $course_id

@@ -17,6 +17,8 @@ require_once("../../config.php");
 
 require_once($CFG->dirroot . "/blocks/ai_assistant/classes/forms/syllabus_upload.php");
 
+use block_ai_assistant\cria;
+
 
 global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 
@@ -65,8 +67,14 @@ if ($mform->is_cancelled()) {
         if (!$temppath) {
             mkdir($temppath, 0777, true);
         }
-        $file->copy_content_to($temppath . '/' . $file->get_filename());
+        $filepath = $temppath . '/' . $file->get_filename();
+        $file->copy_content_to($filepath);
+
+        //get the cria_file_id and update db
+        $file_id = cria::upload_content_to_bot($filepath);
+        $DB->set_field('block_ai_assistant', 'cria_file_id', $file_id, ['courseid' => $courseid]);
     }
+
 
     // Redirect with success message
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
