@@ -3,10 +3,16 @@
 namespace block_ai_assistant;
 
 use block_ai_assistant\webservice;
+use Exception;
 
 class cria
 {
 
+    /**
+     * Create bot instance and returns bot_name
+     * @param int $course_id
+     * @return string bot_name
+     */
     public static function create_bot_instance($course_id)
     {
         $method = get_string('create_cria_bot_endpoint', 'block_ai_assistant');
@@ -16,9 +22,14 @@ class cria
         return $bot_name;
     }
 
+    /**
+     * Returns the config for creating bot instance
+     * @param int $course_id
+     * @return array
+     */
     private static function get_create_cria_bot_config($course_id)
     {
-        global $PAGE, $DB, $COURSE;
+        global $DB;
         // Set parameters
         $context = \context_course::instance($course_id);
         $config = get_config('block_ai_assistant');
@@ -72,6 +83,12 @@ class cria
         return $data;
     }
 
+    /**
+     * Uploads content to bot and returns file_id
+     * @param string $file_path
+     * @param int $course_id
+     * @return int file_id
+     */
     public static function upload_content_to_bot($file_path, $course_id)
     {
         $method = get_string('upload_content_to_bot_endpoint', 'block_ai_assistant');
@@ -80,6 +97,12 @@ class cria
         return $file_id;
     }
 
+    /**
+     * Returns the config for uploading content to bot
+     * @param string $file_path
+     * @param int $course_id
+     * @return array
+     */
     private static function get_upload_content_to_bot_config($file_path, $course_id)
     {
         global $DB;
@@ -101,7 +124,38 @@ class cria
     }
 
     /**
-     * Returns defualt system message
+     * Copies a file from the draft area to a temporary folder for LLM upload.
+     *
+     * @param int $contextid The context ID.
+     * @param int $courseid The course ID.
+     * @return string The path of the copied file.
+     * @throws Exception If the directory creation or file copy fails.
+     */
+    public static function copy_file_to_temp_folder($contextid, $courseid)
+    {
+        global $CFG;
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($contextid, 'block_ai_assistant', 'syllabus', $courseid);
+
+        if ($files) {
+            $file = reset($files);
+            $temppath = $CFG->dataroot . '/temp/' . $courseid . '/cria';
+
+            // Check if the directory exists, create it if it doesn't
+            if (!is_dir($temppath)) {
+                if (!mkdir($temppath, 0777, true)) {
+                    throw new Exception("Failed to create directory: $temppath");
+                }
+            }
+
+            // Define the file path and copy content
+            $filepath = $temppath . '/' . $file->get_filename();
+            $file->copy_content_to($filepath);
+            return $filepath;
+        }
+    }
+    /**
+     * Returns default system message
      * @param int $course_id
      * @return array|string|string[]
      * @throws \dml_exception
