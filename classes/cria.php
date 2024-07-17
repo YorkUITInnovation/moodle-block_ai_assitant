@@ -19,7 +19,7 @@ class cria
         $data = self::get_create_cria_bot_config($course_id);
 
         $bot_name = webservice::exec($method, $data);
-        $bot_name=self::get_bot_name_intent_id($bot_name);
+        $bot_name = self::get_bot_name_intent_id($bot_name);
         print_object($bot_name);
 
         return $bot_name;
@@ -31,10 +31,10 @@ class cria
      * @return string bot_name-intentId
      */
 
-    public static function get_bot_name_intent_id ($bot_name)
+    public static function get_bot_name_intent_id($bot_name)
     {
-        $method=get_string('cria_get_bot_name_endpoint', 'block_ai_assistant');
-        $data=array('bot_id'=>$bot_name);
+        $method = get_string('cria_get_bot_name_endpoint', 'block_ai_assistant');
+        $data = array('bot_id' => $bot_name);
         $bot_name_intent_id = webservice::exec($method, $data);
         print_object($bot_name_intent_id);
         return $bot_name_intent_id;
@@ -101,12 +101,12 @@ class cria
         return $data;
     }
 
-    public static function call_cria_content_delete($contentid){
-        $method=get_string('cria_content_delete','block_ai_assistant');
-        $data=array("id"=>$contentid);
-        $status= webservice::exec($method, $data);
+    public static function delete_content_from_bot($contentid)
+    {
+        $method = get_string('delete_content_from_bot_endpoint', 'block_ai_assistant');
+        $data = array("id" => $contentid);
+        $status = webservice::exec($method, $data);
         return $status;
-
     }
 
     /**
@@ -184,8 +184,8 @@ class cria
                     return $filepath;
                 }
             }
+        }
     }
-}
     /**
      * Returns default system message
      * @param int $course_id

@@ -9,6 +9,7 @@
  */
 require_once($CFG->libdir . "/externallib.php");
 require_once("$CFG->dirroot/config.php");
+
 use block_ai_assistant\cria;
 
 
@@ -39,7 +40,9 @@ class block_ai_assistant_syllabus_ws extends external_api
         global $CFG, $USER, $DB, $PAGE;
 
         //Parameter validation
-        $params = self::validate_parameters(self::delete_parameters(), array(
+        $params = self::validate_parameters(
+            self::delete_parameters(),
+            array(
                 'courseid' => $course_id
             )
         );
@@ -59,9 +62,9 @@ class block_ai_assistant_syllabus_ws extends external_api
         print_object($cria_file_id);
 
         // Call the API to delete the file
-        $api_response = cria::call_cria_content_delete($cria_file_id);
+        $api_response = cria::delete_content_from_bot($cria_file_id);
         print_object($api_response);
-        
+
         // Handle the API response
         if ($api_response !== 'true') {
             throw new Exception('Failed to delete content via API: ' . $api_response);
@@ -71,7 +74,7 @@ class block_ai_assistant_syllabus_ws extends external_api
         // Get area files
         $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $course_id);
 
-        foreach($files as $file) {
+        foreach ($files as $file) {
             $file->delete();
             if ($file->get_filename() != '.') {
                 return true;

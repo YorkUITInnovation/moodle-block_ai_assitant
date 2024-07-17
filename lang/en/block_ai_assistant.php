@@ -35,8 +35,6 @@ $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
 $string['confirm_question_deletion'] = 'Are you sure you want to delete the question?';
 $string['configure_bot_settings'] = 'Configure Bot Settings';
 $string['configure_settings'] = 'Configure Settings';
-$string['cria_content_delete'] = 'cria_content_delete';
-$string['cria_get_bot_name_endpoint'] ='cria_get_bot_name';
 $string['cria_token'] = 'Cria Token';
 $string['cria_url'] = 'Cria URL';
 $string['cria_token_help'] = 'Enter the token to your Cria server. You might have to ask your system administrator.';
@@ -89,7 +87,9 @@ $string['welcome_message_help'] = 'Welcome Message help text here';
 
 //Bot endpoints
 $string['create_cria_bot_endpoint'] = 'cria_create_bot';
+$string['cria_get_bot_name_endpoint'] = 'cria_get_bot_name';
 $string['upload_content_to_bot_endpoint'] = 'cria_content_upload';
+$string['delete_content_from_bot_endpoint'] = 'cria_content_delete';
 
 
 // Bot tuning
