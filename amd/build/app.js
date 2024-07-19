@@ -3,7 +3,7 @@ import ajax from 'core/ajax';
 import * as Str from 'core/str';
 
 export const init = () => {
-    enable_ai_assitant();
+    delete_syllabus();
 };
 
 /**
