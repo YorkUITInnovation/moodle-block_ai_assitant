@@ -61,6 +61,8 @@ class cria
                 $name = $course_data->shortname;
             }
         }
+        // Get ai assistatn logo
+        $image = self::get_ai_assistant_logo();
 
         $data = array(
             'name' => $name,
@@ -93,7 +95,8 @@ class cria
             'title' => $config->title,
             'subtitle' => $config->subtitle,
             'embed_position' => $config->embed_position,
-            'icon_url' => $config->icon_url,
+            'icon_file_name' => $image->filename,
+            'icon_file_content' => $image->filecontent,
             'bot_locale' => $config->bot_locale,
             'child_bots' => $config->child_bots,
             'publish' => 0
@@ -202,6 +205,8 @@ class cria
         $system_message = str_replace('[course_number]', $course_data->shortname, $system_message);
         // Replace the [course_title] with the fullname of the course
         $system_message = str_replace('[course_title]', $course_data->fullname, $system_message);
+        // Add todays date
+        $system_message .= ' Todays date is ' . date('Y-m-d');
         return $system_message;
     }
 
@@ -237,5 +242,36 @@ class cria
             $emails[] = $teacher->email;
         }
         return $emails;
+    }
+
+    /**
+     * Get image ai_assistant.png and convert the content to base64
+     * @return stdClass
+     */
+    public static function get_ai_assistant_logo() {
+        global $CFG;
+        $image_data = new \stdClass();
+        $path = $CFG->dirroot . '/blocks/ai_assistant/pix/ai_assistant.png';
+        $file_content = file_get_contents($path);
+        $encoded_content = base64_encode($file_content);
+
+        $image_data->filename = 'ai_assistant.png';
+        $image_data->filecontent = $encoded_content;
+
+        return $image_data;
+    }
+
+    /**
+     * Get embed bot code
+     * @param int $bot_id
+     * @return string
+     */
+    public static function get_embed_bot_code($bot_id) {
+        $config = get_config('block_ai_assistant');
+             $embed_code = '';
+        if (!empty($config->cria_embed_url)) {
+            $embed_code = '<script type="text/javascript" src="' . $config->cria_embed_url . '/embed/' . $bot_id . '/load" async> </script>';
+        }
+        return $embed_code;
     }
 }

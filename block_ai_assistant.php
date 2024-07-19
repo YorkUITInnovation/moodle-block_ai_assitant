@@ -89,6 +89,11 @@ class block_ai_assistant extends block_base
             'syllabus',
             $this->page->course->id
         );
+
+        $bot_name = explode('-', $course_record->bot_name);
+        $bot_id = str_replace('"', '', $bot_name[0]);
+
+
         // Set syllabus_url
         $syllabus_url = '';
         foreach ($syllabus_files as $file) {
@@ -127,9 +132,16 @@ class block_ai_assistant extends block_base
             }
         }
 
+        if ($course_record->published == 1) {
+            $embed_code = cria::get_embed_bot_code($bot_id);
+        } else {
+            $embed_code = '';
+        }
+
         $params = array(
             'blockid' => $this->instance->id,
             'courseid' => $this->page->course->id,
+            'published' => $course_record->published,
             'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
             'configure_settings_url' => (new \moodle_url('/blocks/ai_assistant/configure_settings.php', [
@@ -137,6 +149,7 @@ class block_ai_assistant extends block_base
             ]))->out(false),
             'syllabus_url' => $syllabus_url,
             'questions_url' => $questions_url,
+            'embed_code' => $embed_code
         );
 
         if (!empty($this->config->text)) {

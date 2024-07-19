@@ -35,7 +35,7 @@ if ($hassiteconfig) {
         get_string('cria_url_help', 'block_ai_assistant'),
         '',
         PARAM_TEXT,
-        115
+        50
     ));
 
     $settings->add(new admin_setting_configtext(
@@ -45,6 +45,15 @@ if ($hassiteconfig) {
         '',
         PARAM_TEXT,
         10
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/cria_embed_url',
+        get_string('cria_embed_url', 'block_ai_assistant'),
+        get_string('cria_embed_url_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT,
+        50
     ));
 
     $settings->add(new admin_setting_configtext(

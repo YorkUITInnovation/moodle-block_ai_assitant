@@ -6,6 +6,7 @@
             class="btn btn-link btn-sm edit-button">
             <i class="fa fa-gear"></i>
         </a>
+        <br>
         <!--upload syllabus -->
         {{^syllabus_url}}
             <label for="upload-syllabus">{{#str}}upload_syllabus, block_ai_assistant{{/str}}</label>
@@ -70,7 +71,17 @@
             >
             <i class="fa fa-edit"></i>
             </a>
-        {{/questions_url}}  
+        {{/questions_url}}
+        <br>
+        <br>
+        {{^published}}
+        <button type="button" class="btn btn-primary btn-sm"  id="btn-enable-ai-assistant" data-courseid="{{courseid}}">Enable AI Assistant</button>
+        {{/published}}
+
+        {{#published}}
+            <button type="button" class="btn btn-primary btn-sm"  id="btn-enable-ai-assistant" data-courseid="{{courseid}}">Disable AI Assistant</button>
+            {{{embed_code}}}
+        {{/published}}
     </div>
 </div>
 

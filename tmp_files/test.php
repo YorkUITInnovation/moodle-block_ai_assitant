@@ -9,7 +9,7 @@ require_once("../../../config.php");
 
 global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 
-$context = CONTEXT_SYSTEM::instance();
+$context = context_system::instance();
 
 require_login(1, false);
 
@@ -19,22 +19,10 @@ $PAGE->set_url(new moodle_url('/blocks/ai_assistant/test.php'));
 $PAGE->set_title('Test');
 $PAGE->set_heading('Test');
 $config = get_config('block_ai_assistant');
-// Cria url
-$cria_url = $config->cria_url. '/webservice/rest/server.php';
-$token = $config->cria_token;
-
-$file_path = '/var/www/moodledata/temp/cria/46/syllabus.docx';
-$file_content = file_get_contents($file_path);
-$encoded_content = base64_encode($file_content);
-
 echo $OUTPUT->header();
-$params = [
-    "intentid" => 43,
-    "filename" => "syllabus.docx",
-    "filecontent" => $encoded_content,
-];
-print_object($params);
+$image_data = cria::get_ai_assistant_logo();
 
-$results = webservice::exec('cria_content_upload', $params);
-print_object($results);
+file_put_contents('/var/www/moodledata/temp/ai_assistant_logo.png', base64_decode($image_data->filecontent));
+print_object($image_data);
+
 echo $OUTPUT->footer();
