@@ -77,6 +77,7 @@ class block_ai_assistant extends block_base
         $this->content->icons = array();
         $this->content->footer = '';
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_file', 'init');
+        $PAGE->requires->js_call_amd('block_ai_assistant/publish_to_students', 'init');
 
 
         $course_context = \context_course::instance($this->page->course->id);
