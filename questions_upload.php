@@ -17,6 +17,8 @@ require_once("../../config.php");
 
 require_once($CFG->dirroot . "/blocks/ai_assistant/classes/forms/questions_upload.php");
 
+use block_ai_assistant\cria;
+
 
 global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 
@@ -46,6 +48,49 @@ if ($mform->is_cancelled()) {
         array('subdirs' => 0, 'maxfiles' => 1)
     );
 
+    //assuming the file uploaded is parsed and converted to json as required
+    //get hold of file contents
+    // Path to the JSON file
+    $jsonFilePath = 'AL_questions.json';
+
+    // Read the JSON file contents
+    $jsonContent = file_get_contents($jsonFilePath);
+    // print_object($jsonContent);
+
+    if ($jsonContent === false) {
+        die('Error reading JSON file');
+    }
+    // Parse the JSON data
+    $questionsArray = json_decode($jsonContent, true);
+
+    if ($questionsArray === null) {
+        die('Error decoding JSON data');
+    }
+
+    // Print the parsed JSON data
+    // print_r($questionsArray);
+
+    // Loop through the parsed JSON data and call the API for each question
+    foreach ($questionsArray as $key => $questionData) {
+        $intentid = 0; // Default intent id
+        $name = $key;
+        $value = $questionData['question'];
+        $answer = $questionData['answer'];
+        $relatedquestions = array(); // Adjust this if you have related questions in your JSON structure
+        $lang = 'en'; // Default language
+        $generateanswer = 0; // Default generate answer setting
+        $examplequestions = array_map(function($example) {
+            return array('value' => $example);
+        }, $questionData['examples']);
+
+        // Call the Cria API to create the question
+        $response = cria::cria_question_create($intentid, $name, $value, $answer, $relatedquestions, $lang, $generateanswer, $examplequestions);
+        print_object($response);
+        echo "API Response: " . $response . "\n";
+    }
+    //make api call to store each question in cria
+
+    //add questions to db
     // Redirect with success message
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
 } else {
