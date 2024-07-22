@@ -90,9 +90,16 @@ class block_ai_assistant extends block_base
             'syllabus',
             $this->page->course->id
         );
+        if ($course_record && !empty($course_record->bot_name)) {
+            $bot_name = explode('-', $course_record->bot_name);
+            $bot_id = str_replace('"', '', $bot_name[0]);
 
-        $bot_name = explode('-', $course_record->bot_name);
-        $bot_id = str_replace('"', '', $bot_name[0]);
+       
+        }else {
+            // Handle the error or set a default value for $bot_id
+            $bot_id = null; // or some default value
+      
+        }
 
 
         // Set syllabus_url
