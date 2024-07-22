@@ -31,11 +31,12 @@ defined('MOODLE_INTERNAL') || die();
  * @param int $oldversion
  * @return bool
  */
-function xmldb_block_ai_assistant_upgrade($oldversion) {
+function xmldb_block_ai_assistant_upgrade($oldversion)
+{
     global $DB;
 
     $dbman = $DB->get_manager();
-    
+
     if ($oldversion < 2024070803) {
 
         // Define table block_aia_settings to be created.
@@ -132,15 +133,30 @@ function xmldb_block_ai_assistant_upgrade($oldversion) {
         // Define field subtitle to be modified in block_aia_settings.
         $table = new xmldb_table('block_aia_settings');
         $field = new xmldb_field('subtitle', XMLDB_TYPE_CHAR, '50', null, null, null, '0');
-    
+
         // Conditionally launch alter field subtitle.
         if ($dbman->field_exists($table, $field)) {
             $dbman->change_field_precision($table, $field);
         }
-    
+
         // Ai_assistant savepoint reached.
         upgrade_block_savepoint(true, 2024071612, 'ai_assistant');
     }
 
     return true;
+
+    if ($oldversion < 2024072201) {
+
+        // Define field related_questions to be added to block_aia_questions.
+        $table = new xmldb_table('block_aia_questions');
+        $field = new xmldb_field('related_questions', XMLDB_TYPE_TEXT, null, null, null, null, null, 'criaquestionid');
+
+        // Conditionally launch add field related_questions.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024072201, 'ai_assistant');
+    }
 }
