@@ -92,7 +92,9 @@ $string['create_cria_bot_endpoint'] = 'cria_create_bot';
 $string['cria_get_bot_name_endpoint'] = 'cria_get_bot_name';
 $string['upload_content_to_bot_endpoint'] = 'cria_content_upload';
 $string['delete_content_from_bot_endpoint'] = 'cria_content_delete';
-
+$string['get_questions_json_format_endpoint'] = 'need to edit';
+$string['publish_questions_endpoint'] = 'cria_question_publish';
+$string['create_question_endpoint'] = 'cria_question_create';
 
 // Bot tuning
 $string['max_tokens'] = 'Max tokens';

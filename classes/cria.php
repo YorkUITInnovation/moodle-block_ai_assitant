@@ -248,7 +248,8 @@ class cria
      * Get image ai_assistant.png and convert the content to base64
      * @return stdClass
      */
-    public static function get_ai_assistant_logo() {
+    public static function get_ai_assistant_logo()
+    {
         global $CFG;
         $image_data = new \stdClass();
         $path = $CFG->dirroot . '/blocks/ai_assistant/pix/ai_assistant.png';
@@ -266,12 +267,58 @@ class cria
      * @param int $bot_id
      * @return string
      */
-    public static function get_embed_bot_code($bot_id) {
+    public static function get_embed_bot_code($bot_id)
+    {
         $config = get_config('block_ai_assistant');
-             $embed_code = '';
+        $embed_code = '';
         if (!empty($config->cria_embed_url)) {
             $embed_code = '<script type="text/javascript" src="' . $config->cria_embed_url . '/embed/' . $bot_id . '/load" async> </script>';
         }
         return $embed_code;
+    }
+
+    /**
+     * Get questions in json format
+     * @param int $course_id
+     */
+    public static function get_question_json_format($file_content)
+    {
+        $method = get_string('get_questions_json_format_endpoint', 'block_ai_assistant');
+    }
+
+    /**
+     * Create a question
+     * @param int $intentid
+     * @param object $questionObj
+     * @return int $question_id
+     */
+    public static function create_question($intentid, $questionObj)
+    {
+        $method = get_string('create_question_endpoint', 'block_ai_assistant');
+        $question_id = webservice::exec($method, $questionObj);
+        return $question_id;
+    }
+
+    /**
+     * Publish a question to the bot
+     * @param int $question_id
+     * @return boolean $status
+     */
+    public static function publish_question($question_id)
+    {
+        $method = get_string('publish_question_endpoint', 'block_ai_assistant');
+        $data = array('question_id' => $question_id);
+        $status = webservice::exec($method, $data);
+        return $status;
+    }
+
+    /**
+     * Parse json object retuned from get_question_json_format
+     * @param object $jsonObj
+     * @return array $questions
+     */
+    public static function parse_json_obj($jsonObj)
+    {
+        //logic to loop through each questions
     }
 }

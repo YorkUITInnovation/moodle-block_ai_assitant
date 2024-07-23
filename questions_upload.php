@@ -17,6 +17,8 @@ require_once("../../config.php");
 
 require_once($CFG->dirroot . "/blocks/ai_assistant/classes/forms/questions_upload.php");
 
+use block_ai_assistant\cria;
+
 
 global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 
@@ -37,6 +39,12 @@ if ($mform->is_cancelled()) {
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else if ($data = $mform->get_data()) {
 
+    $fs = get_file_storage();
+    $existingfiles = $fs->get_area_files($context->id, 'block_ai_assistant', 'questions', $data->courseid, 'itemid', false);
+    foreach ($existingfiles as $existingfile) {
+        $existingfile->delete();
+    }
+
     file_save_draft_area_files(
         $data->questions_upload,
         $context->id,
@@ -45,6 +53,18 @@ if ($mform->is_cancelled()) {
         $data->courseid,
         array('subdirs' => 0, 'maxfiles' => 1)
     );
+
+    //check if the file is .xlsx or .docx, if .docx call cria::get_question_json_format
+    $file = $fs->get_area_files($context->id, 'block_ai_assistant', 'questions', $data->courseid, 'itemid', false);
+    $extension = pathinfo($file[0]->get_filename(), PATHINFO_EXTENSION);
+    if ($extension == 'docx') {
+        $jsonObj = cria::get_question_json_format($file[0]->get_content());
+        //parse the json and call cria::create_questions
+        //publish the questions
+    } else {
+        //parse the xlsx and call cria::create_questions
+        //publish the questions
+    }
 
     // Redirect with success message
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
