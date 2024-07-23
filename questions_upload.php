@@ -67,7 +67,7 @@ if ($mform->is_cancelled()) {
     $extension = pathinfo($file[0]->get_filename(), PATHINFO_EXTENSION);
     if ($extension == 'docx') {
         $jsonQuestionObj = cria::get_question_json_format($file[0]->get_content());
-        cria::create_questions_from_json($jsonQuestionObj, $intentid);
+        cria::create_questions_from_json($jsonQuestionObj, $intentid, $data->courseid);
     } else {
         //parse the xlsx and call cria::create_questions
         //publish the questions

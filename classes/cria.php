@@ -3,8 +3,6 @@
 namespace block_ai_assistant;
 
 use block_ai_assistant\webservice;
-use core_analytics\course;
-use core_calendar\local\event\forms\update;
 use Exception;
 
 class cria
