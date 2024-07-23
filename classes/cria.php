@@ -3,6 +3,8 @@
 namespace block_ai_assistant;
 
 use block_ai_assistant\webservice;
+use core_analytics\course;
+use core_calendar\local\event\forms\update;
 use Exception;
 
 class cria
@@ -324,7 +326,7 @@ class cria
      * @param object $jsonObj
      * @return array $questions
      */
-    public static function create_questions_from_json($jsonQuestionObj, $intentid)
+    public static function create_questions_from_json($jsonQuestionObj, $intentid, $courseid)
     {
         foreach ($jsonQuestionObj as $key => $questionData) {
 
@@ -351,6 +353,31 @@ class cria
             ];
             $question_id = cria::create_question($intentid, $questionObj);
             $status = cria::publish_question($question_id);
+            if ($status) {
+                $questionData = [
+                    'courseid' => $courseid,
+                    'name' => $name,
+                    'value' => $value,
+                    'answer' => $answer,
+                    'related_questions' => json_encode($relatedquestions),
+                    'criaquestionid' => $question_id
+                ];
+                self::update_questions_db($questionData);
+            }
+        }
+    }
+
+    private static function update_questions_db($questionData)
+    {
+        global $DB;
+        $question_id = $questionData['criaquestionid'];
+        $question_record = $DB->get_record('block_aia_questions', array('criaquestionid' => $question_id));
+
+        if ($question_record) {
+            $questionData['id'] = $question_record->id;
+            $DB->update_record('block_aia_questions', $questionData);
+        } else {
+            $DB->insert_record('block_aia_questions', $questionData);
         }
     }
 }
