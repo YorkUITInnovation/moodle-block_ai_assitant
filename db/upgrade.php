@@ -143,9 +143,7 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2024071612, 'ai_assistant');
     }
 
-    return true;
-
-    if ($oldversion < 2024072201) {
+    if ($oldversion < 2024072310) {
 
         // Define field related_questions to be added to block_aia_questions.
         $table = new xmldb_table('block_aia_questions');
@@ -157,6 +155,8 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         }
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2024072201, 'ai_assistant');
+        upgrade_block_savepoint(true, 2024072310, 'ai_assistant');
     }
+    return true;
+
 }
