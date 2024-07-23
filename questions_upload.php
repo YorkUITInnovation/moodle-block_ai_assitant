@@ -24,6 +24,14 @@ global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 
 // Get course id
 $courseid = required_param('courseid', PARAM_INT);
+$intentid = 0; // Default value
+
+
+$courserecord = $DB->get_record('block_aia_settings', array('courseid' => $courseid));
+if ($courserecord) {
+    $bot_name = $courserecord->bot_name;
+    $intentid = (int)explode('-', $bot_name)[1];
+}
 
 $context = CONTEXT_COURSE::instance($courseid);
 
@@ -58,9 +66,8 @@ if ($mform->is_cancelled()) {
     $file = $fs->get_area_files($context->id, 'block_ai_assistant', 'questions', $data->courseid, 'itemid', false);
     $extension = pathinfo($file[0]->get_filename(), PATHINFO_EXTENSION);
     if ($extension == 'docx') {
-        $jsonObj = cria::get_question_json_format($file[0]->get_content());
-        //parse the json and call cria::create_questions
-        //publish the questions
+        $jsonQuestionObj = cria::get_question_json_format($file[0]->get_content());
+        cria::create_questions_from_json($jsonQuestionObj, $intentid);
     } else {
         //parse the xlsx and call cria::create_questions
         //publish the questions

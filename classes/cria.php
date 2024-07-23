@@ -284,6 +284,13 @@ class cria
     public static function get_question_json_format($file_content)
     {
         $method = get_string('get_questions_json_format_endpoint', 'block_ai_assistant');
+
+        ///replace all of the below dummy value with the original api call
+
+        $jsonFilePath = 'AL_questions.json';
+        $jsonContent = file_get_contents($jsonFilePath);
+        $jsonQuestionObj = json_decode($jsonContent, true);
+        return $jsonQuestionObj;
     }
 
     /**
@@ -292,7 +299,7 @@ class cria
      * @param object $questionObj
      * @return int $question_id
      */
-    public static function create_question($intentid, $questionObj)
+    public static function create_question($questionObj)
     {
         $method = get_string('create_question_endpoint', 'block_ai_assistant');
         $question_id = webservice::exec($method, $questionObj);
@@ -317,8 +324,33 @@ class cria
      * @param object $jsonObj
      * @return array $questions
      */
-    public static function parse_json_obj($jsonObj)
+    public static function create_questions_from_json($jsonQuestionObj, $intentid)
     {
-        //logic to loop through each questions
+        foreach ($jsonQuestionObj as $key => $questionData) {
+
+            $intentid = $intentid;
+            $name = $key;
+            $value = $questionData['question'];
+            $answer = $questionData['answer'];
+            $relatedquestions = array();
+            $lang = 'en';
+            $generateanswer = 0;
+            $examplequestions = array_map(function ($example) {
+                return array('value' => $example);
+            }, $questionData['examples']);
+
+            $questionObj = [
+                'intentid' => $intentid,
+                'name' => $name,
+                'value' => $value,
+                'answer' => $answer,
+                'relatedquestions' => json_encode($relatedquestions),
+                'lang' => $lang,
+                'generateanswer' => $generateanswer,
+                'examplequestions' => json_encode($examplequestions)
+            ];
+            $question_id = cria::create_question($intentid, $questionObj);
+            $status = cria::publish_question($question_id);
+        }
     }
 }
