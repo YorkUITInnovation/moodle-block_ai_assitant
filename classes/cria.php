@@ -357,8 +357,8 @@ class cria
                     'name' => $name,
                     'value' => $value,
                     'answer' => $answer,
-                    'related_questions' => json_encode($relatedquestions),
-                    'criaquestionid' => $question_id
+                    'criaquestionid' => intval($question_id),
+                    'related_questions' => json_encode($relatedquestions)
                 ];
                 self::update_questions_db($questionData);
             }

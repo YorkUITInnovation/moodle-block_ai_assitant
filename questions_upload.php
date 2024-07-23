@@ -63,10 +63,11 @@ if ($mform->is_cancelled()) {
     );
 
     //check if the file is .xlsx or .docx, if .docx call cria::get_question_json_format
-    $file = $fs->get_area_files($context->id, 'block_ai_assistant', 'questions', $data->courseid, 'itemid', false);
-    $extension = pathinfo($file[0]->get_filename(), PATHINFO_EXTENSION);
+    $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'questions', $data->courseid, 'itemid', false);
+    $file = reset($files);
+    $extension = pathinfo($file->get_filename(), PATHINFO_EXTENSION);
     if ($extension == 'docx') {
-        $jsonQuestionObj = cria::get_question_json_format($file[0]->get_content());
+        $jsonQuestionObj = cria::get_question_json_format($file->get_content());
         cria::create_questions_from_json($jsonQuestionObj, $intentid, $data->courseid);
     } else {
         //parse the xlsx and call cria::create_questions
