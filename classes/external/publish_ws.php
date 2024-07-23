@@ -71,6 +71,6 @@ class block_ai_assistant_publish_ws extends external_api
      */
     public static function publish_returns()
     {
-        return new external_value(PARAM_INT, 'Boolean');
+        return new external_value(PARAM_BOOL, 'Boolean');
     }
 }

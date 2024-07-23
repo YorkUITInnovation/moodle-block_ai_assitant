@@ -274,4 +274,51 @@ class cria
         }
         return $embed_code;
     }
+
+     /**
+     * Get embed bot code
+     * @param int $bot_id
+     * @return string
+     */
+
+    public static function cria_question_create($intentid, $name, $value, $answer, $relatedquestions, $lang, $generateanswer, $examplequestions) {
+
+        $method = get_string('cria_question_create', 'block_ai_assistant');
+        $data = [
+            'intentid' => $intentid,
+            'name' => $name,
+            'value' => $value,
+            'answer' => $answer,
+            'relatedquestions' => json_encode($relatedquestions),
+            'lang' => $lang,
+            'generateanswer' => $generateanswer,
+            'examplequestions' => json_encode($examplequestions)
+        ];
+        $response= webservice::exec($method, $data);
+       
+        print_object($response);
+
+        return $response;
+
+    }
+
+    public static function cria_question_publish($questionid) {
+        $method = get_string('cria_question_publish', 'block_ai_assistant');
+        $data = ['id' => $questionid];
+    
+        // Log the request data
+        error_log("Calling API method: $method with data: " . json_encode($data));
+    
+        $response = webservice::exec($method, $data);
+    
+        // Log the response
+        error_log("API Response: " . print_r($response, true));
+    
+        return $response;
+    }
+
+
+
+
+
 }

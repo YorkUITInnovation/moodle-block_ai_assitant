@@ -93,6 +93,7 @@ $string['cria_get_bot_name_endpoint'] = 'cria_get_bot_name';
 $string['upload_content_to_bot_endpoint'] = 'cria_content_upload';
 $string['delete_content_from_bot_endpoint'] = 'cria_content_delete';
 $string['cria_question_create']='cria_question_create';
+$string['cria_question_publish']='cria_question_publish';
 
 
 // Bot tuning

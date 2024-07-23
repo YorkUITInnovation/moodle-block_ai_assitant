@@ -24,6 +24,15 @@ global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 
 // Get course id
 $courseid = required_param('courseid', PARAM_INT);
+$intentid = 0; // Default value
+
+
+$courserecord = $DB->get_record('block_aia_settings', array('courseid' => $courseid));
+if ($courserecord) {
+    $bot_name = $courserecord->bot_name;
+    $intentid = (int)explode('-', $bot_name)[1];
+   
+}
 
 $context = CONTEXT_COURSE::instance($courseid);
 
@@ -69,10 +78,11 @@ if ($mform->is_cancelled()) {
 
     // Print the parsed JSON data
     // print_r($questionsArray);
+   
+    print_object($intentid);
 
     // Loop through the parsed JSON data and call the API for each question
     foreach ($questionsArray as $key => $questionData) {
-        $intentid = 0; // Default intent id
         $name = $key;
         $value = $questionData['question'];
         $answer = $questionData['answer'];
@@ -86,13 +96,19 @@ if ($mform->is_cancelled()) {
         // Call the Cria API to create the question
         $response = cria::cria_question_create($intentid, $name, $value, $answer, $relatedquestions, $lang, $generateanswer, $examplequestions);
         print_object($response);
-        echo "API Response: " . $response . "\n";
+        $publishresponse=cria::cria_question_publish($response);
+        print_object($publishresponse);
+
+
+
+
+       
     }
     //make api call to store each question in cria
 
     //add questions to db
     // Redirect with success message
-    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
+    // redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
 } else {
     // Show form
     $mform->set_data($formdata);
