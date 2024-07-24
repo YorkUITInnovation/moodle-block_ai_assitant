@@ -70,7 +70,7 @@ if ($mform->is_cancelled()) {
         $jsonQuestionObj = cria::get_question_json_format($file->get_content());
         cria::create_questions_from_json($jsonQuestionObj, $intentid, $data->courseid);
     } else {
-        cria::create_questions_from_xlsx($file->get_content(), $intentid, $data->courseid);
+        cria::create_questions_from_xlsx($file, $intentid, $data->courseid);
     }
 
     // Redirect with success message

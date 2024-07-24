@@ -2,9 +2,22 @@
 
 namespace block_ai_assistant;
 
+
 use block_ai_assistant\webservice;
 use Exception;
+
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet; 
+$autoloadPath = __DIR__ . '/../vendor/autoload.php';
+if (file_exists($autoloadPath)) {
+    echo "Autoload file exists at $autoloadPath\n";
+    require_once($autoloadPath);
+} else {
+    echo "Autoload file does NOT exist at $autoloadPath\n";
+}
+set_include_path(get_include_path() . PATH_SEPARATOR . __DIR__ . '/../vendor');
+require_once('autoload.php');
+
 
 class cria
 {
@@ -384,30 +397,75 @@ class cria
     }
 
     public static function create_questions_from_xlsx($file, $intentid, $courseid)
-    {
-        $spreadsheet = IOFactory::load($file);
-        $sheet = $spreadsheet->getActiyveSheet();
-        $highestRow = $sheet->getHighestRow();
-        for ($row = 2; $row <= $highestRow; $row++) {
-            $name = $sheet->getCell('A' . $row)->getValue();
-            $value = $sheet->getCell('B' . $row)->getValue();
-            $answer = $sheet->getCell('C' . $row)->getValue();
-            $relatedquestions = $sheet->getCell('D' . $row)->getValue();
-            $lang = $sheet->getCell('E' . $row)->getValue();
-            $generateanswer = $sheet->getCell('F' . $row)->getValue();
-            $examplequestions = $sheet->getCell('G' . $row)->getValue();
-            $questionObj = [
-                'intentid' => $intentid,
-                'name' => $name,
-                'value' => $value,
-                'answer' => $answer,
-                'relatedquestions' => $relatedquestions,
-                'lang' => $lang,
-                'generateanswer' => $generateanswer,
-                'examplequestions' => $examplequestions
-            ];
+{
+    global $CFG;
+
+    // Extract the file content
+    $content = $file->get_content();
+
+    // Define directory and file paths
+    $directoryPath = $CFG->dataroot . '/temp/' . $courseid;
+    $tempfile = $directoryPath . '/questions_upload.xlsx';
+
+    // Check if the directory exists, create it if it doesn't
+    if (!is_dir($directoryPath)) {
+        if (!mkdir($directoryPath, 0777, true)) {
+            throw new Exception("Failed to create directory: $directoryPath");
+        }
+    }
+
+    // Save the content to the temporary file
+    file_put_contents($tempfile, $content);
+
+    // Load the spreadsheet from the temporary file
+    try {
+        $spreadsheet = IOFactory::load($tempfile);
+    } catch (Exception $e) {
+        throw new Exception("Failed to load spreadsheet: " . $e->getMessage());
+    }
+
+    $sheet = $spreadsheet->getActiveSheet();
+    $highestRow = $sheet->getHighestRow();
+    echo "Total Rows in Spreadsheet: " . $highestRow . "<br>";
+    for ($row = 2; $row <= $highestRow; $row++) {
+        echo "Processing Row: " . $row . "<br>";
+    
+        $name = $sheet->getCell('A' . $row)->getValue();
+        $value = $sheet->getCell('B' . $row)->getValue();
+        $answer = $sheet->getCell('C' . $row)->getValue();
+        $relatedquestions = $sheet->getCell('D' . $row)->getValue();
+        $lang = $sheet->getCell('E' . $row)->getValue();
+        $generateanswer = $sheet->getCell('F' . $row)->getValue();
+        $examplequestions = $sheet->getCell('G' . $row)->getValue();
+    
+        // Debug output
+        echo "Name: " . $name . "<br>";
+        echo "Value: " . $value . "<br>";
+        echo "Answer: " . $answer . "<br>";
+        echo "Related Questions: " . $relatedquestions . "<br>";
+        echo "Language: " . $lang . "<br>";
+        echo "Generate Answer: " . $generateanswer . "<br>";
+        echo "Example Questions: " . $examplequestions . "<br>";
+    
+        // Prepare question data
+        $questionObj = [
+            'intentid' => $intentid,
+            'name' => $name,
+            'value' => $value,
+            'answer' => $answer,
+            'relatedquestions' => $relatedquestions,
+            'lang' => $lang,
+            'generateanswer' => $generateanswer,
+            'examplequestions' => $examplequestions
+        ];
+    
+        try {
+            // Create and publish question
             $question_id = cria::create_question($questionObj);
+            print_object("Question ID: " . $question_id);
             $status = cria::publish_question($question_id);
+            print_object("Publish Status: " . $status);
+    
             if ($status) {
                 $questionData = [
                     'courseid' => $courseid,
@@ -418,7 +476,13 @@ class cria
                     'related_questions' => $relatedquestions
                 ];
                 self::update_questions_db($questionData);
+                echo "Question $name processed and saved.<br>";
+            } else {
+                echo "Failed to publish question $name.<br>";
             }
+        } catch (Exception $e) {
+            echo "Error processing question $name: " . $e->getMessage() . "<br>";
         }
     }
+}
 }

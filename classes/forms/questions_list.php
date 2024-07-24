@@ -38,6 +38,9 @@ class questions_list extends \moodleform
         );
 
         $questions = $DB->get_records('block_aia_questions', array('courseid' => $formdata->courseid));
+        // Log the number of questions fetched
+        error_log('Number of questions fetched: ' . count($questions));
+
 
         $templatecontext = (object)[
             'questions' => array_values(array_map(function ($question) use ($formdata, $CFG) {
