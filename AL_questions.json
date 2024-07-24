@@ -1,0 +1,25 @@
+{
+    "Goodbye ": {
+        "question": "Goodbye ",
+        "examples": [
+            "Bye. ",
+            "Ciao. ",
+            "Gotta go. ",
+            "Talk to you later. ",
+            "See you later. ",
+            "Have a nice day. ",
+            "The response to any of these prompts is (be playful and funny): "
+        ],
+        "answer": "Cheers! Come back and see me\u2026 It's lonely being a bot\u2026"
+    },
+    "Does the video have to be on during a Zoom meeting? ": {
+        "question": "Does the video have to be on during a Zoom meeting? ",
+        "examples": [
+            "Switch on video for my class. ",
+            "is video compulsory on zoom? ",
+            "Do I have to turn on my video during a Zoom session? ",
+            "The response to any of these questions or prompts is:"
+        ],
+        "answer": "You don't have to turn on your video during a Zoom session. It\u2019s up to you. However, interactions would be humanized and improved if your peers could put a face to your name and voice."
+    }
+}

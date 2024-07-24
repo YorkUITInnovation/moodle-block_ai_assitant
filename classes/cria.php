@@ -248,7 +248,8 @@ class cria
      * Get image ai_assistant.png and convert the content to base64
      * @return stdClass
      */
-    public static function get_ai_assistant_logo() {
+    public static function get_ai_assistant_logo()
+    {
         global $CFG;
         $image_data = new \stdClass();
         $path = $CFG->dirroot . '/blocks/ai_assistant/pix/ai_assistant.png';
@@ -266,12 +267,115 @@ class cria
      * @param int $bot_id
      * @return string
      */
-    public static function get_embed_bot_code($bot_id) {
+    public static function get_embed_bot_code($bot_id)
+    {
         $config = get_config('block_ai_assistant');
-             $embed_code = '';
+        $embed_code = '';
         if (!empty($config->cria_embed_url)) {
             $embed_code = '<script type="text/javascript" src="' . $config->cria_embed_url . '/embed/' . $bot_id . '/load" async> </script>';
         }
         return $embed_code;
+    }
+
+    /**
+     * Get questions in json format
+     * @param int $course_id
+     */
+    public static function get_question_json_format($file_content)
+    {
+        $method = get_string('get_questions_json_format_endpoint', 'block_ai_assistant');
+
+        ///replace all of the below dummy value with the original api call
+
+        $jsonFilePath = 'AL_questions.json';
+        $jsonContent = file_get_contents($jsonFilePath);
+        $jsonQuestionObj = json_decode($jsonContent, true);
+        return $jsonQuestionObj;
+    }
+
+    /**
+     * Create a question
+     * @param int $intentid
+     * @param object $questionObj
+     * @return int $question_id
+     */
+    public static function create_question($questionObj)
+    {
+        $method = get_string('create_question_endpoint', 'block_ai_assistant');
+        $question_id = webservice::exec($method, $questionObj);
+        return $question_id;
+    }
+
+    /**
+     * Publish a question to the bot
+     * @param int $question_id
+     * @return boolean $status
+     */
+    public static function publish_question($question_id)
+    {
+        $method = get_string('publish_question_endpoint', 'block_ai_assistant');
+        $data = array('question_id' => $question_id);
+        $status = webservice::exec($method, $data);
+        return $status;
+    }
+
+    /**
+     * Parse json object retuned from get_question_json_format
+     * @param object $jsonObj
+     * @return array $questions
+     */
+    public static function create_questions_from_json($jsonQuestionObj, $intentid, $courseid)
+    {
+        foreach ($jsonQuestionObj as $key => $questionData) {
+
+            $intentid = $intentid;
+            $name = $key;
+            $value = $questionData['question'];
+            $answer = $questionData['answer'];
+            $relatedquestions = array();
+            $lang = 'en';
+            $generateanswer = 0;
+            $examplequestions = array_map(function ($example) {
+                return array('value' => $example);
+            }, $questionData['examples']);
+
+            $questionObj = [
+                'intentid' => $intentid,
+                'name' => $name,
+                'value' => $value,
+                'answer' => $answer,
+                'relatedquestions' => json_encode($relatedquestions),
+                'lang' => $lang,
+                'generateanswer' => $generateanswer,
+                'examplequestions' => json_encode($examplequestions)
+            ];
+            $question_id = cria::create_question($intentid, $questionObj);
+            $status = cria::publish_question($question_id);
+            if ($status) {
+                $questionData = [
+                    'courseid' => $courseid,
+                    'name' => $name,
+                    'value' => $value,
+                    'answer' => $answer,
+                    'criaquestionid' => intval($question_id),
+                    'related_questions' => json_encode($relatedquestions)
+                ];
+                self::update_questions_db($questionData);
+            }
+        }
+    }
+
+    private static function update_questions_db($questionData)
+    {
+        global $DB;
+        $question_id = $questionData['criaquestionid'];
+        $question_record = $DB->get_record('block_aia_questions', array('criaquestionid' => $question_id));
+
+        if ($question_record) {
+            $questionData['id'] = $question_record->id;
+            $DB->update_record('block_aia_questions', $questionData);
+        } else {
+            $DB->insert_record('block_aia_questions', $questionData);
+        }
     }
 }

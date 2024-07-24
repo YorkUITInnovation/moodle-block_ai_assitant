@@ -66,9 +66,9 @@ class block_ai_assistant_syllabus_ws extends external_api
         print_object($api_response);
 
         // Handle the API response
-        if ($api_response !== 'true') {
-            throw new Exception('Failed to delete content via API: ' . $api_response);
-        }
+        // if ($api_response !== 'true') {
+        //     throw new Exception('Failed to delete content via API: ' . $api_response);
+        // }
 
         $fs = get_file_storage();
         // Get area files

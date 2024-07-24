@@ -19,13 +19,12 @@ $functions = array(
         'ajax' => true
     ),
     'ai_assistant_publish' => array(
-        'classname' => 'block_ai_assistant_syllabus_ws',
+        'classname' => 'block_ai_assistant_publish_ws',
         'methodname' => 'publish',
-        'classpath' => 'blocks/ai_assistant/classes/external/syllabus_ws.php',
+        'classpath' => 'blocks/ai_assistant/classes/external/publish_ws.php',
         'description' => 'Publish or unpublish the bot',
         'type' => 'write',
         'capabilities' => '',
         'ajax' => true
     ),
 );
-
