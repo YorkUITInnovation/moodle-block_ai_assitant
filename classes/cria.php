@@ -4,6 +4,7 @@ namespace block_ai_assistant;
 
 use block_ai_assistant\webservice;
 use Exception;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class cria
 {
@@ -376,6 +377,45 @@ class cria
             $DB->update_record('block_aia_questions', $questionData);
         } else {
             $DB->insert_record('block_aia_questions', $questionData);
+        }
+    }
+
+    public static function create_questions_from_xlsx($file, $intentid, $courseid)
+    {
+        $spreadsheet = IOFactory::load($file);
+        $sheet = $spreadsheet->getActiyveSheet();
+        $highestRow = $sheet->getHighestRow();
+        for ($row = 2; $row <= $highestRow; $row++) {
+            $name = $sheet->getCell('A' . $row)->getValue();
+            $value = $sheet->getCell('B' . $row)->getValue();
+            $answer = $sheet->getCell('C' . $row)->getValue();
+            $relatedquestions = $sheet->getCell('D' . $row)->getValue();
+            $lang = $sheet->getCell('E' . $row)->getValue();
+            $generateanswer = $sheet->getCell('F' . $row)->getValue();
+            $examplequestions = $sheet->getCell('G' . $row)->getValue();
+            $questionObj = [
+                'intentid' => $intentid,
+                'name' => $name,
+                'value' => $value,
+                'answer' => $answer,
+                'relatedquestions' => $relatedquestions,
+                'lang' => $lang,
+                'generateanswer' => $generateanswer,
+                'examplequestions' => $examplequestions
+            ];
+            $question_id = cria::create_question($questionObj);
+            $status = cria::publish_question($question_id);
+            if ($status) {
+                $questionData = [
+                    'courseid' => $courseid,
+                    'name' => $name,
+                    'value' => $value,
+                    'answer' => $answer,
+                    'criaquestionid' => intval($question_id),
+                    'related_questions' => $relatedquestions
+                ];
+                self::update_questions_db($questionData);
+            }
         }
     }
 }
