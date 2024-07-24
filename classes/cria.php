@@ -314,7 +314,7 @@ class cria
     public static function publish_question($question_id)
     {
         $method = get_string('publish_question_endpoint', 'block_ai_assistant');
-        $data = array('question_id' => $question_id);
+        $data = array('id' => $question_id);
         $status = webservice::exec($method, $data);
         return $status;
     }
@@ -349,8 +349,11 @@ class cria
                 'generateanswer' => $generateanswer,
                 'examplequestions' => json_encode($examplequestions)
             ];
-            $question_id = cria::create_question($intentid, $questionObj);
+            $question_id = cria::create_question($questionObj);
+            print_object($question_id);
+            print_object("create question error above");
             $status = cria::publish_question($question_id);
+            print_object($status);
             if ($status) {
                 $questionData = [
                     'courseid' => $courseid,

@@ -69,7 +69,7 @@ $string['questions'] = 'Questions';
 $string['question'] = 'Question';
 $string['question_updated_successfully'] = 'Question updated successfully';
 $string['required'] = 'This field is required';
-$string['relatedQuestion'] = "Related Questions";
+$string['related_question'] = "Related Questions";
 $string['save'] = 'Save changes ';
 $string['subtitle'] = 'Subtitle';
 $string['subtitle_help'] = 'Subtitle help text here';
@@ -93,7 +93,7 @@ $string['cria_get_bot_name_endpoint'] = 'cria_get_bot_name';
 $string['upload_content_to_bot_endpoint'] = 'cria_content_upload';
 $string['delete_content_from_bot_endpoint'] = 'cria_content_delete';
 $string['get_questions_json_format_endpoint'] = 'need to edit';
-$string['publish_questions_endpoint'] = 'cria_question_publish';
+$string['publish_question_endpoint'] = 'cria_question_publish';
 $string['create_question_endpoint'] = 'cria_question_create';
 
 // Bot tuning

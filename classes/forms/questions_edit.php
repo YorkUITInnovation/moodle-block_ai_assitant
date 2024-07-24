@@ -50,7 +50,7 @@ class questions_edit extends \moodleform
         $mform->addElement(
             'header',
             'Edit Questions',
-            get_string('edit_questions', 'block_ai_assistant')
+            get_string('edit_question', 'block_ai_assistant')
         );
         $attributes = array('size' => '20');
         $mform->addElement('text', 'name', get_string('name', 'block_ai_assistant'), $attributes);
