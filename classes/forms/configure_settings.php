@@ -37,6 +37,8 @@ class configure_settings extends \moodleform
             PARAM_INT
         );
 
+
+
         $mform->addElement(
             'header',
             'Configure Settings',
@@ -46,6 +48,13 @@ class configure_settings extends \moodleform
         $mform->addElement('text', 'subtitle', get_string('subtitle', 'block_ai_assistant'), $attributes);
         $mform->addElement('textarea', 'welcome_message', get_string("welcome_message", "block_ai_assistant"), 'wrap="virtual" rows="2" cols="20"');
         $mform->addElement('textarea', 'no_context_message', get_string("no_context_message", "block_ai_assistant"), 'wrap="virtual" rows="2" cols="20"');
+        $options =array(
+            1 => get_string('bottom_left', 'block_ai_assistant'),
+            2 => get_string('bottom_right', 'block_ai_assistant'),
+            3 => get_string('top_left', 'block_ai_assistant'),
+            4 => get_string('top_right', 'block_ai_assistant'),
+        );
+        $mform->addElement('select', 'embed_position', get_string('embed_position', "block_ai_assistant"), $options);
         
     
         $this->add_action_buttons();

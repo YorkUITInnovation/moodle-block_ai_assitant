@@ -39,6 +39,30 @@ class cria
         return $bot_name;
     }
 
+
+    /**
+     * Update bot instance and returns bot_name
+     * @param int $course_id, $bot_id
+     * @return string Message
+     */
+    public static function update_bot_instance($course_id, $botid)
+    {
+        $method = get_string('create_cria_bot_endpoint', 'block_ai_assistant');
+   
+        $data = self::get_create_cria_bot_config($course_id);
+        $data['id']=$botid;
+        print_object($data);
+        
+
+        $updated_bot_name = webservice::exec($method, $data);
+
+        return $updated_bot_name;
+    }
+
+
+
+
+
     /**
      * Create bot instance and returns bot_name
      * @param int $bot_name
@@ -75,7 +99,7 @@ class cria
                 $name = $course_data->shortname;
             }
         }
-        // Get ai assistatn logo
+        // Get ai assistant logo
         $image = self::get_ai_assistant_logo();
 
         $data = array(

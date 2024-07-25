@@ -15,6 +15,8 @@
 
 require_once("../../config.php");
 
+use block_ai_assistant\cria;
+
 require_once($CFG->dirroot . "/blocks/ai_assistant/classes/forms/configure_settings.php");
 
 
@@ -24,6 +26,8 @@ global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 $courseid = required_param('courseid', PARAM_INT);
 
 $context = CONTEXT_COURSE::instance($courseid);
+$config = get_config('block_ai_assistant');
+
 
 require_login(1, false);
 
@@ -40,11 +44,66 @@ if ($mform->is_cancelled()) {
     set_config('welcome_message', $data->welcome_message, 'block_ai_assistant');
     set_config('no_context_message', $data->no_context_message,'block_ai_assistant');
     set_config('subtitle',$data->subtitle, 'block_ai_assistant');
+    set_config('embed_position',$data->embed_position, 'block_ai_assistant');
+
+
+    //need to update db
+    $record = $DB->get_record('block_aia_settings', array('courseid' => $courseid));
+
+    if ($record && !empty($record->bot_name)) {
+        $bot_name = explode('-', $record->bot_name);
+        $botid = str_replace('"', '', $bot_name[0]);
+
+   
+    }else {
+        // Handle the error or set a default value for $bot_id
+        $botid = null; // or some default value
+  
+    }
+    print_object($botid);
+    print_r("botid");
+    $botid=intval($botid);
+    echo gettype($botid);
+
+
+    if($record){
+        $record->welcome_message = $data->welcome_message; 
+        $record->no_context_message = $data->no_context_message;
+        $record->subtitle = $data ->subtitle;
+        $record->embed_position = $data ->embed_position;
+        $record->timemodified = time(); // Set the modified time
+
+        $DB->update_record('block_aia_settings', $record); //Update record
+        $message = get_string('update_successful', 'block_ai_assistant');
+
+    }else {
+        // If no record exists, insert a new record instead
+        $record = new stdClass();
+        $record->courseid = $courseid;
+        $record->welcome_message = $data->welcome_message;
+        $record->no_context_message = $data->no_context_message;
+        $record->subtitle = $data->subtitle;
+        $record->embed_position = $data ->embed_position;
+        $record->timecreated = time();  
+        $record->timemodified = time();  
+        
+        // Insert the new record
+        $DB->insert_record('block_aia_settings', $record);
+        $message = get_string('insert_successful', 'block_ai_assistant');
+       
+    }
+
+
+    //need to call api update bot to update bot settings in cria backend
+    $update=cria::update_bot_instance($courseid, $botid);
+    print_object($update);
+
+
 
 
    
     // Redirect with success message
-    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
+    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, $message, null, \core\output\notification::NOTIFY_SUCCESS);
 } else {
     // Show form
     $mform->set_data($formdata);
