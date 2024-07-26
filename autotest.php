@@ -62,16 +62,9 @@ if ($mform->is_cancelled()) {
         array('subdirs' => 0, 'maxfiles' => 1)
     );
 
-    // //check if the file is .xlsx or .docx, if .docx call cria::get_question_json_format
     $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'autotest_questions', $data->courseid, 'itemid', false);
     $file = reset($files);
-    // $extension = pathinfo($file->get_filename(), PATHINFO_EXTENSION);
-    // if ($extension == 'docx') {
-    //     $jsonQuestionObj = cria::get_question_json_format($file->get_content());
-    //     cria::create_questions_from_json($jsonQuestionObj, $intentid, $data->courseid);
-    // } else {
-        cria::autotest_qa_from_xlsx($file, $intentid, $data->courseid);
-    // }
+    cria::autotest_qa_from_xlsx($file, $intentid, $data->courseid);
 
     // Redirect with success message
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);

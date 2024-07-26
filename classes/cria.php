@@ -512,8 +512,7 @@ class cria
 
 //autotest the bot:
 public static function autotest_qa_from_xlsx($file, $courseid)
-{  
-    
+{ 
     global $CFG;
 
     // Extract the file content
@@ -578,19 +577,13 @@ public static function autotest_qa_from_xlsx($file, $courseid)
     } catch (Exception $e) {
         echo "Failed to save results: " . $e->getMessage() . "<br>";
     }
-
    
 }
 
 private static function get_bot_answer($question)
 {
-    $responseData="reverv";
-   
+    $responseData="bot_response";
     return $responseData ?? 'No answer';
 }
-
-
-
-
 
 }
