@@ -509,4 +509,88 @@ class cria
         }
     }
 }
+
+//autotest the bot:
+public static function autotest_qa_from_xlsx($file, $courseid)
+{  
+    
+    global $CFG;
+
+    // Extract the file content
+    $content = $file->get_content();
+
+    // Define directory and file paths
+    $directoryPath = $CFG->dataroot . '/temp/' . $courseid;
+    $tempfile = $directoryPath . '/autotest_qa.xlsx';
+
+    // Check if the directory exists, create it if it doesn't
+    if (!is_dir($directoryPath)) {
+        if (!mkdir($directoryPath, 0777, true)) {
+            throw new Exception("Failed to create directory: $directoryPath");
+        }
+    }
+
+    // Save the content to the temporary file
+    file_put_contents($tempfile, $content);
+
+    // Load the spreadsheet from the temporary file
+    try {
+        $spreadsheet = IOFactory::load($tempfile);
+    } catch (Exception $e) {
+        throw new Exception("Failed to load spreadsheet: " . $e->getMessage());
+    }
+
+    $sheet = $spreadsheet->getActiveSheet();
+    $highestRow = $sheet->getHighestRow();
+
+    // Prepare a new spreadsheet to store results
+    $resultSpreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+    $resultSheet = $resultSpreadsheet->getActiveSheet();
+    $resultSheet->setCellValue('A1', 'Question');
+    $resultSheet->setCellValue('B1', 'Expected Answer');
+    $resultSheet->setCellValue('C1', 'Bot Answer');
+
+    // Iterate through each question
+    for ($row = 2; $row <= $highestRow; $row++) {
+        $question = $sheet->getCell('A' . $row)->getValue();
+        $expectedAnswer = $sheet->getCell('B' . $row)->getValue();
+
+        // Make an API call to the bot to get the answer for the question
+        $botAnswer = self::get_bot_answer($question);
+
+        // Store the result in the new spreadsheet
+        $resultSheet->setCellValue('A' . $row, $question);
+        $resultSheet->setCellValue('B' . $row, $expectedAnswer);
+        $resultSheet->setCellValue('C' . $row, $botAnswer);
+
+        // Debug output
+        echo "Question: " . $question . "<br>";
+        echo "Expected Answer: " . $expectedAnswer . "<br>";
+        echo "Bot Answer: " . $botAnswer . "<br>";
+    }
+        // Save the results to a CSV file
+    $resultFile = $directoryPath . '/questions_results.csv';
+
+    try {
+        $writer = \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($resultSpreadsheet, 'Csv');
+        $writer->save($resultFile);
+        echo "Results saved to: " . $resultFile . "<br>";
+    } catch (Exception $e) {
+        echo "Failed to save results: " . $e->getMessage() . "<br>";
+    }
+
+   
+}
+
+private static function get_bot_answer($question)
+{
+    $responseData="reverv";
+   
+    return $responseData ?? 'No answer';
+}
+
+
+
+
+
 }

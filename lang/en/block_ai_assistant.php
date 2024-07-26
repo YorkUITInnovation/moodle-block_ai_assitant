@@ -27,6 +27,8 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['access'] = '  Student Access';
 $string['answer'] = 'Answer';
+$string['Autotest']= 'Autotest';
+$string['Autotest_Questions']= 'Autotest_Questions';
 $string['bot_tuning'] = 'Agent parameters';
 $string['bottom_left'] = 'Bottom left';
 $string['bottom_right'] = 'Bottom right';
