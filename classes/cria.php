@@ -6,18 +6,9 @@ namespace block_ai_assistant;
 use block_ai_assistant\webservice;
 use Exception;
 
+require_once($CFG->libdir . '/phpspreadsheet/vendor/autoload.php');
 use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Spreadsheet; 
-$autoloadPath = __DIR__ . '/../vendor/autoload.php';
-if (file_exists($autoloadPath)) {
-    echo "Autoload file exists at $autoloadPath\n";
-    require_once($autoloadPath);
-} else {
-    echo "Autoload file does NOT exist at $autoloadPath\n";
-}
-set_include_path(get_include_path() . PATH_SEPARATOR . __DIR__ . '/../vendor');
-require_once('autoload.php');
-
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
 class cria
 {

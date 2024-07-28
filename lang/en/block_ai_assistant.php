@@ -84,6 +84,7 @@ $string['title'] = 'Title';
 $string['title_help'] = 'Title help text here';
 $string['top_left'] = 'Top left';
 $string['top_right'] = 'Top right';
+$string['update_successful'] = 'Update succssful';
 $string['upload_syllabus'] = 'Upload Syllabus';
 $string['upload_questions'] = 'Upload question file';
 $string['welcome_message'] = 'Welcome Message';

@@ -46,8 +46,20 @@ class configure_settings extends \moodleform
         );
         $attributes = array('size' => '20');
         $mform->addElement('text', 'subtitle', get_string('subtitle', 'block_ai_assistant'), $attributes);
+        $mform->setType(
+            'subtitle',
+            PARAM_TEXT
+        );
         $mform->addElement('textarea', 'welcome_message', get_string("welcome_message", "block_ai_assistant"), 'wrap="virtual" rows="2" cols="20"');
+        $mform->setType(
+            'welcome_message',
+            PARAM_TEXT
+        );
         $mform->addElement('textarea', 'no_context_message', get_string("no_context_message", "block_ai_assistant"), 'wrap="virtual" rows="2" cols="20"');
+        $mform->setType(
+            'no_context_message',
+            PARAM_TEXT
+        );
         $options =array(
             1 => get_string('bottom_left', 'block_ai_assistant'),
             2 => get_string('bottom_right', 'block_ai_assistant'),
@@ -55,7 +67,10 @@ class configure_settings extends \moodleform
             4 => get_string('top_right', 'block_ai_assistant'),
         );
         $mform->addElement('select', 'embed_position', get_string('embed_position', "block_ai_assistant"), $options);
-        
+        $mform->setType(
+            'embed_position',
+            PARAM_INT
+        );
     
         $this->add_action_buttons();
 
