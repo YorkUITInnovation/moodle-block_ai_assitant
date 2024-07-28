@@ -42,8 +42,6 @@ class cria
    
         $data = self::get_create_cria_bot_config($course_id);
         $data['id']=$botid;
-        print_object($data);
-        
 
         $updated_bot_name = webservice::exec($method, $data);
 
@@ -81,7 +79,14 @@ class cria
         $context = \context_course::instance($course_id);
         $config = get_config('block_ai_assistant');
         $course_data = $DB->get_record('course', array('id' => $course_id));
+        $block_settings = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
         $system_message = self::get_default_system_message($course_id);
+
+        // Set variables
+        $subtitle = $block_settings->subtitle;
+        $welcome_message = $block_settings->welcome_message;
+        $no_context_message = $block_settings->no_context_message;
+        $embed_position = $block_settings->embed_position;
 
         if ($course_data) {
             if ($course_data->idnumber != '') {
@@ -104,7 +109,7 @@ class cria
             'requires_content_prompt' => $config->requires_content_prompt,
             'requires_user_prompt' => $config->requires_user_prompt,
             'user_prompt' => $config->user_prompt,
-            'welcome_message' => $config->welcome_message,
+            'welcome_message' => $welcome_message,
             'theme_color' => $config->theme_color,
             'max_tokens' => $config->max_tokens,
             'temperature' => $config->temperature,
@@ -114,7 +119,7 @@ class cria
             'min_k' => $config->min_k,
             'min_relevance' => $config->min_relevance,
             'max_context' => $config->max_context,
-            'no_context_message' => self::get_default_no_context_message(),
+            'no_context_message' => $no_context_message,
             'no_context_use_message' => $config->no_context_use_message,
             'no_context_llm_guess' => $config->no_context_llm_guess,
             'email' => implode('; ', self::get_teacher_emails($course_id)),
@@ -122,8 +127,8 @@ class cria
             'parse_strategy' => $config->parse_strategy,
             'botwatermark' => $config->botwatermark,
             'title' => $config->title,
-            'subtitle' => $config->subtitle,
-            'embed_position' => $config->embed_position,
+            'subtitle' => $subtitle,
+            'embed_position' => $embed_position,
             'icon_file_name' => $image->filename,
             'icon_file_content' => $image->filecontent,
             'bot_locale' => $config->bot_locale,

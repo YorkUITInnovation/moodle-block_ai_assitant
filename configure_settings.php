@@ -31,8 +31,16 @@ $config = get_config('block_ai_assistant');
 
 require_login(1, false);
 
-$formdata = new stdClass();
-$formdata->courseid = $courseid;
+// Get record form block_aia_settings table
+if (!$formdata = $DB->get_record('block_aia_settings', array('courseid' => $courseid))) {
+    $course = $DB->get_record('course', array('id' => $courseid));
+    $formdata = new stdClass();
+    $formdata->courseid = $courseid;
+    $formdata->welcome_message = $config->welcome_message;
+    $formdata->no_context_message = $config->no_context_message;
+    $formdata->subtitle = $course->fullname;
+}
+
 
 // Create form
 $mform = new \block_ai_assistant\configure_settings(null, array('formdata' => $formdata));
@@ -40,12 +48,6 @@ if ($mform->is_cancelled()) {
     //Handle form cancel operation, if cancel button is present on form
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else if ($data = $mform->get_data()) {
-    print_object($data);  
-    set_config('welcome_message', $data->welcome_message, 'block_ai_assistant');
-    set_config('no_context_message', $data->no_context_message,'block_ai_assistant');
-    set_config('subtitle',$data->subtitle, 'block_ai_assistant');
-    set_config('embed_position',$data->embed_position, 'block_ai_assistant');
-
 
     //need to update db
     $record = $DB->get_record('block_aia_settings', array('courseid' => $courseid));
@@ -55,28 +57,25 @@ if ($mform->is_cancelled()) {
         $botid = str_replace('"', '', $bot_name[0]);
 
    
-    }else {
+    } else {
         // Handle the error or set a default value for $bot_id
         $botid = null; // or some default value
   
     }
-    print_object($botid);
-    print_r("botid");
+
     $botid=intval($botid);
-    echo gettype($botid);
 
-
-    if($record){
+    if($data->id){
         $record->welcome_message = $data->welcome_message; 
         $record->no_context_message = $data->no_context_message;
-        $record->subtitle = $data ->subtitle;
-        $record->embed_position = $data ->embed_position;
+        $record->subtitle = $data->subtitle;
+        $record->embed_position = $data->embed_position;
         $record->timemodified = time(); // Set the modified time
 
         $DB->update_record('block_aia_settings', $record); //Update record
         $message = get_string('update_successful', 'block_ai_assistant');
 
-    }else {
+    } else {
         // If no record exists, insert a new record instead
         $record = new stdClass();
         $record->courseid = $courseid;
@@ -96,12 +95,6 @@ if ($mform->is_cancelled()) {
 
     //need to call api update bot to update bot settings in cria backend
     $update=cria::update_bot_instance($courseid, $botid);
-    print_object($update);
-
-
-
-
-   
     // Redirect with success message
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, $message, null, \core\output\notification::NOTIFY_SUCCESS);
 } else {
