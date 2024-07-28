@@ -27,4 +27,13 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'ai_assistant_delete_autotest_question' => array(
+        'classname' => 'block_ai_assistant_autotest_ws',
+        'methodname' => 'delete',
+        'classpath' => 'blocks/ai_assistant/classes/external/autotest_ws.php',
+        'description' => 'Deletes a question from the autotest table',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
 );

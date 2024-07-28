@@ -1,0 +1,206 @@
+<?php
+
+namespace block_ai_assistant;
+
+require_once($CFG->libdir . '/phpspreadsheet/vendor/autoload.php');
+
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+class import
+{
+    /**
+     * @var false|\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet
+     */
+    private $worksheet;
+
+    /**
+     * @var string
+     */
+    private $file_type;
+
+    /**
+     * @param $file string  Path to file
+     */
+    public function __construct($file = '')
+    {
+        if ($file) {
+            // Make sure we have an .xlsx file
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $file_info = finfo_file($finfo, $file);
+            $this->file_type = null;
+
+            if ($file_info == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+                $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+                $spread_sheet = $reader->load($file);
+                $this->worksheet = $spread_sheet->getActiveSheet();
+                $this->file_type = 'XLSX';
+            } else if ($file_info == 'application/json') {
+                $this->worksheet = false;
+                $this->file_type = 'JSON';
+            } else {
+                notification::error('You must upload an xlsx file');
+                $this->worksheet = false;
+                $this->file_type = null;
+            }
+        }
+    }
+
+    /**
+     * Return file type
+     * @return string
+     */
+    public function get_file_type(): string
+    {
+        return $this->file_type;
+    }
+
+    /**
+     * Returns an array of all columns in the first row of the work sheet
+     * @return array
+     */
+    public function get_columns()
+    {
+        $worksheet = $this->worksheet;
+        $worksheet_array = $worksheet->toArray();
+//        print_object($worksheet_array);
+        $columns = [];
+        for ($i = 0; $i < count($worksheet_array[0]); $i++) {
+            if ($worksheet_array[0][$i]) {
+                $columns[$i] = $worksheet_array[0][$i];
+            }
+        }
+        return $columns;
+    }
+
+    /**
+     * Returns all rows as an array
+     * @return array
+     */
+    public function get_rows()
+    {
+        raise_memory_limit(MEMORY_UNLIMITED);
+        $worksheet = $this->worksheet;
+        $worksheet_array = $worksheet->toArray();
+        $number_of_rows = count($worksheet_array);
+        $columns = $this->get_columns();
+        $data = [];
+        $rows = [];
+        // Start at 1 because 0 is the first row
+        for ($i = 1; $i <= $number_of_rows; $i++) {
+
+            foreach ($columns as $key => $column) {
+                if (isset($worksheet_array[$i][$key])) {
+                    $rows[$i][$key] = $worksheet_array[$i][$key];
+                } else {
+                    $rows[$i][$key] = '';
+                }
+            }
+
+        }
+        raise_memory_limit(MEMORY_STANDARD);
+        return $rows;
+    }
+
+    /**
+     * Returns array for colum names
+     * @return array
+     */
+    public function clean_column_names()
+    {
+        $columns = $this->get_columns();
+        $column_names = [];
+        foreach ($columns as $key => $column) {
+            $column_names[$key] = new \stdClass();
+            $column_names[$key]->fullname = $column;
+            // Clean the column name
+            $clean_column = preg_replace('/[^\w\s]+/', '', $column);;
+            $clean_column = str_replace(" ", '_', $clean_column);
+            $clean_column = strtolower($clean_column);
+            $column_names[$key]->shortname = $clean_column;
+
+        }
+
+        return $column_names;
+    }
+
+    /**
+     * @param $columns array
+     * @param $rows array
+     * @return void
+     */
+    public function autotest_excel($course_id, $columns, $rows)
+    {
+        global $CFG, $DB, $USER;
+        // Make sure the columns exist
+        if (!in_array('section', $columns)) {
+            \core\notification::error(get_string('column_name_must_exist', 'local_cria', ['section']));
+            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
+        }
+        if (!in_array('questions', $columns)) {
+            \core\notification::error(get_string('column_name_must_exist', 'local_cria', ['questions']));
+            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
+        }
+        if (!in_array('answer', $columns)) {
+            \core\notification::error(get_string('column_name_must_exist', 'local_cria', ['answer']));
+            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
+        }
+
+
+        // Set the proper key value for the columns
+        foreach ($columns as $key => $column) {
+            switch (trim($column)) {
+                case 'section':
+                    $section = $key;
+                    break;
+                case 'questions':
+                    $questions = $key;
+                    break;
+                case 'answer':
+                    $answer = $key;
+                    break;
+            }
+        }
+
+        $current_section = '';
+        $current_section_row = 0;
+        for ($i = 1; $i < count($rows); $i++) {
+            if (!empty(trim($rows[$i][$section]))) {
+                $current_section = trim($rows[$i][$section]);
+                $current_section_row = $i;
+                if (isset($rows[$i][$answer])) {
+                    if (empty(trim($rows[$i][$answer]))) {
+                        continue;
+                    } else {
+                        $answer = $rows[$i][$answer];
+                    }
+                }
+
+                // Create question
+                $params = [
+                    'courseid' => $course_id,
+                    'section' => str_replace('_', ' ', $current_section),
+                    'questions' => trim($rows[$i][$questions]),
+                    'human_answer' => trim($answer),
+                    'timecreated' => time(),
+                    'timemodified' => time(),
+                    'usermodified' => $USER->id
+                ];
+            } else {
+                $params = [
+                    'courseid' => $course_id,
+                    'section' => str_replace('_', ' ', $current_section),
+                    'questions' => trim($rows[$i][$questions]),
+                    'human_answer' => trim($answer),
+                    'timecreated' => time(),
+                    'timemodified' => time(),
+                    'usermodified' => $USER->id
+                ];
+            }
+            $DB->insert_record('block_aia_autotest', $params);
+        }
+
+        return true;
+    }
+
+}

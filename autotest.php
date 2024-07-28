@@ -14,70 +14,72 @@
 
 
 require_once("../../config.php");
-
-require_once($CFG->dirroot . "/blocks/ai_assistant/classes/forms/autotest.php");
-
-use block_ai_assistant\cria;
+require_once("$CFG->libdir/tablelib.php");
+require_once("$CFG->dirroot/blocks/ai_assistant/classes/tables/autotest_table.php");
 
 
 global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 
 // Get course id
 $courseid = required_param('courseid', PARAM_INT);
-$intentid = 0; // Default value
+
+$context = context_course::instance($courseid);
+require_login($courseid);
 
 
-$courserecord = $DB->get_record('block_aia_settings', array('courseid' => $courseid));
-if ($courserecord) {
-    $bot_name = $courserecord->bot_name;
-    $intentid = (int)explode('-', $bot_name)[1];
-}
+$download = optional_param('download', '', PARAM_ALPHA);
 
-$context = CONTEXT_COURSE::instance($courseid);
+$table = new autotest_table('id');
+$table->is_downloading($download, 'auto_test_download', 'auto_test');
 
-require_login(1, false);
+$PAGE->requires->js_call_amd('block_ai_assistant/delete_autotest_question', 'init',[]);
 
-$formdata = new stdClass();
-$formdata->courseid = $courseid;
-
-// Create form
-$mform = new \block_ai_assistant\autotest_form(null, array('formdata' => $formdata));
-if ($mform->is_cancelled()) {
-    //Handle form cancel operation, if cancel button is present on form
-    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
-} else if ($data = $mform->get_data()) {
-
-    $fs = get_file_storage();
-    $existingfiles = $fs->get_area_files($context->id, 'block_ai_assistant', 'autotest_questions', $data->courseid, 'itemid', false);
-    foreach ($existingfiles as $existingfile) {
-        $existingfile->delete();
-    }
-
-    file_save_draft_area_files(
-        $data->autotest_questions,
-        $context->id,
-        'block_ai_assistant',
-        'autotest_questions',
-        $data->courseid,
-        array('subdirs' => 0, 'maxfiles' => 1)
-    );
-
-    $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'autotest_questions', $data->courseid, 'itemid', false);
-    $file = reset($files);
-    cria::autotest_qa_from_xlsx($file, $intentid, $data->courseid);
-
-    // Redirect with success message
-    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
+if (!$table->is_downloading()) {
+    // Only print headers if not asked to download data
+    // Print the page header
+    $PAGE->set_url(new moodle_url('/blocks/ai_assistant/autotest.php', ['courseid' => $courseid]));
+    $PAGE->set_title('auto_test_download');
+    $PAGE->set_heading('Downloading Auto Test');
+    $PAGE->navbar->add('Downloading data', new moodle_url('/blocks/ai_assistant/autotest.php', ['courseid' => $courseid]));
+    echo $OUTPUT->header();
 } else {
-    // Show form
-    $mform->set_data($formdata);
+    $PAGE->set_context($context);
+    $PAGE->set_url(new moodle_url('/blocks/ai_assistant/autotest.php', ['courseid' => $courseid]));
+    $PAGE->set_title(get_string('Autotest', 'block_ai_assistant'));
+    $PAGE->set_heading(get_string('Autotest', 'block_ai_assistant'));
+
+    echo $OUTPUT->header();
 }
 
-$PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/blocks/ai_assistant/autotest.php', ['courseid' => $courseid]));
-$PAGE->set_title(get_string('Autotest', 'block_ai_assistant'));
-$PAGE->set_heading(get_string('Autotest', 'block_ai_assistant'));
+// Work out the sql for the table.
+$table->set_sql(
+    'id,courseid,section,questions,human_answer,bot_answer',
+    "{block_aia_autotest}",
+    'courseid=' . $courseid
+);
 
-echo $OUTPUT->header();
-$mform->display();
-echo $OUTPUT->footer();
+
+$table->define_baseurl("$CFG->wwwroot/blocks/ai_assistant/autotest.php?courseid=$courseid");
+
+$table->out(40, true);
+
+if (!$table->is_downloading()) {
+    echo $OUTPUT->footer();
+}
+
+function col_id($table){
+    if ($table->id) {
+        if ($attempt->timefinish) {
+            $timefinish = userdate($attempt->timefinish, $this->strtimeformat);
+            if (!$this->is_downloading()) {
+                return '<a href="review.php?q='.$this->quiz->id.'&attempt='.$attempt->attempt.'">'.$timefinish.'</a>';
+            } else {
+                return $timefinish;
+            }
+        } else {
+            return  '-';
+        }
+    } else {
+        return  '-';
+    }
+}

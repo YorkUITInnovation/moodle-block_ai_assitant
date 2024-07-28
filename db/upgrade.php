@@ -172,6 +172,72 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2024072404, 'ai_assistant');
     }
 
+    if ($oldversion < 2024072800) {
+
+        // Define table block_aia_autotest to be created.
+        $table = new xmldb_table('block_aia_autotest');
+
+        // Adding fields to table block_aia_autotest.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('section', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('questions', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('human_answer', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('bot_answer', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_autotest.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+        // Conditionally launch create table for block_aia_autotest.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024072800, 'ai_assistant');
+    }
+    if ($oldversion < 2024072801) {
+
+        // Define table block_aia_autotest to be dropped.
+        $table = new xmldb_table('block_aia_autotest');
+
+        // Conditionally launch drop table for block_aia_autotest.
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Define table block_aia_autotest to be created.
+        $table = new xmldb_table('block_aia_autotest');
+
+        // Adding fields to table block_aia_autotest.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('blockid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('section', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('questions', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('human_answer', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('bot_answer', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_autotest.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+        // Conditionally launch create table for block_aia_autotest.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024072801, 'ai_assistant');
+    }
+
     return true;
 
 }
