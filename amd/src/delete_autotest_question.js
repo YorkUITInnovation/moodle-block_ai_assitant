@@ -5,6 +5,7 @@ import * as Str from 'core/str';
 export const init = () => {
     append_add_button();
     append_upload_button();
+    append_execute_button();
     delete_autotest_question();
 };
 
@@ -70,5 +71,18 @@ function append_upload_button() {
     button.setAttribute('href', 'autotest_import.php?courseid=' + courseid);
     button.setAttribute('class', 'btn btn-primary ml-2');
     button.textContent = 'Upload questions';
+    div.appendChild(button);
+}
+
+function append_execute_button() {
+    const div = document.querySelector('.form-inline');
+    const button = document.createElement('a');
+    // Get element value with name courseid
+    const courseid = document.querySelector('input[name="courseid"]').value;
+
+    button.setAttribute('href', 'autotest_exec.php?courseid=' + courseid);
+    button.setAttribute('id', 'block-ai-assistant-execute-auto-test');
+    button.setAttribute('class', 'btn btn-primary ml-2');
+    button.textContent = 'Run AutoTest';
     div.appendChild(button);
 }

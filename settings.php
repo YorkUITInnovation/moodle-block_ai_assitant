@@ -138,7 +138,7 @@ if ($hassiteconfig) {
         'block_ai_assistant/temperature',
         get_string('temperature', 'block_ai_assistant'),
         '',
-        0.1,
+        0.9,
         PARAM_FLOAT
     ));
 
@@ -154,7 +154,7 @@ if ($hassiteconfig) {
         'block_ai_assistant/top_k',
         get_string('top_k', 'block_ai_assistant'),
         '',
-        30,
+        500,
         PARAM_INT
     ));
 
@@ -170,7 +170,7 @@ if ($hassiteconfig) {
         'block_ai_assistant/min_k',
         get_string('min_k', 'block_ai_assistant'),
         '',
-        0.6,
+        0,
         PARAM_FLOAT
     ));
 
@@ -178,7 +178,7 @@ if ($hassiteconfig) {
         'block_ai_assistant/min_relevance',
         get_string('min_relevance', 'block_ai_assistant'),
         '',
-        0.8,
+        0,
         PARAM_FLOAT
     ));
 

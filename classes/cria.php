@@ -7,6 +7,7 @@ use block_ai_assistant\webservice;
 use Exception;
 
 require_once($CFG->libdir . '/phpspreadsheet/vendor/autoload.php');
+
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
@@ -33,23 +34,20 @@ class cria
 
     /**
      * Update bot instance and returns bot_name
-     * @param int $course_id, $bot_id
+     * @param int $course_id , $bot_id
      * @return string Message
      */
     public static function update_bot_instance($course_id, $botid)
     {
         $method = get_string('create_cria_bot_endpoint', 'block_ai_assistant');
-   
+
         $data = self::get_create_cria_bot_config($course_id);
-        $data['id']=$botid;
+        $data['id'] = $botid;
 
         $updated_bot_name = webservice::exec($method, $data);
 
         return $updated_bot_name;
     }
-
-
-
 
 
     /**
@@ -63,7 +61,6 @@ class cria
         $method = get_string('cria_get_bot_name_endpoint', 'block_ai_assistant');
         $data = array('bot_id' => $bot_name);
         $bot_name_intent_id = webservice::exec($method, $data);
-        print_object($bot_name_intent_id);
         return $bot_name_intent_id;
     }
 
@@ -223,6 +220,7 @@ class cria
             }
         }
     }
+
     /**
      * Returns default system message
      * @param int $course_id
@@ -417,94 +415,137 @@ class cria
     }
 
     public static function create_questions_from_xlsx($file, $intentid, $courseid)
-{
-    global $CFG;
+    {
+        global $CFG;
 
-    // Extract the file content
-    $content = $file->get_content();
+        // Extract the file content
+        $content = $file->get_content();
 
-    // Define directory and file paths
-    $directoryPath = $CFG->dataroot . '/temp/' . $courseid;
-    $tempfile = $directoryPath . '/questions_upload.xlsx';
+        // Define directory and file paths
+        $directoryPath = $CFG->dataroot . '/temp/' . $courseid;
+        $tempfile = $directoryPath . '/questions_upload.xlsx';
 
-    // Check if the directory exists, create it if it doesn't
-    if (!is_dir($directoryPath)) {
-        if (!mkdir($directoryPath, 0777, true)) {
-            throw new Exception("Failed to create directory: $directoryPath");
-        }
-    }
-
-    // Save the content to the temporary file
-    file_put_contents($tempfile, $content);
-
-    // Load the spreadsheet from the temporary file
-    try {
-        $spreadsheet = IOFactory::load($tempfile);
-    } catch (Exception $e) {
-        throw new Exception("Failed to load spreadsheet: " . $e->getMessage());
-    }
-
-    $sheet = $spreadsheet->getActiveSheet();
-    $highestRow = $sheet->getHighestRow();
-    echo "Total Rows in Spreadsheet: " . $highestRow . "<br>";
-    for ($row = 2; $row <= $highestRow; $row++) {
-        echo "Processing Row: " . $row . "<br>";
-    
-        $name = $sheet->getCell('A' . $row)->getValue();
-        $value = $sheet->getCell('B' . $row)->getValue();
-        $answer = $sheet->getCell('C' . $row)->getValue();
-        $relatedquestions = $sheet->getCell('D' . $row)->getValue();
-        $lang = $sheet->getCell('E' . $row)->getValue();
-        $generateanswer = $sheet->getCell('F' . $row)->getValue();
-        $examplequestions = $sheet->getCell('G' . $row)->getValue();
-    
-        // Debug output
-        echo "Name: " . $name . "<br>";
-        echo "Value: " . $value . "<br>";
-        echo "Answer: " . $answer . "<br>";
-        echo "Related Questions: " . $relatedquestions . "<br>";
-        echo "Language: " . $lang . "<br>";
-        echo "Generate Answer: " . $generateanswer . "<br>";
-        echo "Example Questions: " . $examplequestions . "<br>";
-    
-        // Prepare question data
-        $questionObj = [
-            'intentid' => $intentid,
-            'name' => $name,
-            'value' => $value,
-            'answer' => $answer,
-            'relatedquestions' => $relatedquestions,
-            'lang' => $lang,
-            'generateanswer' => $generateanswer,
-            'examplequestions' => $examplequestions
-        ];
-    
-        try {
-            // Create and publish question
-            $question_id = cria::create_question($questionObj);
-            print_object("Question ID: " . $question_id);
-            $status = cria::publish_question($question_id);
-            print_object("Publish Status: " . $status);
-    
-            if ($status) {
-                //autotest the bot:
-                $questionData = [
-                    'courseid' => $courseid,
-                    'name' => $name,
-                    'value' => $value,
-                    'answer' => $answer,
-                    'criaquestionid' => intval($question_id),
-                    'related_questions' => $relatedquestions
-                ];
-                self::update_questions_db($questionData);
-                echo "Question $name processed and saved.<br>";
-            } else {
-                echo "Failed to publish question $name.<br>";
+        // Check if the directory exists, create it if it doesn't
+        if (!is_dir($directoryPath)) {
+            if (!mkdir($directoryPath, 0777, true)) {
+                throw new Exception("Failed to create directory: $directoryPath");
             }
+        }
+
+        // Save the content to the temporary file
+        file_put_contents($tempfile, $content);
+
+        // Load the spreadsheet from the temporary file
+        try {
+            $spreadsheet = IOFactory::load($tempfile);
         } catch (Exception $e) {
-            echo "Error processing question $name: " . $e->getMessage() . "<br>";
+            throw new Exception("Failed to load spreadsheet: " . $e->getMessage());
+        }
+
+        $sheet = $spreadsheet->getActiveSheet();
+        $highestRow = $sheet->getHighestRow();
+        echo "Total Rows in Spreadsheet: " . $highestRow . "<br>";
+        for ($row = 2; $row <= $highestRow; $row++) {
+            echo "Processing Row: " . $row . "<br>";
+
+            $name = $sheet->getCell('A' . $row)->getValue();
+            $value = $sheet->getCell('B' . $row)->getValue();
+            $answer = $sheet->getCell('C' . $row)->getValue();
+            $relatedquestions = $sheet->getCell('D' . $row)->getValue();
+            $lang = $sheet->getCell('E' . $row)->getValue();
+            $generateanswer = $sheet->getCell('F' . $row)->getValue();
+            $examplequestions = $sheet->getCell('G' . $row)->getValue();
+
+            // Debug output
+            echo "Name: " . $name . "<br>";
+            echo "Value: " . $value . "<br>";
+            echo "Answer: " . $answer . "<br>";
+            echo "Related Questions: " . $relatedquestions . "<br>";
+            echo "Language: " . $lang . "<br>";
+            echo "Generate Answer: " . $generateanswer . "<br>";
+            echo "Example Questions: " . $examplequestions . "<br>";
+
+            // Prepare question data
+            $questionObj = [
+                'intentid' => $intentid,
+                'name' => $name,
+                'value' => $value,
+                'answer' => $answer,
+                'relatedquestions' => $relatedquestions,
+                'lang' => $lang,
+                'generateanswer' => $generateanswer,
+                'examplequestions' => $examplequestions
+            ];
+
+            try {
+                // Create and publish question
+                $question_id = cria::create_question($questionObj);
+                print_object("Question ID: " . $question_id);
+                $status = cria::publish_question($question_id);
+                print_object("Publish Status: " . $status);
+
+                if ($status) {
+                    //autotest the bot:
+                    $questionData = [
+                        'courseid' => $courseid,
+                        'name' => $name,
+                        'value' => $value,
+                        'answer' => $answer,
+                        'criaquestionid' => intval($question_id),
+                        'related_questions' => $relatedquestions
+                    ];
+                    self::update_questions_db($questionData);
+                    echo "Question $name processed and saved.<br>";
+                } else {
+                    echo "Failed to publish question $name.<br>";
+                }
+            } catch (Exception $e) {
+                echo "Error processing question $name: " . $e->getMessage() . "<br>";
+            }
         }
     }
-}
+
+    /**
+     * Get chat id from CRIA
+     * @return mixed
+     */
+    public static function get_chat_id()
+    {
+        $method = 'cria_get_chat_id';
+        $data = array();
+        $chat_id = webservice::exec($method, $data);
+        return $chat_id;
+    }
+
+    /**
+     * Return chat response
+     * @param $chat_id
+     * @param $bot_id
+     * @param $prompt
+     * @param $content
+     * @return mixed
+     */
+    public static function get_gpt_response($chat_id, $bot_id, $prompt, $content = '')
+    {
+        $method = 'cria_get_gpt_response';
+        $data = array(
+            'bot_id' => (int)$bot_id,
+            'chat_id' => str_replace('"', '', $chat_id),
+            'prompt' => $prompt,
+            'content' => $content
+        );
+        $response = webservice::exec($method, $data);
+        return $response;
+    }
+
+    /**
+     * Run auto test
+     * @return mixed
+     */
+    public static function run_autotest($course_id)
+    {
+        global $CFG;
+        exec("php $CFG->dirroot/blocks/ai_assistant/cli/autotest.php -cid=$course_id > /dev/null 2>&1 &");
+    }
 
 }
