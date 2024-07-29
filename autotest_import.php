@@ -47,7 +47,10 @@ if ($mform->is_cancelled()) {
     //Handle form cancel operation, if cancel button is present on form
     redirect($CFG->wwwroot . '/blocks/ai_assistant/autotest.php?courseid=' . $courseid);
 } else if ($data = $mform->get_data()) {
-
+    // If delete_quesitons is yes, delete all questions for this course
+    if ($data->delete_questions == true) {
+        $DB->delete_records('block_ai_assistant_questions', array('courseid' => $data->courseid));
+    }
     // Check to see if cria directory exists
     $path = $CFG->dataroot . '/temp/cria';
     if (!is_dir($path)) {
