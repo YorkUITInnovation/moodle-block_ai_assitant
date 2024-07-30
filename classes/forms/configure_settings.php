@@ -63,8 +63,8 @@ class configure_settings extends \moodleform
         $options =array(
             1 => get_string('bottom_left', 'block_ai_assistant'),
             2 => get_string('bottom_right', 'block_ai_assistant'),
-            3 => get_string('top_left', 'block_ai_assistant'),
-            4 => get_string('top_right', 'block_ai_assistant'),
+            3 => get_string('top_right', 'block_ai_assistant'),
+            4 => get_string('top_left', 'block_ai_assistant'),
         );
         $mform->addElement('select', 'embed_position', get_string('embed_position', "block_ai_assistant"), $options);
         $mform->setType(
