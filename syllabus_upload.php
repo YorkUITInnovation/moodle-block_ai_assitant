@@ -58,10 +58,11 @@ if ($mform->is_cancelled()) {
 
     $filepath = cria::copy_file_to_temp_folder($context->id, $courseid);
     $file_id = cria::upload_content_to_bot($filepath, $courseid);
-    print_object($file_id);
+
     $DB->set_field('block_aia_settings', 'cria_file_id', $file_id, ['courseid' => $courseid]);
     // Redirect with success message
-    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid, get_string('file_uploaded_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
+    \core\notification::success(get_string('syllabus_uploaded', 'block_ai_assistant'));
+    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else {
     // Show form
     $mform->set_data($formdata);

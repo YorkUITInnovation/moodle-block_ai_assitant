@@ -49,7 +49,7 @@ if ($mform->is_cancelled()) {
 } else if ($data = $mform->get_data()) {
     // If delete_quesitons is yes, delete all questions for this course
     if ($data->delete_questions == true) {
-        $DB->delete_records('block_ai_assistant_questions', array('courseid' => $data->courseid));
+        $DB->delete_records('block_aia_autotest', array('courseid' => $data->courseid));
     }
     // Check to see if cria directory exists
     $path = $CFG->dataroot . '/temp/cria';
@@ -83,8 +83,8 @@ if ($mform->is_cancelled()) {
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/blocks/ai_assistant/autotest.php', ['courseid' => $courseid]));
-$PAGE->set_title(get_string('Autotest', 'block_ai_assistant'));
-$PAGE->set_heading(get_string('Autotest', 'block_ai_assistant'));
+$PAGE->set_title(get_string('autotest', 'block_ai_assistant'));
+$PAGE->set_heading(get_string('autotest', 'block_ai_assistant'));
 
 echo $OUTPUT->header();
 $mform->display();

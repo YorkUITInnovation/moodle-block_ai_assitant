@@ -24,10 +24,8 @@ class cria
         $method = get_string('create_cria_bot_endpoint', 'block_ai_assistant');
         $data = self::get_create_cria_bot_config($course_id);
 
-        $bot_name = webservice::exec($method, $data);
-        $bot_name = self::get_bot_name_intent_id($bot_name);
-        print_object($bot_name);
-
+        $bot = webservice::exec($method, $data);
+        $bot_name = self::get_bot_name_intent_id($bot);
         return $bot_name;
     }
 
@@ -76,14 +74,20 @@ class cria
         $context = \context_course::instance($course_id);
         $config = get_config('block_ai_assistant');
         $course_data = $DB->get_record('course', array('id' => $course_id));
-        $block_settings = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
+        if (!$block_settings = $DB->get_record('block_aia_settings', array('courseid' => $course_id))) {
+            // Set variables
+            $subtitle = $config->subtitle;
+            $welcome_message = $config->welcome_message;
+            $no_context_message = $config->no_context_message;
+            $embed_position = $config->embed_position;
+        } else {
+            // Set variables
+            $subtitle = $block_settings->subtitle;
+            $welcome_message = $block_settings->welcome_message;
+            $no_context_message = $block_settings->no_context_message;
+            $embed_position = $block_settings->embed_position;
+        }
         $system_message = self::get_default_system_message($course_id);
-
-        // Set variables
-        $subtitle = $block_settings->subtitle;
-        $welcome_message = $block_settings->welcome_message;
-        $no_context_message = $block_settings->no_context_message;
-        $embed_position = $block_settings->embed_position;
 
         if ($course_data) {
             if ($course_data->idnumber != '') {
@@ -198,7 +202,6 @@ class cria
         global $CFG;
         $fs = get_file_storage();
         $files = $fs->get_area_files($contextid, 'block_ai_assistant', 'syllabus', $courseid);
-        // print_object($files);
 
         if ($files) {
             $file = reset($files);
@@ -382,10 +385,9 @@ class cria
                 'examplequestions' => json_encode($examplequestions)
             ];
             $question_id = cria::create_question($questionObj);
-            print_object($question_id);
-            print_object("create question error above");
+
             $status = cria::publish_question($question_id);
-            print_object($status);
+
             if ($status) {
                 $questionData = [
                     'courseid' => $courseid,
@@ -480,9 +482,7 @@ class cria
             try {
                 // Create and publish question
                 $question_id = cria::create_question($questionObj);
-                print_object("Question ID: " . $question_id);
                 $status = cria::publish_question($question_id);
-                print_object("Publish Status: " . $status);
 
                 if ($status) {
                     //autotest the bot:

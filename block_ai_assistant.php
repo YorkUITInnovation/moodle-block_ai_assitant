@@ -44,7 +44,7 @@ class block_ai_assistant extends block_base
     public function get_content()
     {
         global $OUTPUT;
-        global $PAGE, $DB, $USER;
+        global $PAGE, $DB, $USER, $CFG;
         $course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id));
         $config = get_config('block_ai_assistant');
 
@@ -146,6 +146,13 @@ class block_ai_assistant extends block_base
             $embed_code = '';
         }
 
+        // Find out if there are any autotest questions uploaded
+        if (!$autotest = $DB->get_records('block_aia_autotest', ['courseid' => $this->page->course->id])) {
+            $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest_import.php?courseid=' . $this->page->course->id;
+        } else {
+            $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest.php?courseid=' . $this->page->course->id;
+        }
+
         $params = array(
             'blockid' => $this->instance->id,
             'courseid' => $this->page->course->id,
@@ -157,7 +164,8 @@ class block_ai_assistant extends block_base
             ]))->out(false),
             'syllabus_url' => $syllabus_url,
             'questions_url' => $questions_url,
-            'embed_code' => $embed_code
+            'embed_code' => $embed_code,
+            'autotest_url' => $autotest_url
         );
 
         if (!empty($this->config->text)) {
@@ -192,6 +200,22 @@ class block_ai_assistant extends block_base
      */
     public function has_config()
     {
+        return true;
+    }
+
+    /**
+     * Only one block can be installed per course.
+     * @return false
+     */
+    public function instance_allow_multiple()
+    {
+        return false;
+    }
+
+    public function instance_delete() {
+        global $COURSE, $DB;
+        // Delete all settings for this course
+        $DB->delete_records('block_aia_settings', array('courseid' => $COURSE->id));
         return true;
     }
 }

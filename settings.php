@@ -57,6 +57,14 @@ if ($hassiteconfig) {
     ));
 
     $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/bot_type',
+        get_string('bot_type_id', 'block_ai_assistant'),
+        get_string('bot_type_id_help', 'block_ai_assistant'),
+        1,
+        PARAM_INT
+    ));
+
+    $settings->add(new admin_setting_configtext(
         'block_ai_assistant/criadex_embed_id',
         get_string('criadex_embed_id', 'block_ai_assistant'),
         get_string('criadex_embed_id_help', 'block_ai_assistant'),
@@ -229,5 +237,5 @@ set_config('available_child', 0, 'block_ai_assistant');
 set_config('parse_strategy', 'ALSYLLABUS', 'block_ai_assistant');
 set_config('botwatermark', 0, 'block_ai_assistant');
 set_config('icon_url', '', 'block_ai_assistant');
-set_config('bot_locale', 'us_EN', 'block_ai_assistant');
+set_config('bot_locale', 'en-US', 'block_ai_assistant');
 set_config('child_bots', '', 'block_ai_assistant');

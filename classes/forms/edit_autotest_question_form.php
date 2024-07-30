@@ -38,8 +38,8 @@ class edit_autotest_question_form extends \moodleform
 
         $mform->addElement(
             'header',
-            'Autotest_Questions',
-            get_string('Autotest_Questions', 'block_ai_assistant')
+            'autotest_questions',
+            get_string('autotest_questions', 'block_ai_assistant')
         );
 
        // Add text element for section

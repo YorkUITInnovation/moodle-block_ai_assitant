@@ -27,9 +27,11 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['access'] = '  Student Access';
 $string['answer'] = 'Answer';
-$string['Autotest']= 'Autotest';
-$string['Autotest_Questions']= 'Autotest_Questions';
+$string['autotest']= 'AutoTest';
+$string['autotest_questions']= 'AutoTest questions';
 $string['bot_tuning'] = 'Agent parameters';
+$string['bot_type_id'] = 'Bot Type ID';
+$string['bot_type_id_help'] = 'Bot Type ID from Cria';
 $string['bottom_left'] = 'Bottom left';
 $string['bottom_right'] = 'Bottom right';
 $string['close'] = '  Close';

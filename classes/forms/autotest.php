@@ -38,8 +38,8 @@ class autotest_form extends \moodleform
 
         $mform->addElement(
             'header',
-            'Autotest_Questions',
-            get_string('Autotest_Questions', 'block_ai_assistant')
+            'autotest_questions_header',
+            get_string('autotest_questions', 'block_ai_assistant')
         );
 
         $mform->addElement(
@@ -62,6 +62,14 @@ class autotest_form extends \moodleform
             get_string('required', 'block_ai_assistant'),
             'required'
         );
+
+        // Add a delete questions selectyesno
+        $mform->addElement(
+            'selectyesno',
+            'delete_questions',
+            get_string('delete_questions', 'block_ai_assistant')
+        );
+
 
         $this->add_action_buttons();
         $this->set_data($formdata);
