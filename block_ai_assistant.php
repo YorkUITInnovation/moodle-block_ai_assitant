@@ -214,8 +214,27 @@ class block_ai_assistant extends block_base
 
     public function instance_delete() {
         global $COURSE, $DB;
+        // Get settings record
+        $settings = $DB->get_record('block_aia_settings', array('courseid' => $COURSE->id));
+        // get bot id
+        $bot_name = explode('-', $settings->bot_name);
+        $bot_id = str_replace('"', '', $bot_name[0]);
+        // Delete bot from Cria
+        $results = cria::delete_bot_instance($bot_id);
+        file_put_contents('/var/www/moodledata/temp/delete_cria_bot.json', json_encode($results, JSON_PRETTY_PRINT));
         // Delete all settings for this course
         $DB->delete_records('block_aia_settings', array('courseid' => $COURSE->id));
+        // Delete Autotest questions
+        $DB->delete_records('block_aia_autotest', array('courseid' => $COURSE->id));
+        // Questions
+        $DB->delete_records('block_aia_questions', array('courseid' => $COURSE->id));
+        // Delete the files in filearea syllabus
+        $fs = get_file_storage();
+        $context = \context_course::instance($COURSE->id);
+        $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $COURSE->id);
+        foreach ($files as $file) {
+            $file->delete();
+        }
         return true;
     }
 }

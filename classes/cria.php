@@ -47,6 +47,23 @@ class cria
         return $updated_bot_name;
     }
 
+    /**
+     * Delete bot instance
+     * @param int $course_id , $bot_id
+     * @return string Message
+     */
+    public static function delete_bot_instance($botid)
+    {
+        $method = 'cria_bot_delete';
+
+        $data = array();
+        $data['id'] = $botid;
+
+        $delete_bot_name = webservice::exec($method, $data);
+
+        return $delete_bot_name;
+    }
+
 
     /**
      * Create bot instance and returns bot_name
