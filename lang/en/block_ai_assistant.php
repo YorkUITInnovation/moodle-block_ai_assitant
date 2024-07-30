@@ -26,6 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['access'] = '  Student Access';
+$string['ai_assistant_instructions'] = 'To get the best results form the AI Assistant, please use the syllabus template provided in the Document Templates';
 $string['answer'] = 'Answer';
 $string['autotest']= 'AutoTest';
 $string['autotest_questions']= 'AutoTest questions';
@@ -57,6 +58,9 @@ $string['delete_syllabus'] = 'Delete Syllabus';
 $string['delete_syllabus_help'] = 'Are you sure you want to delete the syllabus?';
 $string['delete_questions'] = 'Delete Questions';
 $string['delete_question_help'] = 'Are you sure you want to delete the question?';
+$string['document_templates'] = 'Document Templates';
+$string['download'] = 'Download';
+$string['download_english'] = 'Download (English)';
 $string['download_syllabus'] = 'Download Syllabus';
 $string['download_questions'] = 'Download Questions';
 $string['edit_questions'] = "Edit your questions";

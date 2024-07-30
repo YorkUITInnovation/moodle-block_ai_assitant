@@ -1,5 +1,12 @@
 <div class="row">
     <div class="col-md-12">
+        <div class="alert alert-info">
+            <p>{{#str}}ai_assistant_instructions, block_ai_assistant{{/str}}</p>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
         <!--configure settings -->
         <label for="configure-bot-settings">{{#str}}configure_bot_settings, block_ai_assistant{{/str}}</label>
         <a href={{configure_settings_url}}
@@ -7,6 +14,14 @@
             <i class="fa fa-gear"></i>
         </a>
         <br>
+        <!-- Document Templates-->
+        <label for="document-templates">{{#str}}document_templates, block_ai_assistant{{/str}}</label>
+    <a href="{{config.wwwroot}}/blocks/ai_assistant/document_templates.php?courseid={{courseid}}"
+        class="btn btn-link btn-sm"
+        title="{{#str}}document_templates, block_ai_assistant{{/str}}"
+        >
+        <i class="fa fa-file"></i>
+        </a>
         <!--upload syllabus -->
         {{^syllabus_url}}
             <label for="upload-syllabus">{{#str}}upload_syllabus, block_ai_assistant{{/str}}</label>
