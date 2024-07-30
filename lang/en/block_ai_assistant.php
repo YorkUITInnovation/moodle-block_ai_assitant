@@ -80,6 +80,7 @@ $string['section'] = 'Section';
 $string['subtitle'] = 'Subtitle';
 $string['subtitle_help'] = 'Subtitle help text here';
 $string['syllabus'] = 'Syllabus';
+$string['syllabus_uploaded'] = 'Syllabus successfully uploaded';
 $string['system_message'] = 'System Message';
 $string['system_message_default'] = 'You are a Factual AI Assistant dedicated to providing accurate information based on the information available in the knowledge base as your only source. Your response must be in the same language as my message.';
 $string['system_message_help'] = 'System Message help text here';
