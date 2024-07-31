@@ -35,7 +35,7 @@ foreach ($sections as $sectionnum => $section) {
     $course_structure->sections[$i] = new stdClass();
     $course_structure->sections[$i]->sectionnum = $sectionnum;
     $course_structure->sections[$i]->name = $section->name;
-//    echo '<h2>' . $section->name . '</h2>';
+    //    echo '<h2>' . $section->name . '</h2>';
     $x = 0; // Used to count the number of modules in a section
     if (isset($modules->sections[$section->section])) {
         $section_mods = $modules->sections[$section->section];
@@ -56,7 +56,8 @@ foreach ($sections as $sectionnum => $section) {
                         $course_structure->sections[$i]->modules[$x]->content = $mod[0]->intro;
                         break;
                     case 'book':
-                        // Must get book content
+                        $content = get_book_content($courseid);
+                        $course_structure->sections[$i]->modules[$x]->content = $content;
                         break;
                     case 'resource': // File
                         // Index the file
@@ -65,11 +66,11 @@ foreach ($sections as $sectionnum => $section) {
                         // Index the folder files
                         break;
                 }
-//                echo '<h5>' . $mod[0]->name . '</h5>';
+                //                echo '<h5>' . $mod[0]->name . '</h5>';
 
 
                 $x++;
-//                print_object($mod);
+                //                print_object($mod);
             }
         }
     }
@@ -96,5 +97,19 @@ function get_module_from_cmid($cmid)
     return array($modrec, $cmrec);
 }
 
+function get_book_content($courseid)
+{
+    global $DB;
+    $book = $DB->get_record('book', array('course' => $courseid));
+    if ($book) {
+        $bookid = $book->id;
+    }
+    $chapters = $DB->get_records('book_chapters', array('bookid' => $bookid));
+    $content = '';
+    foreach ($chapters as $chapter) {
+        $content .= $chapter->content;
+    }
+    return $content;
+}
 
 echo $OUTPUT->footer();
