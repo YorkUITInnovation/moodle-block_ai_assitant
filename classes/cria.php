@@ -110,7 +110,7 @@ class cria
                 // If block_settings lang is set to French, use ALSYLLABUS_FR
                 // otherwise use ALSYLLABUS
                 if ($block_settings->lang == 'fr') {
-                    $parsing_strategy = 'ALSYLLABUSFRENCH';
+                    $parsing_strategy = 'ALSYLLABUSFR';
                 } else {
                     $parsing_strategy = 'ALSYLLABUS';
                 }
