@@ -25,7 +25,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['access'] = '  Student Access';
+$string['accepted_modules'] = 'Accepted Modules';
+$string['accepted_modules_help'] = 'Comma seperated list of modules that can have their content trained by the AI Assistant';
+$string['access'] = 'Student Access';
 $string['ai_assistant_instructions'] = 'To get the best results from the AI Assistant, please use the syllabus template provided in the Document Templates';
 $string['answer'] = 'Answer';
 $string['autotest']= 'AutoTest';
@@ -72,6 +74,7 @@ $string['file_uploaded_successfully'] = 'File uploaded successfully';
 $string['format'] = '.xlsx, .docx only accepted';
 $string['keywords'] = "Keywords";
 $string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
+$string['modules'] = "Modules";
 $string['name'] = "Name";
 $string['no_context_message'] = 'No Context Message';
 $string['no_context_message_default'] = 'I\'m sorry, I couldn\'t find any information. Please rephrase your question';

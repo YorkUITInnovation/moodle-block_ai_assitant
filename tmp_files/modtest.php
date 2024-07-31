@@ -22,12 +22,30 @@ $PAGE->set_heading('Test');
 $config = get_config('block_ai_assistant');
 echo $OUTPUT->header();
 
-$modinfo = get_fast_modinfo($courseid);
-// Loop through all sections and list all modules within each section
-foreach ($modinfo->get_section_info_all() as $section) {
+$accepted_modules = explode(',', $config->accepted_modules);
+
+
+$modules = get_fast_modinfo($courseid);
+// Get all sections from $modules and print them.
+$sections = $modules->get_section_info_all();
+foreach ($sections as $sectionnum => $section) {
     echo '<h2>' . $section->name . '</h2>';
+    if(isset($modules->sections[$section->section])) {
+        $section_mods = $modules->sections[$section->section];
+        foreach ($section_mods as $cmid) {
+            $mod = get_module_from_cmid($cmid);
+            if (in_array($mod[1]->modname, $accepted_modules)) {
+                echo '<h5>' . $mod[0]->name . '</h5>';
+
+//                print_object($mod);
+            }
+        }
+    }
 
 }
+
+
+
 
 function get_module_from_cmid($cmid) {
     global $CFG, $DB;

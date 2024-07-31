@@ -277,6 +277,21 @@ if ($hassiteconfig) {
             4 => get_string('top_left', 'block_ai_assistant'),
         )
     ));
+
+// Add a header
+    $settings->add(new admin_setting_heading(
+        'block_ai_assistant/modules',
+        get_string('modules', 'block_ai_assistant'),
+        ''
+    ));
+
+    $settings->add(new admin_setting_configtextarea(
+        'block_ai_assistant/accepted_modules',
+        get_string('accepted_modules', 'block_ai_assistant'),
+        get_string('accepted_modules_help', 'block_ai_assistant'),
+        "book,forum,glossary,page,resource",
+        PARAM_TEXT
+    ));
     // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
     if ($ADMIN->fulltree) {
         // TODO: Define actual plugin settings page and add it to the tree - {@link https://docs.moodle.org/dev/Admin_settings}.
