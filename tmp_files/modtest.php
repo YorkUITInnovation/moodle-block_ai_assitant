@@ -9,7 +9,7 @@ require_once("../../../config.php");
 
 global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 
-$courseid = optional_param('courseid', 1, PARAM_INT);
+$courseid = optional_param('courseid', 32, PARAM_INT);
 
 require_login(1, false);
 
@@ -35,7 +35,7 @@ foreach ($sections as $sectionnum => $section) {
     $course_structure->sections[$i] = new stdClass();
     $course_structure->sections[$i]->sectionnum = $sectionnum;
     $course_structure->sections[$i]->name = $section->name;
-    //    echo '<h2>' . $section->name . '</h2>';
+//    echo '<h2>' . $section->name . '</h2>';
     $x = 0; // Used to count the number of modules in a section
     if (isset($modules->sections[$section->section])) {
         $section_mods = $modules->sections[$section->section];
@@ -44,7 +44,7 @@ foreach ($sections as $sectionnum => $section) {
             if (in_array($mod[1]->modname, $accepted_modules)) {
                 $course_structure->sections[$i]->modules[$x] = new stdClass();
                 $course_structure->sections[$i]->modules[$x]->name = $mod[0]->name;
-                $course_structure->sections[$i]->modules[$x]->intro = $mod[0]->intro;
+                $course_structure->sections[$i]->modules[$x]->intro = strip_tags($mod[0]->intro);
                 $course_structure->sections[$i]->modules[$x]->instanceid = $mod[0]->id;
                 $course_structure->sections[$i]->modules[$x]->cmid = $mod[1]->id;
                 // Prepare the content based on the type of module
@@ -56,8 +56,10 @@ foreach ($sections as $sectionnum => $section) {
                         $course_structure->sections[$i]->modules[$x]->content = $mod[0]->intro;
                         break;
                     case 'book':
+                        // Must get book content
                         $content = get_book_content($courseid);
                         $course_structure->sections[$i]->modules[$x]->content = $content;
+                    
                         break;
                     case 'resource': // File
                         // Index the file
@@ -65,12 +67,17 @@ foreach ($sections as $sectionnum => $section) {
                     case 'folder':
                         // Index the folder files
                         break;
+                    case 'glossary':
+                        $content = get_glossary_entries($courseid);
+                        $course_structure->sections[$i]->modules[$x]->content = $content;
+                       
+                        break;
                 }
-                //                echo '<h5>' . $mod[0]->name . '</h5>';
+//                echo '<h5>' . $mod[0]->name . '</h5>';
 
 
                 $x++;
-                //                print_object($mod);
+//                print_object($mod);
             }
         }
     }
@@ -96,7 +103,6 @@ function get_module_from_cmid($cmid)
 
     return array($modrec, $cmrec);
 }
-
 function get_book_content($courseid)
 {
     global $DB;
@@ -107,9 +113,25 @@ function get_book_content($courseid)
     $chapters = $DB->get_records('book_chapters', array('bookid' => $bookid));
     $content = '';
     foreach ($chapters as $chapter) {
-        $content .= $chapter->content;
+        $content .= strip_tags($chapter->content);
     }
     return $content;
 }
+function get_glossary_entries($courseid)
+{
+    global $DB;
+    $glossary = $DB->get_record('glossary', array('course' => $courseid));
+    if ($glossary) {
+        $glossaryid = $glossary->id;
+    }
+    $glossary_entries = $DB->get_records('glossary_entries', array('glossaryid' => $glossaryid));
+    $glossary=array();
+
+    foreach ($glossary_entries as $entry) {
+        $glossary[$entry->concept]=strip_tags($entry->definition);
+    }
+    return $glossary;
+}
+
 
 echo $OUTPUT->footer();
