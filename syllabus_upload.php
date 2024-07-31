@@ -58,7 +58,6 @@ if ($mform->is_cancelled()) {
 
     $filepath = cria::copy_file_to_temp_folder($context->id, $courseid);
     $file_id = cria::upload_content_to_bot($filepath, $courseid);
-
     $DB->set_field('block_aia_settings', 'cria_file_id', $file_id, ['courseid' => $courseid]);
     // Redirect with success message
     \core\notification::success(get_string('syllabus_uploaded', 'block_ai_assistant'));

@@ -41,6 +41,8 @@ $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
 $string['confirm_question_deletion'] = 'Are you sure you want to delete the question?';
 $string['configure_bot_settings'] = 'Configure Bot Settings';
 $string['configure_settings'] = 'Configure Settings';
+$string['content_language'] = 'Content language';
+$string['content_language_help'] = 'Chosing the proper content language for your documents will result in better training of the AI Assistant. In return, the AI Assistant will be able to provide more accurate answers.';
 $string['cria_token'] = 'Cria Token';
 $string['cria_url'] = 'Cria URL';
 $string['cria_embed_url'] = 'Cria embed URL';
@@ -53,6 +55,7 @@ $string['criadex_model_id'] = 'Criadex Model ID';
 $string['criadex_model_id_help'] = 'Enter the criadex model id to your Cria server. You might have to ask your system administrator.';
 $string['criadex_rerank_id'] = 'Criadex Rerank ID';
 $string['criadex_rerank_id_help'] = 'Enter the criadex rerank id to your Cria server. You might have to ask your system administrator.';
+$string['default_content_language'] = 'Default content language';
 $string['delete'] = 'Delete';
 $string['delete_syllabus'] = 'Delete Syllabus';
 $string['delete_syllabus_help'] = 'Are you sure you want to delete the syllabus?';
@@ -98,15 +101,6 @@ $string['upload_syllabus'] = 'Upload Syllabus';
 $string['upload_questions'] = 'Upload question file';
 $string['welcome_message'] = 'Welcome Message';
 $string['welcome_message_help'] = 'Welcome Message help text here';
-
-//Bot endpoints
-$string['create_cria_bot_endpoint'] = 'cria_create_bot';
-$string['cria_get_bot_name_endpoint'] = 'cria_get_bot_name';
-$string['upload_content_to_bot_endpoint'] = 'cria_content_upload';
-$string['delete_content_from_bot_endpoint'] = 'cria_content_delete';
-$string['get_questions_json_format_endpoint'] = 'need to edit';
-$string['publish_question_endpoint'] = 'cria_question_publish';
-$string['create_question_endpoint'] = 'cria_question_create';
 
 // Bot tuning
 $string['max_tokens'] = 'Max tokens';

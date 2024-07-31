@@ -21,7 +21,7 @@ class cria
      */
     public static function create_bot_instance($course_id)
     {
-        $method = get_string('create_cria_bot_endpoint', 'block_ai_assistant');
+        $method = 'cria_create_bot';
         $data = self::get_create_cria_bot_config($course_id);
 
         $bot = webservice::exec($method, $data);
@@ -37,7 +37,7 @@ class cria
      */
     public static function update_bot_instance($course_id, $botid)
     {
-        $method = get_string('create_cria_bot_endpoint', 'block_ai_assistant');
+        $method = 'cria_create_bot';
 
         $data = self::get_create_cria_bot_config($course_id);
         $data['id'] = $botid;
@@ -73,7 +73,7 @@ class cria
 
     public static function get_bot_name_intent_id($bot_name)
     {
-        $method = get_string('cria_get_bot_name_endpoint', 'block_ai_assistant');
+        $method = 'cria_get_bot_name';
         $data = array('bot_id' => $bot_name);
         $bot_name_intent_id = webservice::exec($method, $data);
         return $bot_name_intent_id;
@@ -82,9 +82,10 @@ class cria
     /**
      * Returns the config for creating bot instance
      * @param int $course_id
+     * @param bool $is_syllabus
      * @return array
      */
-    private static function get_create_cria_bot_config($course_id)
+    private static function get_create_cria_bot_config($course_id, $is_syllabus = true)
     {
         global $DB;
         // Set parameters
@@ -97,12 +98,23 @@ class cria
             $welcome_message = $config->welcome_message;
             $no_context_message = $config->no_context_message;
             $embed_position = $config->embed_position;
+            $parsing_strategy = $config->parse_strategy;
         } else {
             // Set variables
             $subtitle = $block_settings->subtitle;
             $welcome_message = $block_settings->welcome_message;
             $no_context_message = $block_settings->no_context_message;
             $embed_position = $block_settings->embed_position;
+            // Parsing strategy is based on if this is a syllabus
+            if ($is_syllabus) {
+                // If block_settings lang is set to French, use ALSYLLABUS_FR
+                // otherwise use ALSYLLABUS
+                if ($block_settings->lang == 'fr') {
+                    $parsing_strategy = 'ALSYLLABUSFRENCH';
+                } else {
+                    $parsing_strategy = 'ALSYLLABUS';
+                }
+            }
         }
         $system_message = self::get_default_system_message($course_id);
 
@@ -142,7 +154,7 @@ class cria
             'no_context_llm_guess' => $config->no_context_llm_guess,
             'email' => implode('; ', self::get_teacher_emails($course_id)),
             'available_child' => $config->available_child,
-            'parse_strategy' => $config->parse_strategy,
+            'parse_strategy' => $parsing_strategy,
             'botwatermark' => $config->botwatermark,
             'title' => $config->title,
             'subtitle' => $subtitle,
@@ -158,7 +170,7 @@ class cria
 
     public static function delete_content_from_bot($contentid)
     {
-        $method = get_string('delete_content_from_bot_endpoint', 'block_ai_assistant');
+        $method = 'cria_content_delete';
         $data = array("id" => $contentid);
         $status = webservice::exec($method, $data);
         return $status;
@@ -172,7 +184,7 @@ class cria
      */
     public static function upload_content_to_bot($file_path, $course_id)
     {
-        $method = get_string('upload_content_to_bot_endpoint', 'block_ai_assistant');
+        $method = 'cria_content_upload';
         $data = self::get_upload_content_to_bot_config($file_path, $course_id);
         $file_id = webservice::exec($method, $data);
         return $file_id;
@@ -221,7 +233,7 @@ class cria
         $files = $fs->get_area_files($contextid, 'block_ai_assistant', 'syllabus', $courseid);
 
         if ($files) {
-            $file = reset($files);
+//            $file = reset($files);
             $temppath = $CFG->dataroot . '/temp/' . $courseid . '/cria';
 
             // Check if the directory exists, create it if it doesn't
@@ -335,8 +347,6 @@ class cria
      */
     public static function get_question_json_format($file_content)
     {
-        $method = get_string('get_questions_json_format_endpoint', 'block_ai_assistant');
-
         ///replace all of the below dummy value with the original api call
 
         $jsonFilePath = 'AL_questions.json';
@@ -353,7 +363,7 @@ class cria
      */
     public static function create_question($questionObj)
     {
-        $method = get_string('create_question_endpoint', 'block_ai_assistant');
+        $method = 'cria_question_create';
         $question_id = webservice::exec($method, $questionObj);
         return $question_id;
     }
@@ -365,7 +375,7 @@ class cria
      */
     public static function publish_question($question_id)
     {
-        $method = get_string('publish_question_endpoint', 'block_ai_assistant');
+        $method = 'cria_question_publish';
         $data = array('id' => $question_id);
         $status = webservice::exec($method, $data);
         return $status;

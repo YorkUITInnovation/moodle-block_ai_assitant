@@ -238,6 +238,21 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2024072801, 'ai_assistant');
     }
 
+    if ($oldversion < 2024073001) {
+
+        // Define field lang to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('lang', XMLDB_TYPE_CHAR, '4', null, null, null, 'en', 'no_context_message');
+
+        // Conditionally launch add field lang.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024073001, 'ai_assistant');
+    }
+
     return true;
 
 }

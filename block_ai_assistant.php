@@ -52,14 +52,16 @@ class block_ai_assistant extends block_base
             $record = new stdClass();
             $record->courseid = $this->page->course->id;
             $record->blockid = $this->instance->id;
-            $record->published = 0;
-            $record->usermodified = $USER->id;
-            $record->timecreated = time();
-            $record->timemodified = time();
             $record->bot_name = cria::create_bot_instance($this->page->course->id);
             $record->no_context_message = $config->no_context_message;
             $record->subtitle = $config->subtitle;
             $record->welcome_message = $config->welcome_message;
+            $record->lang = $config->default_language;
+            $record->published = 0;
+            $record->usermodified = $USER->id;
+            $record->timecreated = time();
+            $record->timemodified = time();
+
             $DB->insert_record('block_aia_settings', $record);
         }
 

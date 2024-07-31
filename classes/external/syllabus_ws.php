@@ -131,6 +131,17 @@ class block_ai_assistant_syllabus_ws extends external_api
 
         // Get the course record to fetch cria_file_id
         $courserecord = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
+        // Delete file from Moodle file area
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $course_id);
+        foreach ($files as $file) {
+            $file->delete();
+        }
+        // Delete file from Cria
+        $cria_file_id = $courserecord->cria_file_id;
+        $api_response = cria::delete_content_from_bot($cria_file_id);
+        // Update record with cria_file_id 0
+        $DB->set_field('block_aia_settings', 'cria_file_id', 0, ['courseid' => $course_id]);
         if ($courserecord->published == 1) {
             // Update record with publish 0
             $DB->set_field('block_aia_settings', 'published', 0, ['courseid' => $course_id]);
