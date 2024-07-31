@@ -62,7 +62,7 @@ foreach ($sections as $sectionnum => $section) {
                     
                         break;
                     case 'resource': // File
-                        // Index the file
+                        $course_structure->sections[$i]->modules[$x]->content = get_files_from_resource($mod[1]->id);
                         break;
                     case 'folder':
                         // Index the folder files
@@ -132,6 +132,38 @@ function get_glossary_entries($courseid)
     }
     return $glossary;
 }
+
+function get_files_from_resource($cmid)
+{
+    global $DB;
+
+    // Fetch the context of the resource
+    $context = context_module::instance($cmid);
+    $fs = get_file_storage();
+    $files = $fs->get_area_files($context->id, 'mod_resource', 'content');
+    $file_info = array();
+    // Loop through the files 
+    foreach ($files as $file) {
+        if (!$file->is_directory()) {
+            $file_info[] = array(
+                'filename' => $file->get_filename(),
+                'filepath' => $file->get_filepath(),
+                'filesize' => $file->get_filesize(),
+                'fileurl'  => moodle_url::make_pluginfile_url(
+                    $context->id,
+                    'mod_resource',
+                    'content',
+                    $file->get_itemid(),
+                    $file->get_filepath(),
+                    $file->get_filename()
+                )->out()
+            );
+        }
+    }
+
+    return $file_info;
+}
+
 
 
 echo $OUTPUT->footer();
