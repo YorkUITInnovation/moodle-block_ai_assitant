@@ -26,7 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['access'] = '  Student Access';
-$string['ai_assistant_instructions'] = 'To get the best results form the AI Assistant, please use the syllabus template provided in the Document Templates';
+$string['ai_assistant_instructions'] = 'To get the best results from the AI Assistant, please use the syllabus template provided in the Document Templates';
 $string['answer'] = 'Answer';
 $string['autotest']= 'AutoTest';
 $string['autotest_questions']= 'AutoTest questions';

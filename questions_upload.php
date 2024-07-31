@@ -35,7 +35,7 @@ if ($courserecord) {
 
 $context = CONTEXT_COURSE::instance($courseid);
 
-require_login(1, false);
+require_login($courseid, false);
 
 $formdata = new stdClass();
 $formdata->courseid = $courseid;

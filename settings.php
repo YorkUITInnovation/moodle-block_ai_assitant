@@ -178,7 +178,7 @@ if ($hassiteconfig) {
         'block_ai_assistant/min_k',
         get_string('min_k', 'block_ai_assistant'),
         '',
-        0,
+        0.3,
         PARAM_FLOAT
     ));
 

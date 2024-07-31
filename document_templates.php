@@ -21,13 +21,13 @@ global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 $courseid = required_param('courseid', PARAM_INT);
 
 $context = context_course::instance($courseid);
-
-require_login(1, false);
+require_login($courseid, false);
 
 $PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/blocks/ai_assistant/documnet_templates.php', ['courseid' => $courseid]));
+$PAGE->set_url(new moodle_url('/blocks/ai_assistant/document_templates.php', ['courseid' => $courseid]));
 $PAGE->set_title(get_string('document_templates', 'block_ai_assistant'));
 $PAGE->set_heading(get_string('document_templates', 'block_ai_assistant'));
+$PAGE->set_pagelayout('standard');
 
 echo $OUTPUT->header();
 echo $OUTPUT->render_from_template('block_ai_assistant/document_templates', ['courseid' => $courseid]);

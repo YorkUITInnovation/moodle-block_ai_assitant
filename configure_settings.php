@@ -29,7 +29,7 @@ $context = CONTEXT_COURSE::instance($courseid);
 $config = get_config('block_ai_assistant');
 
 
-require_login(1, false);
+require_login($courseid, false);
 
 // Get record form block_aia_settings table
 if (!$formdata = $DB->get_record('block_aia_settings', array('courseid' => $courseid))) {

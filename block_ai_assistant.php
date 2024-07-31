@@ -165,6 +165,7 @@ class block_ai_assistant extends block_base
             'syllabus_url' => $syllabus_url,
             'questions_url' => $questions_url,
             'embed_code' => $embed_code,
+            'teacher_embed_code' =>  cria::get_embed_bot_code($bot_id),
             'autotest_url' => $autotest_url
         );
 
