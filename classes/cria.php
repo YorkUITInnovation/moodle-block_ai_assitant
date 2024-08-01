@@ -87,7 +87,9 @@ class cria
      */
     private static function get_create_cria_bot_config($course_id, $is_syllabus = true)
     {
-        global $DB;
+        global $CFG, $DB;
+        // Get the site
+        $site = get_site();
         // Set parameters
         $context = \context_course::instance($course_id);
         $config = get_config('block_ai_assistant');
@@ -129,7 +131,7 @@ class cria
         $image = self::get_ai_assistant_logo();
 
         $data = array(
-            'name' => $name,
+            'name' => $site->shortname . '-' . $name,
             'description' => $config->description,
             'bot_type' => $config->bot_type,
             'bot_system_message' => $system_message,
