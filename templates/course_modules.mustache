@@ -1,18 +1,17 @@
 <div class="folder">
-    <input type="checkbox" id="{{idname}}">
+    
     {{#sections}}
-        <label for="{{idname}}">* {{name}}</label>
+        <input type="checkbox" id="{{idname}}">
+        <label for="{{idname}}"><i class="fa fa-folder"></i>  {{name}}</label>
         <div class="content">
-            <div class="folder">
-                <input type="checkbox" id="subfolder1">
-                <label for="subfolder1">* Subfolder 1</label>
-                <div class="content">
-                    <p>File 1</p>
-                    <p>File 2</p>
-                </div>
-            </div>
             {{#modules}}
-                <p>{{name}}</p>
+                <p><input 
+                type="checkbox"
+                class="courseModuleCheckbox"
+                data-filename="{{#content}}{{file_name}}{{/content}}" 
+                data-content="{{#content}}{{content}}{{/content}}"
+        
+                >{{name}}</p>
             {{/modules}}
         </div>
     {{/sections}}

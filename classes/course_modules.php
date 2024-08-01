@@ -27,9 +27,17 @@ class course_modules
             if ($sectionnum == 0) {
                 $course_structure->sections[$i]->name = get_string('general');
             } else {
-                $course_structure->sections[$i]->name = $section->name;
+                if (isset($section->name)) {
+                    $course_structure->sections[$i]->name = $section->name;
+                } else {
+                    $course_structure->sections[$i]->name = 'Topic ' . $sectionnum;
+                }
             }
-            $course_structure->sections[$i]->idname = strtolower(str_replace(' ', '-', $course_structure->sections[$i]->name));
+            if (isset($section->name)) {
+            $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(str_replace(' ', '-', $course_structure->sections[$i]->name));
+            } else {
+                $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(str_replace(' ', '-', $course_structure->sections[$i]->name));
+            }
             $x = 0; // Used to count the number of modules in a section
             if (isset($modules->sections[$section->section])) {
                 $section_mods = $modules->sections[$section->section];
