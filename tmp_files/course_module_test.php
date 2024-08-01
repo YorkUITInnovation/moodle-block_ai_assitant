@@ -20,11 +20,13 @@ $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/blocks/ai_assistant/modtest.php'));
 $PAGE->set_title('Test');
 $PAGE->set_heading('Test');
+$PAGE->requires->css('styles.css');
 $config = get_config('block_ai_assistant');
 echo $OUTPUT->header();
-$site = get_site();
-print_object($site);
-print_object(course_modules::get_course_modules($courseid));
+
+$course_modules = (course_modules::get_course_modules($courseid));
+print_object($course_modules);
+echo $OUTPUT->render_from_template('block_ai_assistant/course_modules', [$course_modules]);
 
 //$content = base64_decode('')
 

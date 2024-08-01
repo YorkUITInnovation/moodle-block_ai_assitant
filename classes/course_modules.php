@@ -24,7 +24,12 @@ class course_modules
         foreach ($sections as $sectionnum => $section) {
             $course_structure->sections[$i] = new \stdClass();
             $course_structure->sections[$i]->sectionnum = $sectionnum;
-            $course_structure->sections[$i]->name = $section->name;
+            if ($sectionnum == 0) {
+                $course_structure->sections[$i]->name = get_string('general');
+            } else {
+                $course_structure->sections[$i]->name = $section->name;
+            }
+            $course_structure->sections[$i]->idname = strtolower(str_replace(' ', '-', $course_structure->sections[$i]->name));
             $x = 0; // Used to count the number of modules in a section
             if (isset($modules->sections[$section->section])) {
                 $section_mods = $modules->sections[$section->section];

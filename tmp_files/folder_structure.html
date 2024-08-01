@@ -9,7 +9,8 @@
 <body>
 <div class="folder">
     <input type="checkbox" id="folder1">
-    <label for="folder1">* Folder 1</label>
+    {{#section}}
+    <label for="folder1">* {{name}}</label>
     <div class="content">
         <div class="folder">
             <input type="checkbox" id="subfolder1">
@@ -19,8 +20,11 @@
                 <p>File 2</p>
             </div>
         </div>
-        <p>File 3</p>
+        {{#modules}}
+        <p>{{name}}</p>
+        {{/modules}}
     </div>
+    {{/section}}
 </div>
 </body>
 </html>

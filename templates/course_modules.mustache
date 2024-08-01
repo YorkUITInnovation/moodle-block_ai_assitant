@@ -1,0 +1,19 @@
+<div class="folder">
+    <input type="checkbox" id="{{idname}}">
+    {{#sections}}
+        <label for="{{idname}}">* {{name}}</label>
+        <div class="content">
+            <div class="folder">
+                <input type="checkbox" id="subfolder1">
+                <label for="subfolder1">* Subfolder 1</label>
+                <div class="content">
+                    <p>File 1</p>
+                    <p>File 2</p>
+                </div>
+            </div>
+            {{#modules}}
+                <p>{{name}}</p>
+            {{/modules}}
+        </div>
+    {{/sections}}
+</div>
