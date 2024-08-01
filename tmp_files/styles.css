@@ -1,0 +1,29 @@
+.folder {
+    margin-left: 20px;
+}
+
+input[type="checkbox"] {
+    display: none;
+}
+
+label {
+    cursor: pointer;
+    display: block;
+    padding: 5px;
+    background-color: #fff;
+
+    margin-bottom: 5px;
+}
+
+label:hover {
+    background-color: #fff;
+}
+
+.content {
+    display: none;
+    margin-left: 20px;
+}
+
+input[type="checkbox"]:checked + label + .content {
+    display: block;
+}
