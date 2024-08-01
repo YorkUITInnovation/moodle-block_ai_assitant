@@ -18,7 +18,7 @@ function enableSelectAll() {
             selectAllCheckbox.addEventListener('change', function() {
                 const sectionId = this.id.replace('selectAll-', '');
                 const checkboxes = document.querySelectorAll(`.module-checkbox-${sectionId}`);
-                
+               
                 checkboxes.forEach(checkbox => {
                     checkbox.checked = this.checked;
                 });
