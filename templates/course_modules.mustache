@@ -8,11 +8,10 @@
             {{#modules}}
                 <p><input 
                 type="checkbox"
-                class="courseModuleCheckbox"
+                class="courseModuleCheckbox module-checkbox-{{idname}}"
                 data-section="{{idname}}"
                 data-filename="{{#content}}{{file_name}}{{/content}}" 
                 data-content="{{#content}}{{content}}{{/content}}"
-               
                 >{{name}}</p>
                 
             {{/modules}}
