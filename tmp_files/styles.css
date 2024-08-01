@@ -34,3 +34,8 @@ input[type="checkbox"]:checked + label + .content {
     visibility: visible  !important;
 }
 
+.select-all-checkbox{
+    display: inline-block !important;
+    visibility: visible  !important;
+
+}

@@ -1,17 +1,20 @@
 <div class="folder">
-    
     {{#sections}}
         <input type="checkbox" id="{{idname}}">
         <label for="{{idname}}"><i class="fa fa-folder"></i>  {{name}}</label>
         <div class="content">
+            <input type="checkbox" id="selectAll-{{idname}}" class="select-all-checkbox">
+            <label for="selectAll-{{idname}}">Select All</label>
             {{#modules}}
                 <p><input 
                 type="checkbox"
                 class="courseModuleCheckbox"
+                data-section="{{idname}}"
                 data-filename="{{#content}}{{file_name}}{{/content}}" 
                 data-content="{{#content}}{{content}}{{/content}}"
-        
+               
                 >{{name}}</p>
+                
             {{/modules}}
         </div>
     {{/sections}}
