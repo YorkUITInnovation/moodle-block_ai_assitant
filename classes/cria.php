@@ -182,10 +182,15 @@ class cria
      * @param int $course_id
      * @return int file_id
      */
-    public static function upload_content_to_bot($file_path, $course_id)
+    public static function upload_content_to_bot($course_id, $file_name, $file_content, $parsing_strategy = '')
     {
         $method = 'cria_content_upload';
-        $data = self::get_upload_content_to_bot_config($file_path, $course_id);
+        $data = [
+            "intentid" => (int)self::get_intent_id($course_id),
+            "filename" => $file_name,
+            "filecontent" => $file_content,
+            "parsingstrategy" => $parsing_strategy
+        ];
         $file_id = webservice::exec($method, $data);
         return $file_id;
     }
@@ -193,28 +198,18 @@ class cria
     /**
      * Returns the config for uploading content to bot
      * @param string $file_path
-     * @param int $course_id
      * @return array
      */
-    private static function get_upload_content_to_bot_config($file_path, $course_id)
+    public static function get_upload_content_to_bot_config($file_path)
     {
         global $DB;
         $file_content = file_get_contents($file_path);
         $encoded_content = base64_encode($file_content);
-        $filename = basename($file_path);
-        $courserecord = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
-        if ($courserecord) {
-            $bot_name = $courserecord->bot_name;
-            $intentid = explode('-', $bot_name)[1];
-            // $intentid =  $bot_name;
-
-        }
-
-        $data = array(
-            "intentid" => (int)$intentid,
-            "filename" => $filename,
-            "filecontent" => $encoded_content,
-        );
+        $file_name = basename($file_path);
+        // Set data
+        $data = new \stdClass();
+        $data->file_name = $file_name;
+        $data->file_content = $encoded_content;
         return $data;
     }
 
@@ -269,8 +264,6 @@ class cria
         $system_message = str_replace('[course_number]', $course_data->shortname, $system_message);
         // Replace the [course_title] with the fullname of the course
         $system_message = str_replace('[course_title]', $course_data->fullname, $system_message);
-        // Add todays date
-        $system_message .= ' Todays date is ' . date('Y-m-d');
         return $system_message;
     }
 
@@ -349,22 +342,21 @@ class cria
     {
         ///replace all of the below dummy value with the original api call
 
-        $jsonFilePath = 'AL_questions.json';
-        $jsonContent = file_get_contents($jsonFilePath);
-        $jsonQuestionObj = json_decode($jsonContent, true);
-        return $jsonQuestionObj;
+        $json_file_path = 'AL_questions.json';
+        $json_content = file_get_contents($json_file_path);
+        $json_question_obj = json_decode($json_content, true);
+        return $json_question_obj;
     }
 
     /**
      * Create a question
-     * @param int $intentid
-     * @param object $questionObj
+     * @param object $question_obj
      * @return int $question_id
      */
-    public static function create_question($questionObj)
+    public static function create_question($question_obj)
     {
         $method = 'cria_question_create';
-        $question_id = webservice::exec($method, $questionObj);
+        $question_id = webservice::exec($method, $question_obj);
         return $question_id;
     }
 
@@ -386,64 +378,63 @@ class cria
      * @param object $jsonObj
      * @return array $questions
      */
-    public static function create_questions_from_json($jsonQuestionObj, $intentid, $courseid)
+    public static function create_questions_from_json($json_question_obj, $courseid)
     {
-        foreach ($jsonQuestionObj as $key => $questionData) {
+        foreach ($json_question_obj as $key => $question_data) {
 
-            $intentid = $intentid;
             $name = $key;
-            $value = $questionData['question'];
-            $answer = $questionData['answer'];
-            $relatedquestions = array();
+            $value = $question_data['question'];
+            $answer = $question_data['answer'];
+            $related_questions = array();
             $lang = 'en';
-            $generateanswer = 0;
-            $examplequestions = array_map(function ($example) {
+            $generate_answer = 0;
+            $example_questions = array_map(function ($example) {
                 return array('value' => $example);
-            }, $questionData['examples']);
+            }, $question_data['examples']);
 
-            $questionObj = [
-                'intentid' => $intentid,
+            $question_obj = [
+                'intentid' => (int)self::get_intent_id($courseid),
                 'name' => $name,
                 'value' => $value,
                 'answer' => $answer,
-                'relatedquestions' => json_encode($relatedquestions),
+                'relatedquestions' => json_encode($related_questions),
                 'lang' => $lang,
-                'generateanswer' => $generateanswer,
-                'examplequestions' => json_encode($examplequestions)
+                'generateanswer' => $generate_answer,
+                'examplequestions' => json_encode($example_questions)
             ];
-            $question_id = cria::create_question($questionObj);
+            $question_id = cria::create_question($question_obj);
 
             $status = cria::publish_question($question_id);
 
             if ($status) {
-                $questionData = [
+                $question_data = [
                     'courseid' => $courseid,
                     'name' => $name,
                     'value' => $value,
                     'answer' => $answer,
                     'criaquestionid' => intval($question_id),
-                    'related_questions' => json_encode($relatedquestions)
+                    'related_questions' => json_encode($related_questions)
                 ];
-                self::update_questions_db($questionData);
+                self::update_questions_db($question_data);
             }
         }
     }
 
-    private static function update_questions_db($questionData)
+    private static function update_questions_db($question_data)
     {
         global $DB;
-        $question_id = $questionData['criaquestionid'];
+        $question_id = $question_data['criaquestionid'];
         $question_record = $DB->get_record('block_aia_questions', array('criaquestionid' => $question_id));
 
         if ($question_record) {
             $questionData['id'] = $question_record->id;
-            $DB->update_record('block_aia_questions', $questionData);
+            $DB->update_record('block_aia_questions', $question_data);
         } else {
-            $DB->insert_record('block_aia_questions', $questionData);
+            $DB->insert_record('block_aia_questions', $question_data);
         }
     }
 
-    public static function create_questions_from_xlsx($file, $intentid, $courseid)
+    public static function create_questions_from_xlsx($file, $courseid)
     {
         global $CFG;
 
@@ -451,59 +442,59 @@ class cria
         $content = $file->get_content();
 
         // Define directory and file paths
-        $directoryPath = $CFG->dataroot . '/temp/' . $courseid;
-        $tempfile = $directoryPath . '/questions_upload.xlsx';
+        $directory_path = $CFG->dataroot . '/temp/' . $courseid;
+        $temp_file = $directory_path . '/questions_upload.xlsx';
 
         // Check if the directory exists, create it if it doesn't
-        if (!is_dir($directoryPath)) {
-            if (!mkdir($directoryPath, 0777, true)) {
-                throw new Exception("Failed to create directory: $directoryPath");
+        if (!is_dir($directory_path)) {
+            if (!mkdir($directory_path, 0777, true)) {
+                throw new Exception("Failed to create directory: $directory_path");
             }
         }
 
         // Save the content to the temporary file
-        file_put_contents($tempfile, $content);
+        file_put_contents($temp_file, $content);
 
         // Load the spreadsheet from the temporary file
         try {
-            $spreadsheet = IOFactory::load($tempfile);
+            $spreadsheet = IOFactory::load($temp_file);
         } catch (Exception $e) {
             throw new Exception("Failed to load spreadsheet: " . $e->getMessage());
         }
 
         $sheet = $spreadsheet->getActiveSheet();
-        $highestRow = $sheet->getHighestRow();
-        echo "Total Rows in Spreadsheet: " . $highestRow . "<br>";
-        for ($row = 2; $row <= $highestRow; $row++) {
+        $highest_row = $sheet->getHighestRow();
+        echo "Total Rows in Spreadsheet: " . $highest_row . "<br>";
+        for ($row = 2; $row <= $highest_row; $row++) {
             echo "Processing Row: " . $row . "<br>";
 
             $name = $sheet->getCell('A' . $row)->getValue();
             $value = $sheet->getCell('B' . $row)->getValue();
             $answer = $sheet->getCell('C' . $row)->getValue();
-            $relatedquestions = $sheet->getCell('D' . $row)->getValue();
+            $related_questions = $sheet->getCell('D' . $row)->getValue();
             $lang = $sheet->getCell('E' . $row)->getValue();
-            $generateanswer = $sheet->getCell('F' . $row)->getValue();
-            $examplequestions = $sheet->getCell('G' . $row)->getValue();
+            $generate_answer = $sheet->getCell('F' . $row)->getValue();
+            $example_questions = $sheet->getCell('G' . $row)->getValue();
 
             // Debug output
             echo "Name: " . $name . "<br>";
             echo "Value: " . $value . "<br>";
             echo "Answer: " . $answer . "<br>";
-            echo "Related Questions: " . $relatedquestions . "<br>";
+            echo "Related Questions: " . $related_questions . "<br>";
             echo "Language: " . $lang . "<br>";
-            echo "Generate Answer: " . $generateanswer . "<br>";
-            echo "Example Questions: " . $examplequestions . "<br>";
+            echo "Generate Answer: " . $generate_answer . "<br>";
+            echo "Example Questions: " . $example_questions . "<br>";
 
             // Prepare question data
             $questionObj = [
-                'intentid' => $intentid,
+                'intentid' => (int)self::get_intent_id($courseid),
                 'name' => $name,
                 'value' => $value,
                 'answer' => $answer,
-                'relatedquestions' => $relatedquestions,
+                'relatedquestions' => $related_questions,
                 'lang' => $lang,
-                'generateanswer' => $generateanswer,
-                'examplequestions' => $examplequestions
+                'generateanswer' => $generate_answer,
+                'examplequestions' => $example_questions
             ];
 
             try {
@@ -513,15 +504,15 @@ class cria
 
                 if ($status) {
                     //autotest the bot:
-                    $questionData = [
+                    $question_data = [
                         'courseid' => $courseid,
                         'name' => $name,
                         'value' => $value,
                         'answer' => $answer,
                         'criaquestionid' => intval($question_id),
-                        'related_questions' => $relatedquestions
+                        'related_questions' => $related_questions
                     ];
-                    self::update_questions_db($questionData);
+                    self::update_questions_db($question_data);
                     echo "Question $name processed and saved.<br>";
                 } else {
                     echo "Failed to publish question $name.<br>";
@@ -573,6 +564,42 @@ class cria
     {
         global $CFG;
         exec("php $CFG->dirroot/blocks/ai_assistant/cli/autotest.php -cid=$course_id > /dev/null 2>&1 &");
+    }
+
+    /**
+     * Get bot name and intent id
+     * @param $course_id
+     * @return \stdClass
+     */
+    private static function split_bot_name($course_id)
+    {
+        global $DB;
+        $block_settings = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
+        $bot_info = new \stdClass();
+        $bot_name = explode('-', $block_settings->bot_name);
+        $bot_info->bot_id = str_replace('"','', $bot_name[0]);
+        $bot_info->intent_id = str_replace('"','', $bot_name[1]);
+        return $bot_info;
+    }
+
+    /**
+     * Get bot id
+     * @param $course_id
+     * @return string
+     */
+    public static function get_bot_id($course_id)
+    {
+        return self::split_bot_name($course_id)->bot_id;
+    }
+
+    /**
+     * Get intent id
+     * @param $course_id
+     * @return string
+     */
+    public static function get_intent_id($course_id)
+    {
+        return self::split_bot_name($course_id)->intent_id;
     }
 
 }

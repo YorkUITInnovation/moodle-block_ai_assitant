@@ -37,6 +37,7 @@ class course_modules
                         $course_structure->sections[$i]->modules[$x]->intro = strip_tags($mod[0]->intro);
                         $course_structure->sections[$i]->modules[$x]->instanceid = $mod[0]->id;
                         $course_structure->sections[$i]->modules[$x]->cmid = $mod[1]->id;
+                        $course_structure->sections[$i]->modules[$x]->modname = $mod[1]->modname;
                         // Prepare the content based on the type of module
                         switch ($mod[1]->modname) {
                             case 'page':
@@ -113,7 +114,7 @@ class course_modules
      * @return array
      * @throws \moodle_exception
      */
-    private static function get_module_from_cmid($cmid)
+    public static function get_module_from_cmid($cmid)
     {
         global $DB;
         if (!$cmrec = $DB->get_record_sql("SELECT cm.*, md.name as modname
@@ -141,7 +142,7 @@ class course_modules
      * @param $module_type
      * @return stdClass
      */
-    private static function set_module_content($id, $name, $intro, $content, $module_type)
+    public static function set_module_content($id, $name, $intro, $content, $module_type)
     {
         $module = new \stdClass();
         // Set the file name
@@ -159,7 +160,7 @@ class course_modules
      * @param $cmid
      * @return string
      */
-    private static function get_book_content($book_id)
+    public static function get_book_content($book_id)
     {
         global $CFG, $DB;
 
@@ -178,7 +179,7 @@ class course_modules
      * @param $id
      * @return stdClass
      */
-    private static function get_glossary_entries($cmid, $id, $name)
+    public static function get_glossary_entries($cmid, $id, $name)
     {
         global $CFG, $DB;
 
@@ -238,7 +239,7 @@ class course_modules
      * @param $cmid
      * @return array
      */
-    private static function get_files_from_resource($cmid, $id)
+    public static function get_files_from_resource($cmid, $id)
     {
         global $CFG;
 
@@ -286,7 +287,7 @@ class course_modules
      * @param $intro
      * @return stdClass
      */
-    private static function get_folder_files($cmid, $id, $name, $intro)
+    public static function get_folder_files($cmid, $id, $name, $intro)
     {
         global $CFG, $DB;
 

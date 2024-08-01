@@ -302,7 +302,7 @@ set_config('description', '', 'block_ai_assistant');
 set_config('bot_type', 1, 'block_ai_assistant');
 set_config('requires_content_prompt', 0, 'block_ai_assistant');
 set_config('requires_user_prompt', 1, 'block_ai_assistant');
-set_config('user_prompt', '', 'block_ai_assistant');
+set_config('user_prompt', 'Today\'s date is ' . date('Y-m-d') . '. q:', 'block_ai_assistant');
 set_config('theme_color', '#e31837', 'block_ai_assistant');
 set_config('max_context', 120000, 'block_ai_assistant');
 set_config('no_context_use_message', 1, 'block_ai_assistant');
