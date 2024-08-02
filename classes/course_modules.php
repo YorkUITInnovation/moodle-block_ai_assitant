@@ -385,7 +385,7 @@ class course_modules
         $data->timecreated = time();
         $data->timemodified = time();
 
-        return $DB->insert_record('block_ai_assistant_course_modules', $data);
+        return $DB->insert_record('block_aia_course_modules', $data);
     }
 
     /**

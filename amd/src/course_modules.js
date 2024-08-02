@@ -34,11 +34,29 @@ function display_modules() {
                                 'filename': checkbox.getAttribute('data-filename'),
                                 'content': checkbox.getAttribute('data-content'),
                                 'courseid': checkbox.getAttribute('data-courseid'),
-                                'cmid': checkbox.getAttribute('data-cmid')
+                                'cmid': checkbox.getAttribute('data-cmid'),
+                                'modname': checkbox.getAttribute('data-modname'),
+                            });
+                            //make a new ajax call to a new webservice that calls insert from course_module class
+                            //block_ai_assistant_insert_course_modules
+                            var insert_modules = ajax.call([{
+                                methodname: 'block_ai_assistant_insert_course_modules',
+                                args: {
+                                    'courseid': courseid,
+                                    'selected_modules':selected_modules
+                                }
+
+                            }]);
+                            insert_modules[0].done(function(response){
+                                    console.log("response", response);
+                                    alert("Successfully added, record id is: " + response);
+                                    // You can now use the data variable for further processing
+                            }).fail(function(error){
+                                alert("error in ajax call of insert modules" + error);
                             });
                         }
                     });
-                    console.log(selected_modules);
+                    console.log("selected_module structure",selected_modules);
 
 
 
