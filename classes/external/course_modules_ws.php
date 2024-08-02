@@ -68,6 +68,7 @@ class block_ai_assistant_course_modules_ws extends external_api
 
 
 //new webservice to insert module
+
     /**
      * Returns description of method parameters
      * @return external_function_parameters
@@ -78,19 +79,20 @@ class block_ai_assistant_course_modules_ws extends external_api
             array(
                 'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
                 'selected_modules' => new external_multiple_structure(
-        new external_single_structure(
-            array(
-                'filename' => new external_value(PARAM_TEXT, 'Filename'),
-                'content' => new external_value(PARAM_RAW, 'Content'),
-                'courseid' => new external_value(PARAM_INT, 'Course id'),
-                'cmid' => new external_value(PARAM_INT, 'CM ID'),
-                'modname' => new external_value(PARAM_TEXT, 'Module Name')
-            )
-        )
-    )
+                    new external_single_structure(
+                        array(
+                            'filename' => new external_value(PARAM_TEXT, 'Filename'),
+                            'content' => new external_value(PARAM_RAW, 'Content'),
+                            'courseid' => new external_value(PARAM_INT, 'Course id'),
+                            'cmid' => new external_value(PARAM_INT, 'CM ID'),
+                            'modname' => new external_value(PARAM_TEXT, 'Module Name')
+                        )
+                    )
+                )
             )
         );
     }
+
     /**
      * inserts course modules
      * @param int $courseid
@@ -118,7 +120,7 @@ class block_ai_assistant_course_modules_ws extends external_api
 
         foreach ($selected_modules as $module) {
             $module['courseid'] = $courseid;
-            $fileId=course_modules::insert_record((object)$module); // Ensure the data is cast to an object
+            $fileId = course_modules::insert_record((object)$module); // Ensure the data is cast to an object
         }
         return $fileId;
     }

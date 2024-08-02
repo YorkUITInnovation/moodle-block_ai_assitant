@@ -382,15 +382,11 @@ class course_modules
         global $DB, $USER;
 
         // Check if the record already exists
-        $existing_record = $DB->get_record('block_aia_course_modules', array(
-            'courseid' => $data->courseid,
-            'cmid' => $data->cmid
-        ));
-
-        if ($existing_record) {
-            // Record exists
-            return 0;
-        } else {
+        if (!$existing_record = $DB->get_record('block_aia_course_modules', array(
+                'courseid' => $data->courseid,
+                'cmid' => $data->cmid
+            )
+        )) {
             // Add required fields
             $data->usermodified = $USER->id;
             $data->timecreated = time();
@@ -399,6 +395,8 @@ class course_modules
             // Insert the new record
             return $DB->insert_record('block_aia_course_modules', $data);
         }
+
+        return 0;
     }
 
     /**
