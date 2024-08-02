@@ -11,6 +11,7 @@ class course_modules
      */
     public static function get_course_modules($courseid)
     {
+        global $CFG, $OUTPUT;
         $config = get_config('block_ai_assistant');
         $course_structure = new \stdClass();
         // Get accepted modules
@@ -23,6 +24,7 @@ class course_modules
         $i = 0; // Used to count the number of sections
         foreach ($sections as $sectionnum => $section) {
             $course_structure->sections[$i] = new \stdClass();
+            $course_structure->sections[$i]->courseid = $courseid;
             $course_structure->sections[$i]->sectionnum = $sectionnum;
             if ($sectionnum == 0) {
                 $course_structure->sections[$i]->name = get_string('general');
@@ -34,7 +36,7 @@ class course_modules
                 }
             }
             if (isset($section->name)) {
-            $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(str_replace(' ', '-', $course_structure->sections[$i]->name));
+                $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(str_replace(' ', '-', $course_structure->sections[$i]->name));
             } else {
                 $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(str_replace(' ', '-', $course_structure->sections[$i]->name));
             }
@@ -51,6 +53,7 @@ class course_modules
                         $course_structure->sections[$i]->modules[$x]->instanceid = $mod[0]->id;
                         $course_structure->sections[$i]->modules[$x]->cmid = $mod[1]->id;
                         $course_structure->sections[$i]->modules[$x]->modname = $mod[1]->modname;
+                        // Get module pix
                         // Prepare the content based on the type of module
                         switch ($mod[1]->modname) {
                             case 'page':
@@ -61,6 +64,8 @@ class course_modules
                                     $mod[0]->content,
                                     $mod[1]->modname
                                 );
+                                $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'page');
+                                $course_structure->sections[$i]->modules[$x]->icontype = 'content';
                                 break;
                             case 'label':
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
@@ -70,6 +75,8 @@ class course_modules
                                     '',
                                     $mod[1]->modname
                                 );
+                                $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'label');
+                                $course_structure->sections[$i]->modules[$x]->icontype = 'content';
                                 break;
                             case 'book':
                                 // Must get book content
@@ -81,13 +88,16 @@ class course_modules
                                     $content,
                                     $mod[1]->modname
                                 );
-
+                                $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'book');
+                                $course_structure->sections[$i]->modules[$x]->icontype = 'content';
                                 break;
                             case 'resource': // File
                                 $course_structure->sections[$i]->modules[$x]->content = self::get_files_from_resource(
                                     $mod[1]->id,
                                     $mod[0]->id
                                 );
+                                $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'resource');
+                                $course_structure->sections[$i]->modules[$x]->icontype = 'content';
                                 break;
                             case 'folder':
                                 $folder_files = self::get_folder_files(
@@ -98,6 +108,8 @@ class course_modules
                                 );
                                 $course_structure->sections[$i]->modules[$x]->content = $folder_files->content;
                                 $course_structure->sections[$i]->modules[$x]->files = $folder_files->files;
+                                $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'folder');
+                                $course_structure->sections[$i]->modules[$x]->icontype = 'content';
                                 break;
                             case 'glossary':
                                 $content = self::get_glossary_entries($mod[1]->id, $mod[0]->id, $mod[0]->name);
@@ -109,6 +121,8 @@ class course_modules
                                     $mod[1]->modname
                                 );
                                 $course_structure->sections[$i]->modules[$x]->files = $content->files;
+                                $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'glossary');
+                                $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration';
 
                                 break;
                         }
@@ -356,5 +370,66 @@ class course_modules
         $folder_data->files = $folder_files;
 
         return $folder_data;
+    }
+
+    /**
+     * Insert record
+     * @param stdClass $data $courseid, $cmid, $modname
+     * @return int
+     */
+    public static function insert_record($data)
+    {
+        global $DB, $USER;
+        // Add required fields
+        $data->usermodified = $USER->id;
+        $data->timecreated = time();
+        $data->timemodified = time();
+
+        return $DB->insert_record('block_ai_assistant_course_modules', $data);
+    }
+
+    /**
+     * Update a record. Should be triggered when a course module event is updated
+     * @param $data $id, $courseid, $cmid, $modname
+     * @return bool
+     * @throws \dml_exception
+     */
+    public static function update_record($data)
+    {
+        global $DB, $USER;
+        $block_cm_info = $DB->get_record('block_ai_assistant_course_modules', ['id' => $data->id]);
+        // Delete the old file on cria
+        $delete_result = cria::delete_content_from_bot($block_cm_info->cria_fileid);
+        if ($delete_result != 200) {
+            return false;
+        }
+        // add the file to cria base on modname
+        switch ($block_cm_info->modname) {
+            case 'page':
+                $sql = "SELECT page.* FROM {page} page 
+                INNER JOIN {course_modules} cm ON cm.instanceid = page.id WHERE cm.id = ?";
+                $page = $DB->get_record_sql($sql, [$block_cm_info->cmid]);
+                $module_content = self::set_module_content(
+                    $block_cm_info->cmid,
+                    $page->name,
+                    $page->intro,
+                    $page->content,
+                    $block_cm_info->modname
+                );
+                $data->cria_fileid = cria::upload_content_to_bot(
+                    $block_cm_info->courseid,
+                    $module_content->file_name,
+                    $module_content->content,
+                    'GENERIC'
+                );
+                break;
+
+
+        }
+        // Add required fields
+        $data->usermodified = $USER->id;
+        $data->timemodified = time();
+
+        return $DB->update_record('block_ai_assistant_course_modules', $data);
     }
 }

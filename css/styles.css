@@ -1,0 +1,41 @@
+.blockAiAssistantFolder {
+    margin-left: 5px;
+}
+
+input[type="checkbox"] {
+    display: none;
+}
+
+label {
+    cursor: pointer;
+    display: block;
+    padding: 5px;
+    background-color: #fff;
+
+    margin-bottom: 5px;
+}
+
+label:hover {
+    background-color: #fff;
+}
+
+.blockAiAssistantContent {
+    display: none;
+    margin-left: 20px;
+}
+
+input[type="checkbox"]:checked + label + .blockAiAssistantContent {
+    display: block;
+}
+
+
+.courseModuleCheckbox {
+    display: inline-block !important;
+    visibility: visible  !important;
+}
+
+.select-all-checkbox{
+    display: inline-block !important;
+    visibility: visible  !important;
+
+}

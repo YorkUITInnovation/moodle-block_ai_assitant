@@ -22,7 +22,7 @@ class block_ai_assistant_question_ws extends external_api
         return new external_function_parameters(
             array(
                 'questionid' => new external_value(PARAM_INT, 'Question id', false, 0),
-                'courseid' => new external_value(PARAM_INT, 'Course id', false, 0)
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED)
             )
         );
     }

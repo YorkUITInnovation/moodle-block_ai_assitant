@@ -18,7 +18,7 @@ function enable_ai_assitant() {
 
         //Publish the record
         var enable_content = ajax.call([{
-            methodname: 'ai_assistant_publish',
+            methodname: 'block_ai_assistant_publish',
             args: {
                 'courseid': courseid
             }

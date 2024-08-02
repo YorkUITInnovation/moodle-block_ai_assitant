@@ -21,7 +21,7 @@ function delete_question() {
                 Str.get_string('cancel', 'block_ai_assistant'), function () {
                     //Delete the record
                     var delete_content = ajax.call([{
-                        methodname: 'ai_assistant_delete_question',
+                        methodname: 'block_ai_assistant_delete_question',
                         args: {
                             'question': questionid,
                             'courseid': courseid

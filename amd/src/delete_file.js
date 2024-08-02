@@ -20,7 +20,7 @@ function delete_syllabus() {
             Str.get_string('cancel', 'block_ai_assistant'), function () {
                 //Delete the record
                 var delete_content = ajax.call([{
-                    methodname: 'ai_assistant_delete_syllabus',
+                    methodname: 'block_ai_assistant_delete_syllabus',
                     args: {
                         'courseid': courseid
                     }

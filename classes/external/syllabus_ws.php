@@ -23,7 +23,7 @@ class block_ai_assistant_syllabus_ws extends external_api
     {
         return new external_function_parameters(
             array(
-                'courseid' => new external_value(PARAM_INT, 'Course id', false, 0)
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED)
             )
         );
     }
@@ -59,11 +59,9 @@ class block_ai_assistant_syllabus_ws extends external_api
         }
 
         $cria_file_id = $courserecord->cria_file_id;
-        print_object($cria_file_id);
 
         // Call the API to delete the file
         $api_response = cria::delete_content_from_bot($cria_file_id);
-        print_object($api_response);
 
         // Handle the API response
         // if ($api_response !== 'true') {

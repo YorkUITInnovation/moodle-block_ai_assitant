@@ -26,7 +26,7 @@ function delete_autotest_question() {
                 Str.get_string('cancel', 'block_ai_assistant'), function () {
                     //Delete the record
                     var delete_content = ajax.call([{
-                        methodname: 'ai_assistant_delete_autotest_question',
+                        methodname: 'block_ai_assistant_delete_autotest_question',
                         args: {
                             'id': id,
                             'courseid': courseid
