@@ -483,8 +483,6 @@ class cria
             ];
             $question_id = self::create_question($question_obj);
             if ($question_id) {
-                file_put_contents('/var/www/moodledata/temp/small_talk.log',
-                    date('Y-m-d H:i:s', time()) . ' - $question id:' . $question_id . ' - ' . ' course id: ' . $course_id . PHP_EOL, FILE_APPEND);
                 $published_question = self::publish_question($question_id);
                 if ($published_question != 1) {
                     continue;

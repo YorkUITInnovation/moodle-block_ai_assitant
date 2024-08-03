@@ -80,6 +80,7 @@ $string['no_context_message'] = 'No Context Message';
 $string['no_context_message_default'] = 'I\'m sorry, I couldn\'t find any information. Please rephrase your question';
 $string['no_context_message_help'] = 'No Context Message help text here';
 $string['pluginname'] = 'Al Course Assistant';
+$string['pluginname_help'] = 'This may take up to a minute. Thanks for your patience.';
 $string['questions'] = 'Questions';
 $string['question'] = 'Question';
 $string['question_updated_successfully'] = 'Question updated successfully';
