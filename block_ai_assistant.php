@@ -45,10 +45,9 @@ class block_ai_assistant extends block_base
     {
         global $OUTPUT;
         global $PAGE, $DB, $USER, $CFG;
-        $course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id));
         $config = get_config('block_ai_assistant');
 
-        if (!$course_record) {
+        if (!$course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id))) {
             $record = new stdClass();
             $record->courseid = $this->page->course->id;
             $record->blockid = $this->instance->id;
@@ -61,8 +60,9 @@ class block_ai_assistant extends block_base
             $record->usermodified = $USER->id;
             $record->timecreated = time();
             $record->timemodified = time();
-
             $DB->insert_record('block_aia_settings', $record);
+            $small_talk = cria::create_small_talk_questions($this->page->course->id);
+            $course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id));
         }
 
         if ($this->content !== null) {
