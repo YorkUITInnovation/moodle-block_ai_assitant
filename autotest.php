@@ -43,7 +43,7 @@ if (!$table->is_downloading()) {
     $PAGE->navbar->add('Downloading data', new moodle_url('/blocks/ai_assistant/autotest.php', ['courseid' => $courseid]));
     echo $OUTPUT->header();
 } else {
-    $table->define_columns(['section', 'questions', 'human_answer', 'bot_answer']);
+    $table->define_columns(['section', 'questions', 'bot_answer', 'human_answer']);
     $table->define_headers(['Section', 'question', 'GenAI Answer', 'Human Answer']);
     $PAGE->set_context($context);
     $PAGE->set_url(new moodle_url('/blocks/ai_assistant/autotest.php', ['courseid' => $courseid]));
