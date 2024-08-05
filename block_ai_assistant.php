@@ -95,14 +95,10 @@ class block_ai_assistant extends block_base
             $this->page->course->id
         );
         if ($course_record && !empty($course_record->bot_name)) {
-            $bot_name = explode('-', $course_record->bot_name);
-            $bot_id = str_replace('"', '', $bot_name[0]);
-
-       
-        }else {
+            $bot_name = $course_record->bot_name;
+        } else {
             // Handle the error or set a default value for $bot_id
-            $bot_id = null; // or some default value
-      
+            $bot_name = null; // or some default value
         }
 
 
@@ -145,7 +141,7 @@ class block_ai_assistant extends block_base
         }
 
         if ($course_record->published == 1) {
-            $embed_code = cria::get_embed_bot_code($bot_id);
+            $embed_code = cria::get_embed_bot_code($bot_name);
         } else {
             $embed_code = '';
         }
@@ -169,7 +165,7 @@ class block_ai_assistant extends block_base
             'syllabus_url' => $syllabus_url,
             'questions_url' => $questions_url,
             'embed_code' => $embed_code,
-            'teacher_embed_code' =>  cria::get_embed_bot_code($course_record->bot_name),
+            'teacher_embed_code' =>  cria::get_embed_bot_code($bot_name),
             'autotest_url' => $autotest_url,
             'embed_offset' => $config->embed_position_teacher,
         );
