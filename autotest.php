@@ -61,6 +61,8 @@ $table->set_sql(
 
 $table->define_baseurl("$CFG->wwwroot/blocks/ai_assistant/autotest.php?courseid=$courseid");
 
+echo $OUTPUT->render_from_template('block_ai_assistant/autotest_buttons', ['courseid' => $courseid]);
+
 $table->out(40, true);
 
 if (!$table->is_downloading()) {

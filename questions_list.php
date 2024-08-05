@@ -53,7 +53,7 @@ if (!$table->is_downloading()) {
 }
 
 $table->define_baseurl("$CFG->wwwroot/blocks/ai_assistant/questions_list.php?courseid=$courseid");
-
+echo $OUTPUT->render_from_template('block_ai_assistant/questions_list_buttons', ['courseid' => $courseid]);
 $table->out(40, true);
 
 if (!$table->is_downloading()) {

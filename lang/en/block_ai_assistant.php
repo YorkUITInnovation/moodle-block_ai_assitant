@@ -28,6 +28,7 @@ defined('MOODLE_INTERNAL') || die();
 $string['accepted_modules'] = 'Accepted Modules';
 $string['accepted_modules_help'] = 'Comma seperated list of modules that can have their content trained by the AI Assistant';
 $string['access'] = 'Student Access';
+$string['add'] = 'Add';
 $string['ai_assistant_instructions'] = 'To get the best results from the AI Assistant, please use the syllabus template provided in the Document Templates';
 $string['answer'] = 'Answer';
 $string['autotest']= 'AutoTest';
