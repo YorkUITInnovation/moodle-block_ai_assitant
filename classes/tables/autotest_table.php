@@ -15,11 +15,11 @@ class autotest_table extends table_sql {
     function __construct($uniqueid) {
         parent::__construct($uniqueid);
         // Define the list of columns to show.
-        $columns = array('section', 'questions', 'human_answer', 'bot_answer', 'actions');
+        $columns = array('section', 'questions', 'bot_answer', 'actions');
         $this->define_columns($columns);
 
         // Define the titles of columns to show in header.
-        $headers = array('Section', 'Questions', 'Predefined answer', 'GenAI answer', 'Actions');
+        $headers = array('Section', 'Questions', 'GenAI answer', 'Actions');
         $this->define_headers($headers);
     }
 
