@@ -505,12 +505,12 @@ class cria
      * @param int $bot_id
      * @return string
      */
-    public static function get_embed_bot_code($bot_id)
+    public static function get_embed_bot_code($bot_name)
     {
         $config = get_config('block_ai_assistant');
         $embed_code = '';
         if (!empty($config->cria_embed_url)) {
-            $embed_code = '<script type="text/javascript" src="' . $config->cria_embed_url . '/embed/' . $bot_id . '/load" async> </script>';
+            $embed_code = '<script type="text/javascript" src="' . $config->cria_embed_url . '/embed/' . $bot_name . '/load" async> </script>';
         }
         return $embed_code;
     }
