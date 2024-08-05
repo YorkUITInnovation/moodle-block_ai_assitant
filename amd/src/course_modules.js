@@ -6,7 +6,7 @@ import jQuery from 'jquery';
 export const init = () => {
     // display_modules();
 };
-
+/**
 function display_modules() {
     document.getElementById('btn-ai-assistant-train-modules').addEventListener('click', function () {
         // get data-courseid from current element
@@ -81,5 +81,6 @@ function display_modules() {
 
     });
 }
+ */
 
 
