@@ -164,15 +164,6 @@ class block_ai_assistant extends block_base
             'autotest_url' => $autotest_url,
             'embed_offset' => $config->embed_position_teacher,
         );
-        print_object('');
-        print_object('');
-        print_object('');
-        print_object('');
-        print_object('');
-        print_object('');
-        print_object('');
-        print_object($course_record);
-        print_object($params);
 
         if (!empty($this->config->text)) {
             $this->content->text = $this->config->text;
