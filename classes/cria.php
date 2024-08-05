@@ -25,7 +25,7 @@ class cria
         $data = self::get_create_cria_bot_config($course_id);
 
         $bot = webservice::exec($method, $data);
-        $bot_name = self::get_bot_name_intent_id($bot);
+        $bot_name = str_replace('"', '', self::get_bot_name_intent_id($bot));
         return $bot_name;
     }
 

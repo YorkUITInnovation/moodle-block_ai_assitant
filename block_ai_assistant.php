@@ -141,7 +141,7 @@ class block_ai_assistant extends block_base
         }
 
         if ($course_record->published == 1) {
-            $embed_code = cria::get_embed_bot_code($bot_name);
+            $embed_code = cria::get_embed_bot_code(cria::get_bot_id($this->page->course->id));
         } else {
             $embed_code = '';
         }
@@ -165,19 +165,11 @@ class block_ai_assistant extends block_base
             'syllabus_url' => $syllabus_url,
             'questions_url' => $questions_url,
             'embed_code' => $embed_code,
-            'teacher_embed_code' =>  cria::get_embed_bot_code($bot_name),
+            'teacher_embed_code' =>  cria::get_embed_bot_code($this->page->course->id),
             'autotest_url' => $autotest_url,
             'embed_offset' => $config->embed_position_teacher,
         );
-        print_object('');
-        print_object('');
-        print_object('');
-        print_object('');
-        print_object('');
-        print_object('');
-        print_object('');
-        print_object('');
-print_object($params);
+
         if (!empty($this->config->text)) {
             $this->content->text = $this->config->text;
         } else {
