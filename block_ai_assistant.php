@@ -170,7 +170,8 @@ class block_ai_assistant extends block_base
             'questions_url' => $questions_url,
             'embed_code' => $embed_code,
             'teacher_embed_code' =>  cria::get_embed_bot_code($bot_id),
-            'autotest_url' => $autotest_url
+            'autotest_url' => $autotest_url,
+            'embed_offset' => $config->embed_position_teacher,
         );
 
         if (!empty($this->config->text)) {

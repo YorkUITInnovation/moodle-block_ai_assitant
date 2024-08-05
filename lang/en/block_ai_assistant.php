@@ -74,6 +74,9 @@ $string['download_syllabus'] = 'Download Syllabus';
 $string['download_questions'] = 'Download Questions';
 $string['edit_question'] = "Edit question";
 $string['edit_questions'] = "Edit questions";
+$string['embed_position_teacher'] = "Embed position for teacher";
+$string['embed_position_teacher_help'] = "If your Moodle instance has another chatbot, you can choose to postion the AI Assistant above it. "
+    . "Enter the number of pixels you want to offset the AI Assistant from the bottom. If the bot is positioned at teh top, put in a negative number.";
 $string['file_deleted_successfully'] = 'File deleted successfully';
 $string['file_uploaded_successfully'] = 'File uploaded successfully';
 $string['format'] = '.xlsx, .docx only accepted';

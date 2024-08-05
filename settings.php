@@ -278,6 +278,13 @@ if ($hassiteconfig) {
         )
     ));
 
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/embed_position_teacher',
+        get_string('embed_position_teacher', 'block_ai_assistant'),
+        get_string('embed_position_teacher_help', 'block_ai_assistant'),
+        0
+    ));
+
 // Add a header
     $settings->add(new admin_setting_heading(
         'block_ai_assistant/modules',
