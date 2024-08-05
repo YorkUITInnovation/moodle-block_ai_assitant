@@ -57,18 +57,22 @@ $string['criadex_model_id'] = 'Criadex Model ID';
 $string['criadex_model_id_help'] = 'Enter the criadex model id to your Cria server. You might have to ask your system administrator.';
 $string['criadex_rerank_id'] = 'Criadex Rerank ID';
 $string['criadex_rerank_id_help'] = 'Enter the criadex rerank id to your Cria server. You might have to ask your system administrator.';
+$string['custom_questions'] = 'Custom Questions';
 $string['default_content_language'] = 'Default content language';
 $string['delete'] = 'Delete';
 $string['delete_syllabus'] = 'Delete Syllabus';
 $string['delete_syllabus_help'] = 'Are you sure you want to delete the syllabus?';
+$string['delete_question'] = 'Delete Question';
 $string['delete_questions'] = 'Delete Questions';
 $string['delete_question_help'] = 'Are you sure you want to delete the question?';
 $string['document_templates'] = 'Document Templates';
 $string['download'] = 'Download';
 $string['download_english'] = 'Download (English)';
+$string['download_example'] = 'Download example';
 $string['download_syllabus'] = 'Download Syllabus';
 $string['download_questions'] = 'Download Questions';
-$string['edit_questions'] = "Edit your questions";
+$string['edit_question'] = "Edit question";
+$string['edit_questions'] = "Edit questions";
 $string['file_deleted_successfully'] = 'File deleted successfully';
 $string['file_uploaded_successfully'] = 'File uploaded successfully';
 $string['format'] = '.xlsx, .docx only accepted';
@@ -82,6 +86,9 @@ $string['no_context_message_help'] = 'No Context Message help text here';
 $string['pluginname'] = 'Al Course Assistant';
 $string['pluginname_help'] = 'This may take up to a minute. Thanks for your patience.';
 $string['questions'] = 'Questions';
+$string['questions_instructions'] = 'Note: The time required for the upload may vary depending on the number of rows (questions) in the file. '
+    . 'Larger files with more rows will take longer to process. Do not close or refresh your browser window. '
+    . 'You will be redirected to the course page once the upload is complete.';
 $string['question'] = 'Question';
 $string['question_updated_successfully'] = 'Question updated successfully';
 $string['required'] = 'This field is required';
@@ -91,6 +98,7 @@ $string['section'] = 'Section';
 $string['subtitle'] = 'Subtitle';
 $string['subtitle_help'] = 'Subtitle help text here';
 $string['syllabus'] = 'Syllabus';
+$string['syllabus_template'] = 'Syllabus Template';
 $string['syllabus_uploaded'] = 'Syllabus successfully uploaded';
 $string['system_message'] = 'System Message';
 $string['system_message_default'] = 'You are a Factual AI Assistant dedicated to providing accurate information based on the information available in the knowledge base as your only source. Your response must be in the same language as my message.';
@@ -127,3 +135,63 @@ $string['max_context_help'] = '120000 for GPT-4o';
 $string['no_context_llm_guess'] = 'No Context LLM Guess';
 $string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when no context is available';
 $string['embed_position'] = 'Embed Position';
+
+// Template instructions
+$string['syllabus_template_instructions'] = '<h3>Instructions for Using the Syllabus Template</h3>
+<p>The syllabus template is designed to ensure accuracy and consistency when training the AI bot, AL the Course
+    Assistant. The template consists of placeholders that start with <code><</code> and end with <code>></code>. Follow
+    these steps to effectively use the template:</p>
+
+<h4>Step 1: Open the Template</h4>
+<ol>
+    <li>Open the syllabus template file in your preferred text editor or word processor.</li>
+</ol>
+
+<h4>Step 2: Identify Placeholders</h4>
+<ol start="2">
+    <li>Look for placeholders within the template. These placeholders are enclosed in angle brackets, such as 
+        <code>&lt;CourseTitle&gt;</code>, <code>&lt;InstructorName>InstructorName&gt;</code>, etc.
+    </li>
+</ol>
+
+<h4>Step 3: Replace Placeholders</h4>
+<ol start="3">
+    <li>Replace each placeholder with the appropriate information. For example:
+        <ul>
+            <li><code>
+                &lt;Course Code&gt;
+            </code>: Enter the code for the course.
+            </li>
+            <li><code>
+                &lt;Course Title&gt;
+            </code>: Enter the title of the course.
+            </li>
+            <li><code>
+                &lt;Instructor Name&gt;
+            </code>: Enter the name of the instructor.
+            </li>
+            <li><code>
+                &lt;Course Description&gt;
+            </code>: Provide a brief description of the course.
+            </li>
+        </ul>
+    </li>
+</ol>
+
+<h4>Step 4: Review and Save</h4>
+<ol start="4">
+    <li>Carefully review the filled-in template to ensure all placeholders have been replaced with accurate
+        information.
+    </li>
+    <li>Save the updated syllabus file with a new name to avoid overwriting the original template.</li>
+</ol>
+
+<h4>Step 5: Use the Syllabus</h4>
+<ol start="6">
+    <li>Use the completed syllabus for your course. This document will help ensure that AL the Course Assistant has
+        accurate and consistent information to assist students effectively.
+    </li>
+</ol>
+
+<p>By following these instructions, you can ensure that the syllabus is accurate and ready for use in training AL the
+    Course Assistant.</p>';

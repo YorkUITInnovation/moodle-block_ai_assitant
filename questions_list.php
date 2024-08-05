@@ -14,32 +14,48 @@
 
 
 require_once("../../config.php");
-
-require_once($CFG->dirroot . "/blocks/ai_assistant/classes/forms/questions_list.php");
-
-
+require_once("$CFG->dirroot/blocks/ai_assistant/classes/tables/questions_table.php");
 global $CFG, $OUTPUT, $USER, $PAGE, $DB;
-
-$PAGE->requires->js_call_amd('block_ai_assistant/delete_question', 'init');
 
 // Get course id
 $courseid = required_param('courseid', PARAM_INT);
 
-$context = CONTEXT_COURSE::instance($courseid);
+$context = context_course::instance($courseid);
 
 require_login($courseid, false);
 
-$formdata = new stdClass();
-$formdata->courseid = $courseid;
+$download = optional_param('download', '', PARAM_ALPHA);
 
-// Create form
-$mform = new \block_ai_assistant\questions_list(null, array('formdata' => $formdata));
+$PAGE->requires->js_call_amd('block_ai_assistant/questions_list', 'init',[]);
 
-$PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/blocks/ai_assistant/questions_list.php', ['courseid' => $courseid]));
-$PAGE->set_title(get_string('questions', 'block_ai_assistant'));
-$PAGE->set_heading(get_string('questions', 'block_ai_assistant'));
+$table = new questions_table('id');
+$table->is_downloading($download, 'auto_test_download', 'auto_test');
+// Work out the sql for the table.
+$table->set_sql(
+    'id,courseid,name,value,answer',
+    "{block_aia_questions}",
+    'courseid=' . $courseid
+);
+if (!$table->is_downloading()) {
+    // Only print headers if not asked to download data
+    // Print the page header
+    $PAGE->set_url(new moodle_url('/blocks/ai_assistant/questions_list.php', ['courseid' => $courseid]));
+    $PAGE->set_title(get_string('questions', 'block_ai_assistant'));
+    $PAGE->set_heading(get_string('questions', 'block_ai_assistant'));
+    $PAGE->navbar->add('Downloading data', new moodle_url('/blocks/ai_assistant/question_list.php', ['courseid' => $courseid]));
+    echo $OUTPUT->header();
+} else {
+    $PAGE->set_context($context);
+    $PAGE->set_url(new moodle_url('/blocks/ai_assistant/questions_list.php', ['courseid' => $courseid]));
+    $PAGE->set_title(get_string('questions', 'block_ai_assistant'));
+    $PAGE->set_heading(get_string('questions', 'block_ai_assistant'));
+    echo $OUTPUT->header();
+}
 
-echo $OUTPUT->header();
-$mform->display();
-echo $OUTPUT->footer();
+$table->define_baseurl("$CFG->wwwroot/blocks/ai_assistant/questions_list.php?courseid=$courseid");
+
+$table->out(40, true);
+
+if (!$table->is_downloading()) {
+    echo $OUTPUT->footer();
+}

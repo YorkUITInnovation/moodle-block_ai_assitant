@@ -10,6 +10,7 @@
 require_once($CFG->libdir . "/externallib.php");
 require_once("$CFG->dirroot/config.php");
 
+use block_ai_assistant\cria;
 
 class block_ai_assistant_question_ws extends external_api
 {
@@ -55,6 +56,8 @@ class block_ai_assistant_question_ws extends external_api
 
         $course_record = $DB->get_record('block_aia_questions', array('courseid' => $course_id));
         if ($course_record) {
+            // Delete question from cria
+            cria::delete_question($course_record->criaquestionid);
             $DB->delete_records('block_aia_questions', array('id' => $question_id));
             return true;
         } else {

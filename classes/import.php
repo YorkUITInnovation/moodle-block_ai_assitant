@@ -203,4 +203,99 @@ class import
         return true;
     }
 
+    /**
+     * @param $columns array
+     * @param $rows array
+     * @return void
+     */
+    public function questions_excel($course_id, $columns, $rows)
+    {
+        global $CFG, $DB, $USER;
+        raise_memory_limit(MEMORY_UNLIMITED);
+        // Make sure the columns exist
+        if (!in_array('name', $columns)) {
+            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', ['name']));
+            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
+        }
+        if (!in_array('question', $columns)) {
+            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', ['question']));
+            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
+        }
+        if (!in_array('answer', $columns)) {
+            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', ['answer']));
+            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
+        }
+
+
+        // Set the proper key value for the columns
+        foreach ($columns as $key => $column) {
+            switch (trim($column)) {
+                case 'name':
+                    $name = $key;
+                    break;
+                case 'question':
+                    $question = $key;
+                    break;
+                case 'answer':
+                    $answer = $key;
+                    break;
+                case 'related_questions':
+                case 'relatedquestions':
+                    $related_questions = $key;
+                    break;
+                case 'lang':
+                case 'language':
+                    $lang = $key;
+                    break;
+                case 'generate_questions':
+                case 'generatequestions':
+                    $generate_questions = $key;
+                    break;
+            }
+        }
+
+        $current_name = '';
+        $current_name_row = 0;
+
+        for ($i = 1; $i < count($rows); $i++) {
+            if (!empty(trim($rows[$i][$name])) && $current_name != trim($rows[$i][$name])) {
+
+                $current_name = trim($rows[$i][$name]);
+                $current_name_row = $i;
+                $example_questions_array[$current_name_row] = [];
+                // Create question
+                $params[$current_name_row] = [
+                    'courseid' => $course_id,
+                    'name' => $current_name,
+                    'value' => trim($rows[$i][$question]),
+                    'answer' => $rows[$i][$answer],
+                    'timecreated' => time(),
+                    'timemodified' => time(),
+                    'usermodified' => $USER->id
+                ];
+            } else {
+                $example_questions_array[$current_name_row][]['value'] = trim($rows[$i][$question]);
+            }
+            $params[$current_name_row]['example_questions'] = json_encode($example_questions_array[$current_name_row]);
+        }
+        // Save the questions
+        foreach ($params as $data) {
+            $new_id = $DB->insert_record('block_aia_questions', $data);
+            $question = new \stdClass();
+            $question->intentid = cria::get_intent_id($course_id);
+            $question->name = $data['name'];
+            $question->value = $data['value'];
+            $question->answer = $data['answer'];
+            $question->generateanswer = 1;
+            $question->examplequestions = $data['example_questions'];
+            $question_id = cria::create_question($question);
+            $status = cria::publish_question($question_id);
+            // Update criaquestionid field
+            $DB->set_field('block_aia_questions', 'criaquestionid', $question_id, ['id' => $new_id]);
+        }
+
+        raise_memory_limit(MEMORY_STANDARD);
+        return true;
+    }
+
 }

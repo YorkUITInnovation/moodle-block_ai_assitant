@@ -542,6 +542,19 @@ class cria
     }
 
     /**
+     * Delete question on cria server
+     * @param $question_id
+     * @return mixed
+     */
+    public static function delete_question($question_id)
+    {
+        $method = 'cria_question_delete';
+        $data = array('id' => $question_id);
+        $status = webservice::exec($method, $data);
+        return $status;
+    }
+
+    /**
      * Publish a question to the bot
      * @param int $question_id
      * @return boolean $status

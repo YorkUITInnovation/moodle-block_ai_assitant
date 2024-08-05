@@ -25,22 +25,13 @@ $context = context_course::instance($courseid);
 
 require_login($courseid);
 
-$questionid = required_param('questionid', PARAM_INT);
+$question_id = optional_param('id', 0,PARAM_INT);
 
-$question = $DB->get_record('block_aia_questions', ['id' => $questionid]);
-if (!$question) {
-    throw new moodle_exception('question_not_found', 'block_ai_assistant');
+if (!$formdata = $DB->get_record('block_aia_questions', ['id' => $question_id])) {
+    $formdata = new stdClass();
+    $formdata->courseid = $courseid;
 }
 
-$formdata = new stdClass();
-$formdata->courseid = $courseid;
-$formdata->questionid = $question->id;
-$formdata->name = $question->name;
-$formdata->question = $question->value;
-$formdata->answer = array(
-    'text' => $question->answer,
-    'format' => FORMAT_HTML,
-);
 
 // Create form
 $mform = new \block_ai_assistant\questions_edit(null, array('formdata' => $formdata));
@@ -48,7 +39,7 @@ $mform->set_data($formdata);
 
 if ($mform->is_cancelled()) {
     // Handle form cancel operation, if cancel button is present on form
-    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
+    redirect($CFG->wwwroot . '/blocks/ai_assistant/questions_list.php?courseid=' . $courseid);
 } else if ($data = $mform->get_data()) {
 
     $updatedrecord = new stdClass();
@@ -58,11 +49,11 @@ if ($mform->is_cancelled()) {
     $updatedrecord->answer = $data->answer['text'];
     $DB->update_record('block_aia_questions', $updatedrecord);
 
-    redirect($CFG->wwwroot . '/blocks/ai_assistant/questions_list.php?courseid=' . $courseid, get_string('question_updated_successfully', 'block_ai_assistant'), null, \core\output\notification::NOTIFY_SUCCESS);
+    redirect($CFG->wwwroot . '/blocks/ai_assistant/questions_list.php?courseid=' . $courseid);
 }
 
 $PAGE->set_context($context);
-$PAGE->set_url(new moodle_url('/blocks/ai_assistant/questions_edit.php', ['courseid' => $courseid, 'questionid' => $questionid]));
+$PAGE->set_url(new moodle_url('/blocks/ai_assistant/questions_edit.php', ['courseid' => $courseid, 'questionid' => $question_id]));
 $PAGE->set_title(get_string('questions', 'block_ai_assistant'));
 $PAGE->set_heading(get_string('questions', 'block_ai_assistant'));
 

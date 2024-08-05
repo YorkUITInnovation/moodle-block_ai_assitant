@@ -346,6 +346,21 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2024080202, 'ai_assistant');
     }
 
+    if ($oldversion < 2024080400) {
+
+        // Define field example_questions to be added to block_aia_questions.
+        $table = new xmldb_table('block_aia_questions');
+        $field = new xmldb_field('example_questions', XMLDB_TYPE_TEXT, null, null, null, null, null, 'answer');
+
+        // Conditionally launch add field example_questions.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024080400, 'ai_assistant');
+    }
+
 
     return true;
 

@@ -53,11 +53,11 @@
             <li class="list-group-item">
                 <!--upload questions -->
                 {{^questions_url}}
-                    <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_upload.php?courseid={{courseid}}"
+                    <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_list.php?courseid={{courseid}}"
                     class="btn btn-link btn-sm"
                     title="{{#str}}
-                    upload_questions, block_ai_assistant{{/str}}" >{{#str}}
-                    upload_questions, block_ai_assistant{{/str}}</a>
+                    custom_questions, block_ai_assistant{{/str}}" >{{#str}}
+                    custom_questions, block_ai_assistant{{/str}}</a>
                 {{/questions_url}}
                 <!--download questions -->
                 {{#questions_url}}
