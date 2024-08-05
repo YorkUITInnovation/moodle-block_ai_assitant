@@ -32,6 +32,7 @@ $string['ai_assistant_instructions'] = 'To get the best results from the AI Assi
 $string['answer'] = 'Answer';
 $string['autotest']= 'AutoTest';
 $string['autotest_questions']= 'AutoTest questions';
+$string['autotest_template']= 'AutoTest Template';
 $string['bot_tuning'] = 'Agent parameters';
 $string['bot_type_id'] = 'Bot Type ID';
 $string['bot_type_id_help'] = 'Bot Type ID from Cria';
@@ -85,12 +86,13 @@ $string['no_context_message_default'] = 'I\'m sorry, I couldn\'t find any inform
 $string['no_context_message_help'] = 'No Context Message help text here';
 $string['pluginname'] = 'Al Course Assistant';
 $string['pluginname_help'] = 'This may take up to a minute. Thanks for your patience.';
+$string['question'] = 'Question';
+$string['question_template'] = 'Question Template';
+$string['question_updated_successfully'] = 'Question updated successfully';
 $string['questions'] = 'Questions';
 $string['questions_instructions'] = 'Note: The time required for the upload may vary depending on the number of rows (questions) in the file. '
     . 'Larger files with more rows will take longer to process. Do not close or refresh your browser window. '
     . 'You will be redirected to the course page once the upload is complete.';
-$string['question'] = 'Question';
-$string['question_updated_successfully'] = 'Question updated successfully';
 $string['required'] = 'This field is required';
 $string['related_question'] = "Related Questions";
 $string['save'] = 'Save changes ';
@@ -195,3 +197,160 @@ $string['syllabus_template_instructions'] = '<h3>Instructions for Using the Syll
 
 <p>By following these instructions, you can ensure that the syllabus is accurate and ready for use in training AL the
     Course Assistant.</p>';
+// Question template instructions
+$string['question_template_instructions'] = '<h3>Instructions for Using the Excel Question Template</h3>
+<ol>
+    <li><strong>Open the Template</strong>: Start by opening the Excel question template.</li>
+    <li><strong>Enter the Required Fields</strong>:
+        <ul>
+            <li><strong>Name</strong>: In the first column, enter a short description or category for the question.</li>
+            <li><strong>Question</strong>: In the second column, enter the question itself.</li>
+            <li><strong>Answer</strong>: In the third column, enter the answer to the question.</li>
+        </ul>
+    </li>
+    <li><strong>Adding Examples</strong>:
+        <ul>
+            <li>If you want to add examples of the question, enter the example questions in the following rows under the "Question" column. Do not fill in the "Name" or "Answer" columns for these rows.</li>
+        </ul>
+    </li>
+    <li><strong>New Question</strong>:
+        <ul>
+            <li>When you have a new question, repeat the process by entering the "Name", "Question", and "Answer" in the respective columns.</li>
+        </ul>
+    </li>
+</ol>
+
+<h4>Example</h4>
+<table border="1">
+<tbody>
+    <tr>
+        <th>Name</th>
+        <th>Question</th>
+        <th>Answer</th>
+    </tr>
+    <tr>
+        <td>Geography</td>
+        <td>Annotated bibliography</td>
+        <td>For examples of an annotated bibliography, you can Google “example annotated bibliography.” This one looks good: https://owl.purdue.edu/owl/general_writing/common_writing_assignments/annotated_bibliographies/annotated_bibliography_samples.html).</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>What does an annotated bibliography look like?</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>I have never seen an annotated bibliography before</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>sample annotated bibliography</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td>late assignment penalty</td>
+        <td>What\'s the penalty for submitting an assignement late?</td>
+        <td>Assignments handed in late (without medical documentation) will be penalized at 5% per day (max. 25% per week). Assignments are no longer accepted after five days (not weekdays).</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>Will i lose marks for late submission</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>consequences of handing in my assignment late</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>I didnt finish my assignment in time</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>What happens if I submit my assignment late</td>
+        <td></td>
+    </tr>
+    </tbody>
+</table>
+<br>
+<p>
+<strong>Note:</strong>The downloadable example template is pre-filled with 41 sample questions and answers. You can use these questions and adjust when creating your own question template.
+</p>';
+
+// AutoTest template instructions
+$string['autotest_tempalte_instructions'] = '<h3>Instructions for Using the Excel AutoTest Template</h3>
+AutoTest is a powerful feature designed for instructors to create and manage questions that evaluate the performance and capabilities of an AI Assistant. 
+The AutoTest template is an Excel file that allows instructors to define questions, answers, and expected responses for the AI Assistant. Follow these steps to effectively use the AutoTest template:
+<br>
+<h3>Excel AutoTest Template Instructions</h3>
+<ol>
+    <li><strong>Open the Excel AutoTest Template</strong>: Ensure you have the template open and ready to edit.</li>
+    <li><strong>Understand the Columns</strong>:
+        <ul>
+            <li><strong>Section</strong>: This column represents the category of the questions.</li>
+            <li><strong>Questions</strong>: This column holds the questions to be asked.</li>
+            <li><strong>Answer</strong>: This column contains the anticipated answers.</li>
+        </ul>
+    </li>
+    <li><strong>Entering Data</strong>:
+        <ul>
+            <li><strong>First Question in a Section</strong>:
+                <ul>
+                    <li>Enter the section name in the <strong>Section</strong> column.</li>
+                    <li>Enter the question in the <strong>Questions</strong> column.</li>
+                    <li>Enter the anticipated answer in the <strong>Answer</strong> column.</li>
+                </ul>
+            </li>
+            <li><strong>Additional Questions in the Same Section</strong>:
+                <ul>
+                    <li>Leave the <strong>Section</strong> column empty.</li>
+                    <li>Enter the next question in the <strong>Questions</strong> column.</li>
+                    <li>Enter the anticipated answer in the <strong>Answer</strong> column.</li>
+                </ul>
+            </li>
+        </ul>
+    </li>
+    <li><strong>Example</strong>:</li>
+</ol>
+<table border="1">
+    <thead>
+    <tr>
+        <th>Section</th>
+        <th>Questions</th>
+        <th>Answer</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>Math</td>
+        <td>What is 2+2?</td>
+        <td>4</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>What is the square root of 9?</td>
+        <td>3</td>
+    </tr>
+    <tr>
+        <td>Science</td>
+        <td>What is the chemical symbol for water?</td>
+        <td>H2O</td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>What planet is known as the Red Planet?</td>
+        <td>Mars</td>
+    </tr>
+    </tbody>
+</table>
+<ol start="5">
+    <li><strong>Review and Save</strong>:
+        <ul>
+            <li>Double-check your entries for accuracy.</li>
+            <li>Save the template to ensure all your data is preserved.</li>
+        </ul>
+    </li>
+</ol>';
