@@ -47,8 +47,6 @@ if (!$table->is_downloading()) {
     $PAGE->set_url(new moodle_url('/blocks/ai_assistant/autotest.php', ['courseid' => $courseid]));
     $PAGE->set_title(get_string('Autotest', 'block_ai_assistant'));
     $PAGE->set_heading(get_string('Autotest', 'block_ai_assistant'));
-
-    echo $OUTPUT->header();
 }
 
 // Work out the sql for the table.
@@ -61,7 +59,9 @@ $table->set_sql(
 
 $table->define_baseurl("$CFG->wwwroot/blocks/ai_assistant/autotest.php?courseid=$courseid");
 
-echo $OUTPUT->render_from_template('block_ai_assistant/autotest_buttons', ['courseid' => $courseid]);
+if (!$table->is_downloading()) {
+    echo $OUTPUT->render_from_template('block_ai_assistant/autotest_buttons', ['courseid' => $courseid]);
+}
 
 $table->out(40, true);
 

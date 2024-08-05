@@ -49,11 +49,13 @@ if (!$table->is_downloading()) {
     $PAGE->set_url(new moodle_url('/blocks/ai_assistant/questions_list.php', ['courseid' => $courseid]));
     $PAGE->set_title(get_string('questions', 'block_ai_assistant'));
     $PAGE->set_heading(get_string('questions', 'block_ai_assistant'));
-    echo $OUTPUT->header();
+
 }
 
 $table->define_baseurl("$CFG->wwwroot/blocks/ai_assistant/questions_list.php?courseid=$courseid");
-echo $OUTPUT->render_from_template('block_ai_assistant/questions_list_buttons', ['courseid' => $courseid]);
+if (!$table->is_downloading()) {
+    echo $OUTPUT->render_from_template('block_ai_assistant/questions_list_buttons', ['courseid' => $courseid]);
+}
 $table->out(40, true);
 
 if (!$table->is_downloading()) {
