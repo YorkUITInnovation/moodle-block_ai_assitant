@@ -80,7 +80,7 @@ class block_ai_assistant extends block_base
         $this->content->footer = '';
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_file', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/publish_to_students', 'init');
-        $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
+//        $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
         $PAGE->requires->css(new moodle_url('/blocks/ai_assistant/css/styles.css'));
 
 
@@ -94,12 +94,7 @@ class block_ai_assistant extends block_base
             'syllabus',
             $this->page->course->id
         );
-        if ($course_record && !empty($course_record->bot_name)) {
-            $bot_name = str_replace('"', '', $course_record->bot_name);
-        } else {
-            // Handle the error or set a default value for $bot_id
-            $bot_name = null; // or some default value
-        }
+       $bot_id = cria::get_bot_id($this->page->course->id);
 
 
         // Set syllabus_url
@@ -141,7 +136,7 @@ class block_ai_assistant extends block_base
         }
 
         if ($course_record->published == 1) {
-            $embed_code = cria::get_embed_bot_code(cria::get_bot_id($this->page->course->id));
+            $embed_code = cria::get_embed_bot_code(cria::get_bot_id($bot_id));
         } else {
             $embed_code = '';
         }
@@ -165,10 +160,19 @@ class block_ai_assistant extends block_base
             'syllabus_url' => $syllabus_url,
             'questions_url' => $questions_url,
             'embed_code' => $embed_code,
-            'teacher_embed_code' =>  cria::get_embed_bot_code($this->page->course->id),
+            'teacher_embed_code' =>  cria::get_embed_bot_code($bot_id),
             'autotest_url' => $autotest_url,
             'embed_offset' => $config->embed_position_teacher,
         );
+        print_object('');
+        print_object('');
+        print_object('');
+        print_object('');
+        print_object('');
+        print_object('');
+        print_object('');
+        print_object($course_record);
+        print_object($params);
 
         if (!empty($this->config->text)) {
             $this->content->text = $this->config->text;
