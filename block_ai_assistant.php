@@ -95,7 +95,7 @@ class block_ai_assistant extends block_base
             $this->page->course->id
         );
         if ($course_record && !empty($course_record->bot_name)) {
-            $bot_name = $course_record->bot_name;
+            $bot_name = str_replace('"', '', $course_record->bot_name);
         } else {
             // Handle the error or set a default value for $bot_id
             $bot_name = null; // or some default value
@@ -169,7 +169,15 @@ class block_ai_assistant extends block_base
             'autotest_url' => $autotest_url,
             'embed_offset' => $config->embed_position_teacher,
         );
-
+        print_object('');
+        print_object('');
+        print_object('');
+        print_object('');
+        print_object('');
+        print_object('');
+        print_object('');
+        print_object('');
+print_object($params);
         if (!empty($this->config->text)) {
             $this->content->text = $this->config->text;
         } else {
