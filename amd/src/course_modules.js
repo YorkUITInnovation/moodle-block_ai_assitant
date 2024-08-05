@@ -4,7 +4,7 @@ import * as Str from 'core/str';
 import jQuery from 'jquery';
 
 export const init = () => {
-    display_modules();
+    // display_modules();
 };
 
 function display_modules() {
