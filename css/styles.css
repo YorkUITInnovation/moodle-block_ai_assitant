@@ -2,11 +2,11 @@
     margin-left: 5px;
 }
 
-input[type="checkbox"] {
+.blockAiAssistantCheckbox {
     display: none;
 }
 
-label {
+label.blockAiAssistant {
     cursor: pointer;
     display: block;
     padding: 5px;
@@ -15,7 +15,7 @@ label {
     margin-bottom: 5px;
 }
 
-label:hover {
+label.blockAiAssistant:hover {
     background-color: #fff;
 }
 
@@ -24,7 +24,7 @@ label:hover {
     margin-left: 20px;
 }
 
-input[type="checkbox"]:checked + label + .blockAiAssistantContent {
+.blockAiAssistantCheckbox:checked + label + .blockAiAssistantContent {
     display: block;
 }
 
