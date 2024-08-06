@@ -78,6 +78,6 @@ foreach ($autotest_questions as $question) {
         ];
         // Update record
         $DB->update_record('block_aia_autotest', (object)$params);
-        sleep(3);
+        sleep(1);
     }
 }
