@@ -38,8 +38,12 @@ class import
             } else if ($file_info == 'application/json') {
                 $this->worksheet = false;
                 $this->file_type = 'JSON';
+                // now check for docx
+            } else if ($file_info == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                $this->worksheet = false;
+                $this->file_type = 'DOCX';
             } else {
-                notification::error('You must upload an xlsx file');
+                \core\notification::error('You must upload an xlsx file');
                 $this->worksheet = false;
                 $this->file_type = null;
             }

@@ -73,4 +73,75 @@ class block_ai_assistant_question_ws extends external_api
     {
         return new external_value(PARAM_BOOL, 'Boolean');
     }
+
+
+
+
+
+
+
+
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function delete_file_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'questionid' => new external_value(PARAM_INT, 'Question id', false, 0),
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED)
+            )
+        );
+    }
+
+    /**
+     * Deletes a question from the database
+     * @param int $question_id
+     * @param int $course_id
+     * @return bool
+     * @throws dml_exception
+     * @throws invalid_parameter_exception
+     * @throws restricted_context_exception
+     */
+    public static function delete_file($question_id, $course_id)
+    {
+        global $CFG, $USER, $DB, $PAGE;
+
+        //Parameter validation
+        $params = self::validate_parameters(
+            self::delete_file_parameters(),
+            array(
+                'questionid' => $question_id,
+                'courseid' => $course_id
+            )
+        );
+
+        //Context validation
+        $context = CONTEXT_COURSE::instance($course_id);
+        self::validate_context($context);
+
+        $question_file = $DB->get_record('block_aia_question_files', array('id' => $question_id));
+        if ($question_file) {
+            // Delete fiel from Cria
+            cria::delete_content_from_bot($question_file->cria_fileid);
+            // Get file storage
+            $fs = get_file_storage();
+            $file = $fs->get_file($context->id, 'block_ai_assistant', 'questions', $course_id, '/', $question_file->name);
+            $file->delete();
+            $DB->delete_records('block_aia_question_files', array('id' => $question_id));
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Returns method result value
+     * @return external_description
+     */
+    public static function delete_file_returns()
+    {
+        return new external_value(PARAM_BOOL, 'Boolean');
+    }
 }

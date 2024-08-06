@@ -14,7 +14,7 @@ function delete_question() {
     buttons.forEach(button => {
         button.addEventListener('click', function () {
             const row = this.closest('tr');
-            const id = this.getAttribute('data-id');
+            const questionid = this.getAttribute('data-questionid');
             var courseid = this.getAttribute('data-courseid');
             // Pop up notificaiton to confirm delete
             notification.confirm(Str.get_string('delete', 'block_ai_assistant'),
@@ -23,9 +23,9 @@ function delete_question() {
                 Str.get_string('cancel', 'block_ai_assistant'), function () {
                     //Delete the record
                     var delete_content = ajax.call([{
-                        methodname: 'block_ai_assistant_delete_question',
+                        methodname: 'block_ai_assistant_delete_question_file',
                         args: {
-                            'questionid': id,
+                            'questionid': questionid,
                             'courseid': courseid
                         }
                     }]);

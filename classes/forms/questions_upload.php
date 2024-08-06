@@ -54,7 +54,7 @@ class questions_upload_form extends \moodleform
             get_string('questions', 'block_ai_assistant'),
             null,
             array(
-                'accepted_types' => array('.docx', '.xlsx')
+                'accepted_types' => array('.docx')
             )
         );
 
@@ -67,13 +67,6 @@ class questions_upload_form extends \moodleform
             'questions_upload',
             get_string('required', 'block_ai_assistant'),
             'required'
-        );
-
-        // Add a delete questions selectyesno
-        $mform->addElement(
-            'selectyesno',
-            'delete_questions',
-            get_string('delete_questions', 'block_ai_assistant')
         );
 
         $this->add_action_buttons();

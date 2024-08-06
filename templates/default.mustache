@@ -60,32 +60,11 @@
             </li>
             <li class="list-group-item">
                 <!--upload questions -->
-                {{^questions_url}}
                     <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_list.php?courseid={{courseid}}"
                     class="btn btn-link btn-sm"
                     title="{{#str}}
                     custom_questions, block_ai_assistant{{/str}}" >{{#str}}
                     custom_questions, block_ai_assistant{{/str}}</a>
-                {{/questions_url}}
-                <!--download questions -->
-                {{#questions_url}}
-                    <a href="{{questions_url}}"
-                       class="btn btn-link btn-sm"
-                       title="{{#str}}download_questions, block_ai_assistant{{/str}}"
-                    >{{#str}}questions, block_ai_assistant{{/str}}</a>
-                    <!-- Delete questions file -->
-                    <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_delete.php?courseid={{courseid}}"
-                    class="btn btn-link btn-sm delete-button"
-                    title="{{#str}}delete_questions, block_ai_assistant{{/str}}"
-                    data-confirm="{{#str}}confirm_file_deletion, block_ai_assistant{{/str}}">
-                    <i class="fa fa-trash"></i>
-                    </a>
-                    <!-- edit questions-->
-                    <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_list.php?courseid={{courseid}}"
-                    class="btn btn-link btn-sm"
-                    title="{{#str}}edit_questions, block_ai_assistant{{/str}}"
-                    ><i class="fa fa-edit"></i></a>
-                {{/questions_url}}
             </li>
 <!--
             <li class="list-group-item">

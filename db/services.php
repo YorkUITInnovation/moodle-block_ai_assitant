@@ -18,6 +18,15 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_delete_question_file' => array(
+        'classname' => 'block_ai_assistant_question_ws',
+        'methodname' => 'delete_file',
+        'classpath' => 'blocks/ai_assistant/classes/external/question_ws.php',
+        'description' => 'Delete file from question files',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
     'block_ai_assistant_publish' => array(
         'classname' => 'block_ai_assistant_publish_ws',
         'methodname' => 'publish',

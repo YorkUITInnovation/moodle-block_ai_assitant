@@ -1,30 +1,31 @@
-<table class="table table-bordered table-hover">
-    <thead>
-        <tr>
-            <th>Question</th>
-            <th>Answer</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {{#questions}}
-        <tr>
-            <td>{{question}}</td>
-            <td>{{answer}}</td>
-            <td>
-                <a href="{{edit_question}}" class="btn btn-link btn-sm" title="{{#str}}edit_question, block_ai_assistant{{/str}}">
-                    <i class="fa fa-edit"></i>
-                </a>
-                <a href="javascript:void(0);" 
-                   class="btn btn-link btn-sm delete-question" 
-                   data-questionid="{{id}}" 
-                   data-courseid="{{courseid}}" 
-                   title="{{#str}}delete_question, block_ai_assistant{{/str}}"
-                   data-confirm="{{#str}}confirm_question_deletion, block_ai_assistant{{/str}}">
-                   <i class="fa fa-trash"></i>
-                </a>
-            </td>
-        </tr>
-        {{/questions}}
-    </tbody>
-</table>
+{{> block_ai_assistant/questions_list_buttons}}
+<div class="row">
+    <div class="col-md-12">
+        <table class="table table-stripped table-hover">
+            <thead>
+            <tr>
+                <th>File</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {{#questions}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td>
+                        <a href="javascript:void(0);"
+                           class="btn btn-link btn-sm block-ai-assistant-delete-question"
+                           data-questionid="{{id}}"
+                           data-courseid="{{courseid}}"
+                           title="{{#str}}delete_question, block_ai_assistant{{/str}}"
+                           data-confirm="{{#str}}confirm_question_deletion, block_ai_assistant{{/str}}">
+                            <i class="fa fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+            {{/questions}}
+            </tbody>
+        </table>
+    </div>
+</div>
+
