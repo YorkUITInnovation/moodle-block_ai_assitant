@@ -80,8 +80,8 @@ class block_ai_assistant extends block_base
         $this->content->footer = '';
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_file', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/publish_to_students', 'init');
-//        $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
-        $PAGE->requires->css(new moodle_url('/blocks/ai_assistant/css/styles.css'));
+        $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
+//        $PAGE->requires->css(new moodle_url('/blocks/ai_assistant/css/styles.css'));
 
 
         $course_context = \context_course::instance($this->page->course->id);
