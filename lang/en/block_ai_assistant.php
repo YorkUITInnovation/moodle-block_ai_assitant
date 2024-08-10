@@ -78,6 +78,7 @@ $string['edit_questions'] = "Edit questions";
 $string['embed_position_teacher'] = "Embed position for teacher";
 $string['embed_position_teacher_help'] = "If your Moodle instance has another chatbot, you can choose to postion the AI Assistant above it. "
     . "Enter the number of pixels you want to offset the AI Assistant from the bottom. If the bot is positioned at teh top, put in a negative number.";
+$string['error'] = 'Error';
 $string['file_deleted_successfully'] = 'File deleted successfully';
 $string['file_uploaded_successfully'] = 'File uploaded successfully';
 $string['format'] = '.xlsx, .docx only accepted';
@@ -88,6 +89,7 @@ $string['name'] = "Name";
 $string['no_context_message'] = 'No Context Message';
 $string['no_context_message_default'] = 'I\'m sorry, I couldn\'t find any information. Please rephrase your question';
 $string['no_context_message_help'] = 'No Context Message help text here';
+$string['pending'] = 'Pending';
 $string['pluginname'] = 'Al Course Assistant';
 $string['pluginname_help'] = 'This may take up to a minute. Thanks for your patience.';
 $string['question'] = 'Question';
@@ -115,6 +117,8 @@ $string['title_help'] = 'Title help text here';
 $string['top_left'] = 'Top left';
 $string['top_right'] = 'Top right';
 $string['train_modules'] = 'Add activities to the AI Assistant';
+$string['trained'] = 'Trained';
+$string['training'] = 'Training';
 $string['update_successful'] = 'Update succssful';
 $string['upload_syllabus'] = 'Upload Syllabus';
 $string['upload_questions'] = 'Upload question file';
@@ -202,94 +206,56 @@ $string['syllabus_template_instructions'] = '<h3>Instructions for Using the Syll
 <p>By following these instructions, you can ensure that the syllabus is accurate and ready for use in training AL the
     Course Assistant.</p>';
 // Question template instructions
-$string['question_template_instructions'] = '<h3>Instructions for Using the Excel Question Template</h3>
+$string['question_template_instructions'] = '<h3>Instructions for Creating a Word Question Template</h3>
 <ol>
-    <li><strong>Open the Template</strong>: Start by opening the Excel question template.</li>
-    <li><strong>Enter the Required Fields</strong>:
+    <li><strong>Add Questions as Headings</strong>
         <ul>
-            <li><strong>Name</strong>: In the first column, enter a short description or category for the question.</li>
-            <li><strong>Question</strong>: In the second column, enter the question itself.</li>
-            <li><strong>Answer</strong>: In the third column, enter the answer to the question.</li>
+            <li>Each question must be set as a heading.</li>
+            <li>Example: <strong>Heading1</strong></li>
         </ul>
     </li>
-    <li><strong>Adding Examples</strong>:
+    <li><strong>Provide Alternative Phrasings</strong>
         <ul>
-            <li>If you want to add examples of the question, enter the example questions in the following rows under the "Question" column. Do not fill in the "Name" or "Answer" columns for these rows.</li>
+            <li>Under each heading, list examples of other ways to ask the question.</li>
+            <li>Example:
+                <ul>
+                    <li>How do I create a Word Question template?</li>
+                    <li>Can you help me with a Word Question template?</li>
+                </ul>
+            </li>
         </ul>
     </li>
-    <li><strong>New Question</strong>:
+    <li><strong>Response Section</strong>
         <ul>
-            <li>When you have a new question, repeat the process by entering the "Name", "Question", and "Answer" in the respective columns.</li>
+            <li>Do not delete: <strong>The response to any of these questions or prompts is:</strong></li>
+            <li>Beneath that sentence, add your answer.</li>
+            <li>Example:
+                <ul>
+                    <li>The response to any of these questions or prompts is:</li>
+                    <li>You can create a Word Question template by following these steps...</li>
+                </ul>
+            </li>
         </ul>
     </li>
-</ol>
-
-<h4>Example</h4>
-<table border="1">
-<tbody>
-    <tr>
-        <th>Name</th>
-        <th>Question</th>
-        <th>Answer</th>
-    </tr>
-    <tr>
-        <td>Geography</td>
-        <td>Annotated bibliography</td>
-        <td>For examples of an annotated bibliography, you can Google “example annotated bibliography.” This one looks good: https://owl.purdue.edu/owl/general_writing/common_writing_assignments/annotated_bibliographies/annotated_bibliography_samples.html).</td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>What does an annotated bibliography look like?</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>I have never seen an annotated bibliography before</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>sample annotated bibliography</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td>late assignment penalty</td>
-        <td>What\'s the penalty for submitting an assignement late?</td>
-        <td>Assignments handed in late (without medical documentation) will be penalized at 5% per day (max. 25% per week). Assignments are no longer accepted after five days (not weekdays).</td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>Will i lose marks for late submission</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>consequences of handing in my assignment late</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>I didnt finish my assignment in time</td>
-        <td></td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>What happens if I submit my assignment late</td>
-        <td></td>
-    </tr>
-    </tbody>
-</table>
-<br>
-<p>
-<strong>Note:</strong>The downloadable example template is pre-filled with 41 sample questions and answers. You can use these questions and adjust when creating your own question template.
-</p>';
+    <li><strong>Repeat for Each Question</strong>
+        <ul>
+            <li>Repeat the same steps for every question you want to include.</li>
+        </ul>
+    </li>
+    <li><strong>Upload Document</strong>
+        <ul>
+            <li>Once the document is ready, click on <strong>Custom Questions</strong> to upload your document.</li>
+            <li>Allow time for the AI Assistant to train itself on the questions.</li>
+        </ul>
+    </li>
+</ol>';
 
 // AutoTest template instructions
 $string['autotest_tempalte_instructions'] = '<h3>Instructions for Using the Excel AutoTest Template</h3>
 AutoTest is a powerful feature designed for instructors to create and manage questions that evaluate the performance and capabilities of an AI Assistant. 
 The AutoTest template is an Excel file that allows instructors to define questions, answers, and expected responses for the AI Assistant. Follow these steps to effectively use the AutoTest template:
 <br>
-<h3>Excel AutoTest Template Instructions</h3>
+<h5>Excel AutoTest Template Instructions</h5>
 <ol>
     <li><strong>Open the Excel AutoTest Template</strong>: Ensure you have the template open and ready to edit.</li>
     <li><strong>Understand the Columns</strong>:

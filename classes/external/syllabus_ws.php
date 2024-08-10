@@ -62,7 +62,7 @@ class block_ai_assistant_syllabus_ws extends external_api
 
         // Call the API to delete the file
         $api_response = cria::delete_content_from_bot($cria_file_id);
-
+        $DB->set_field('block_aia_settings', 'cria_file_id', 0, ['id' => $courserecord->id]);
         // Handle the API response
         // if ($api_response !== 'true') {
         //     throw new Exception('Failed to delete content via API: ' . $api_response);
@@ -159,4 +159,74 @@ class block_ai_assistant_syllabus_ws extends external_api
     {
         return new external_value(PARAM_INT, 'Boolean');
     }
+
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function training_status_parameters() {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', false, 0)
+            )
+        );
+    }
+
+    /**
+     * @param int $course_id
+     * @return bool
+     * @throws dml_exception
+     * @throws invalid_parameter_exception
+     * @throws restricted_context_exception
+     */
+    public static function training_status($course_id)
+    {
+        global $CFG, $USER, $DB, $PAGE;
+
+        //Parameter validation
+        $params = self::validate_parameters(
+            self::training_status_parameters(),
+            array(
+                'courseid' => $course_id
+            )
+        );
+
+        //Context validation
+        //OPTIONAL but in most web service it should present
+        $context = CONTEXT_COURSE::instance($course_id);
+        self::validate_context($context);
+
+        // Get the course record to fetch cria_file_id
+        $courserecord = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
+        $data = cria::get_content_training_status($courserecord->cria_file_id);
+        $results = [];
+        $results[]['training_status_id'] = $data->training_status_id;
+        $results[]['training_status'] = $data->training_status;
+       file_put_contents('/var/www/moodledata/temp/training_status.json', json_encode($results, JSON_PRETTY_PRINT));
+        return  json_encode($data);
+    }
+
+    /**
+     * Returns method result value
+     * @return external_description
+     */
+    public static function training_status_details()
+    {
+        $fields = array(
+            'training_status_id' => new external_value(PARAM_INT, 'Training status id', false),
+            'training_status' => new external_value(PARAM_TEXT, 'HTML Badge for training status', true)
+        );
+        return new external_single_structure($fields);
+    }
+
+    /**
+     * Returns method result value
+     * @return external_description
+     */
+    public static function training_status_returns()
+    {
+        // Return array of training status
+        return new external_value(PARAM_RAW, 'JSON Formated data');
+    }
+
 }

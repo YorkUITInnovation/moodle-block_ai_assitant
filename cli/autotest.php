@@ -63,6 +63,10 @@ $chat_id = cria::get_chat_id();
 // Get the bot id
 $bot_name = explode('-', $settings->bot_name);
 $bot_id = str_replace('"', '', $bot_name[0]);
+// number of questions
+$number_of_questions = count($autotest_questions);
+// Set a counter
+$counter = 1;
 // Loop through all autotest questions
 foreach ($autotest_questions as $question) {
     $response = cria::get_gpt_response($chat_id, $bot_id, $question->questions);
@@ -78,6 +82,8 @@ foreach ($autotest_questions as $question) {
         ];
         // Update record
         $DB->update_record('block_aia_autotest', (object)$params);
+        // In case I find a way to retrieve the info for a progress bar
+        $counter++;
         sleep(1);
     }
 }

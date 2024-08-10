@@ -81,8 +81,8 @@ class block_ai_assistant extends block_base
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_file', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/publish_to_students', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
+        $PAGE->requires->js_call_amd('block_ai_assistant/training_status', 'init');
         $PAGE->requires->css(new moodle_url('/blocks/ai_assistant/css/styles.css'));
-
 
         $course_context = \context_course::instance($this->page->course->id);
         // get file from file area
@@ -94,7 +94,7 @@ class block_ai_assistant extends block_base
             'syllabus',
             $this->page->course->id
         );
-       $bot_id = cria::get_bot_id($this->page->course->id);
+        $bot_id = cria::get_bot_id($this->page->course->id);
 
 
         // Set syllabus_url
@@ -148,9 +148,20 @@ class block_ai_assistant extends block_base
             $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest.php?courseid=' . $this->page->course->id;
         }
 
+        // Get training status
+        if ($course_record->cria_file_id) {
+            $results = cria::get_content_training_status($course_record->cria_file_id);
+            $training_status_id = $results->training_status_id;
+            $training_status = $results->training_status;
+        } else {
+            $training_status_id = 4;
+            $training_status = '';
+        }
+
         $params = array(
             'blockid' => $this->instance->id,
             'courseid' => $this->page->course->id,
+            'cria_file_id' => $course_record->cria_file_id,
             'published' => $course_record->published,
             'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
@@ -160,9 +171,11 @@ class block_ai_assistant extends block_base
             'syllabus_url' => $syllabus_url,
             'questions_url' => $questions_url,
             'embed_code' => $embed_code,
-            'teacher_embed_code' =>  cria::get_embed_bot_code($bot_id),
+            'teacher_embed_code' => cria::get_embed_bot_code($bot_id),
             'autotest_url' => $autotest_url,
             'embed_offset' => $config->embed_position_teacher,
+            'training_status' => $training_status,
+            'training_status_id' => $training_status_id
         );
 
         if (!empty($this->config->text)) {
@@ -209,7 +222,8 @@ class block_ai_assistant extends block_base
         return false;
     }
 
-    public function instance_delete() {
+    public function instance_delete()
+    {
         global $COURSE, $DB;
         // Get settings record
         $settings = $DB->get_record('block_aia_settings', array('courseid' => $COURSE->id));

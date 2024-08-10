@@ -198,6 +198,47 @@ class cria
     }
 
     /**
+     * Get content training status
+     * @param int $contentid
+     * @return int
+     */
+    public static function get_content_training_status($contentid)
+    {
+        $method = 'cria_content_get_training_status';
+        $data = array("id" => $contentid);
+        $status = webservice::exec($method, $data);
+        $results = new \stdClass();
+
+        switch ($status) {
+            case 0:
+                $training_status_id = 0;
+                $training_status = '<div class="badge badge-warning">'
+                    . get_string('pending', 'block_ai_assistant') . '</div>';
+                break;
+            case 1:
+                $training_status_id = 1;
+                $training_status = '<div class="badge badge-success">'
+                    . get_string('trained', 'block_ai_assistant') . '</div>';
+                break;
+            case 2:
+                $training_status_id = 2;
+                $training_status = '<div class="badge badge-danger">'
+                    . get_string('error', 'block_ai_assistant') . '</div>';
+                break;
+            case 3:
+                $training_status_id = 3;
+                $training_status = '<div class="badge badge-info">'
+                    . get_string('training', 'block_ai_assistant') . '</div>';
+                break;
+        }
+
+        $results->training_status_id = $training_status_id;
+        $results->training_status = $training_status;
+
+        return $results;
+    }
+
+    /**
      * Returns the config for uploading content to bot
      * @param string $file_path
      * @return array
