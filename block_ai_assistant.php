@@ -136,7 +136,7 @@ class block_ai_assistant extends block_base
         }
 
         if ($course_record->published == 1) {
-            $embed_code = cria::get_embed_bot_code(cria::get_bot_id($bot_id));
+            $embed_code = cria::get_embed_bot_code($bot_id);
         } else {
             $embed_code = '';
         }
