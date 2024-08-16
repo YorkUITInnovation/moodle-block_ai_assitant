@@ -40,7 +40,7 @@ $formdata->courseid = $courseid;
 $mform = new \block_ai_assistant\questions_upload_form(null, array('formdata' => $formdata));
 if ($mform->is_cancelled()) {
     //Handle form cancel operation, if cancel button is present on form
-    redirect($CFG->wwwroot . '/blocks/ai_assistant/questions_list.php?courseid=' . $courseid);
+    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else if ($data = $mform->get_data()) {
     // Check to see if cria directory exists
     $path = $CFG->dataroot . '/temp/cria';
@@ -52,6 +52,7 @@ if ($mform->is_cancelled()) {
     if (!is_dir($path)) {
         mkdir($path);
     }
+
     // Save file to directory
     $file_name = $mform->get_new_filename('questions_upload');
     $full_path = $path . '/' . $file_name;
@@ -59,46 +60,70 @@ if ($mform->is_cancelled()) {
 
     $IMPORT = new import($full_path);
 
-    // Save file to moodle
+    // Delete existing file
     $fs = get_file_storage();
-    $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'questions', $data->courseid);
+    $files = $fs->get_area_files(
+        $context->id,
+        'block_ai_assistant',
+        'questions',
+        $data->courseid
+    );
     foreach ($files as $file) {
         if (!$file->is_directory()) {
-            if ($file->get_filename() == $file_name) {
-                $file->delete();
+            echo $file->get_filename();
+            if ($file->delete()) {
+                echo 'File deleted';
+            } else {
+                echo 'File not deleted';
             }
         }
     }
     $context = \context_course::instance($data->courseid);
 
     $file_content = base64_encode(file_get_contents($full_path));
-    $cria_file_id = cria::upload_content_to_bot($data->courseid, $file_name, $file_content, 'ALSYLLABUS');
 
-    // Add record into block_aia_quesiton_files
-    $record = new stdClass();
-    $record->courseid = $data->courseid;
-    $record->name = $file_name;
-    $record->cria_fileid = $cria_file_id;
-    $record->usermodified = $USER->id;
-    $record->timecreated = time();
-    $record->timemodified = time();
-    $new_file_id = $DB->insert_record('block_aia_question_files', $record);
+    // See if file already exists
+    if ($record = $DB->get_record('block_aia_question_files', array('courseid' => $data->courseid))) {
+        // Delete file on Cria
+        if ($record->cria_fileid != 0) {
+            cria::delete_content_from_bot($record->cria_fileid);
+        }
+        // Create file on Cria
+        $cria_file_id = cria::upload_content_to_bot($data->courseid, $file_name, $file_content, 'ALSYLLABUS');
+        $record->name = $file_name;
+        $record->cria_fileid = $cria_file_id;
+        $record->usermodified = $USER->id;
+        $record->timemodified = time();
+        $DB->update_record('block_aia_question_files', $record);
+    } else {
+        // Create file on Cria
+        $cria_file_id = cria::upload_content_to_bot($data->courseid, $file_name, $file_content, 'ALSYLLABUS');
+        // Add record into block_aia_quesiton_files
+        $record = new stdClass();
+        $record->courseid = $data->courseid;
+        $record->name = $file_name;
+        $record->cria_fileid = $cria_file_id;
+        $record->usermodified = $USER->id;
+        $record->timecreated = time();
+        $record->timemodified = time();
+        $new_file_id = $DB->insert_record('block_aia_question_files', $record);
+    }
 
-    //save the uploaded file in the draft area
-    file_save_draft_area_files(
-        $data->questions_upload,
-        $context->id,
-        'block_ai_assistant',
-        'questions',
-        $data->courseid,
-        array('subdirs' => 0)
+    $file_record = array(
+        'contextid' => $context->id,
+        'component' => 'block_ai_assistant',
+        'filearea' => 'questions',
+        'itemid' => $data->courseid,
+        'filepath' => '/',
+        'filename' => $file_name
     );
 
+    $file = $fs->create_file_from_pathname($file_record, $full_path);
 
     unlink($full_path);
 
     // Redirect with success message
-    redirect($CFG->wwwroot . '/blocks/ai_assistant/questions_list.php?courseid=' . $courseid);
+    redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else {
     // Show form
     $mform->set_data($formdata);

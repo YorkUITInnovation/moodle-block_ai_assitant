@@ -65,6 +65,9 @@ $bot_name = explode('-', $settings->bot_name);
 $bot_id = str_replace('"', '', $bot_name[0]);
 // number of questions
 $number_of_questions = count($autotest_questions);
+$progress_html = '<div class="progress">
+  <div class="progress-bar" role="progressbar" style="width: 100%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+</div>';
 // Set a counter
 $counter = 1;
 // Loop through all autotest questions

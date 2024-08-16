@@ -54,7 +54,8 @@ class questions_upload_form extends \moodleform
             get_string('questions', 'block_ai_assistant'),
             null,
             array(
-                'accepted_types' => array('.docx')
+                'accepted_types' => array('.docx'),
+
             )
         );
 

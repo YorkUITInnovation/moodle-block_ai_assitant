@@ -82,6 +82,7 @@ class block_ai_assistant extends block_base
         $PAGE->requires->js_call_amd('block_ai_assistant/publish_to_students', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/training_status', 'init');
+        $PAGE->requires->js_call_amd('block_ai_assistant/delete_question', 'init');
         $PAGE->requires->css(new moodle_url('/blocks/ai_assistant/css/styles.css'));
 
         $course_context = \context_course::instance($this->page->course->id);
@@ -121,17 +122,17 @@ class block_ai_assistant extends block_base
         );
         // Set questions_url
         $questions_url = '';
-        foreach ($questions_files as $file) {
-            if ($file->get_filename() != '.') {
-                $questions_file = moodle_url::make_pluginfile_url(
-                    $file->get_contextid(),
-                    $file->get_component(),
-                    $file->get_filearea(),
-                    $file->get_itemid(),
-                    $file->get_filepath(),
-                    $file->get_filename()
+        foreach ($questions_files as $q_file) {
+            if (!$q_file->is_directory()) {
+                $question_file = moodle_url::make_pluginfile_url(
+                    $q_file->get_contextid(),
+                    $q_file->get_component(),
+                    $q_file->get_filearea(),
+                    $q_file->get_itemid(),
+                    $q_file->get_filepath(),
+                    $q_file->get_filename()
                 );
-                $questions_url = $questions_file->out();
+                $questions_url = $question_file->out();
             }
         }
 
@@ -158,6 +159,19 @@ class block_ai_assistant extends block_base
             $training_status = '';
         }
 
+        // Get question files
+        $question_file = $DB->get_record('block_aia_question_files', array('courseid' => $this->page->course->id));
+
+        // Get training status
+        if ($question_file->cria_fileid) {
+            $results = cria::get_content_training_status($question_file->cria_fileid);
+            $question_training_status_id = $results->training_status_id;
+            $question_training_status = $results->training_status;
+        } else {
+            $question_training_status_id = 4;
+            $question_training_status = '';
+        }
+
         $params = array(
             'blockid' => $this->instance->id,
             'courseid' => $this->page->course->id,
@@ -170,12 +184,15 @@ class block_ai_assistant extends block_base
             ]))->out(false),
             'syllabus_url' => $syllabus_url,
             'questions_url' => $questions_url,
+            'question_id' => $question_file->id,
             'embed_code' => $embed_code,
             'teacher_embed_code' => cria::get_embed_bot_code($bot_id),
             'autotest_url' => $autotest_url,
             'embed_offset' => $config->embed_position_teacher,
             'training_status' => $training_status,
-            'training_status_id' => $training_status_id
+            'training_status_id' => $training_status_id,
+            'question_training_status' => $question_training_status,
+            'question_training_status_id' => $question_training_status_id
         );
 
         if (!empty($this->config->text)) {

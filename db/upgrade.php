@@ -388,7 +388,19 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2024080600, 'ai_assistant');
     }
 
+    if ($oldversion < 2024081600) {
 
+        // Define table block_aia_questions to be dropped.
+        $table = new xmldb_table('block_aia_questions');
+
+        // Conditionally launch drop table for block_aia_questions.
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024081600, 'ai_assistant');
+    }
 
     return true;
 

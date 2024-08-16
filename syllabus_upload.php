@@ -38,12 +38,17 @@ if ($mform->is_cancelled()) {
     //Handle form cancel operation, if cancel button is present on form
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else if ($data = $mform->get_data()) {
-
+    // Get block settings
+    $block_settings = $DB->get_record('block_aia_settings', ['courseid' => $courseid]);
     // Clear existing files in the draft area
     $fs = get_file_storage();
     $existingfiles = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $data->courseid, 'itemid', false);
     foreach ($existingfiles as $existingfile) {
         $existingfile->delete();
+    }
+    // delete file from cria
+    if ($block_settings->cria_file_id != 0) {
+        cria::delete_content_from_bot($block_settings->cria_file_id);
     }
 
     //save the uploaded file in the draft area
@@ -60,8 +65,6 @@ if ($mform->is_cancelled()) {
     $prepare_file = cria::get_upload_content_to_bot_config($filepath);
     $file_id = cria::upload_content_to_bot($courseid, $prepare_file->file_name, $prepare_file->file_content);
     $DB->set_field('block_aia_settings', 'cria_file_id', $file_id, ['courseid' => $courseid]);
-    // Redirect with success message
-    \core\notification::success(get_string('syllabus_uploaded', 'block_ai_assistant'));
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else {
     // Show form

@@ -6,6 +6,7 @@
     </style>
 {{/embed_position}}
 <input type="hidden" id="block-ai_assistant-training-status-id" data-course_id="{{courseid}}" value="{{training_status_id}}">
+<input type="hidden" id="block-ai_assistant-question-training-status-id" data-question_id="{{question_id}}" value="{{question_training_status_id}}">
 <div class="row">
     <div class="col-md-12">
         <div class="alert alert-info">
@@ -35,6 +36,11 @@
                     <span id="block-ai-assistant-training-status">
                         {{{training_status}}}
                     </span>
+                    <!-- Upload questions -->
+                    <a href="{{config.www}}/blocks/ai_assistant/syllabus_upload.php?courseid={{courseid}}"
+                    class="btn btn-link btn-sm"
+                    title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
+                    ><i class="fa fa-upload"></i></a>
                     <!-- Delete syllabus -->
                     <button
                             id="btn-ai-assistant-delete-syllabus"
@@ -48,11 +54,31 @@
             </li>
             <li class="list-group-item">
                 <!--upload questions -->
-                <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_list.php?courseid={{courseid}}"
+                <a href="{{questions_url}}"
                 class="btn btn-link btn-sm"
                 title="{{#str}}
                 custom_questions, block_ai_assistant{{/str}}" >{{#str}}
                 custom_questions, block_ai_assistant{{/str}}</a>
+                <!-- Content training status -->
+                <span id="block-ai-assistant-question-training-status">
+                    {{{question_training_status}}}
+                </span>
+                <!-- Upload questions -->
+                <a href="{{config.www}}/blocks/ai_assistant/questions_import.php?courseid={{courseid}}"
+                   class="btn btn-link btn-sm"
+                   title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
+                ><i class="fa fa-upload"></i></a>
+                <!-- Delete questions -->
+                <button
+                        id="btn-ai-assistant-delete-question"
+                        data-courseid="{{courseid}}"
+                        data-questionid="{{question_id}}"
+                        class="btn btn-link btn-sm"
+                        title="{{#str}}delete_question, block_ai_assistant{{/str}}"
+                        data-confirm="{{#str}}confirm_question_deletion, block_ai_assistant{{/str}}">
+                    <i class="fa fa-trash"></i>
+                </button>
+
             </li>
             <!--
             <li class="list-group-item">
@@ -64,15 +90,6 @@
                 </button>
             </li>
             -->
-
-            <li class="list-group-item">
-                <!--upload autotest -->
-                <a href="{{autotest_url}}"
-                   class="btn btn-link btn-sm" title="{{#str}}autotest, block_ai_assistant{{/str}}">
-                    {{#str}}autotest, block_ai_assistant{{/str}}
-                </a>
-                <!--upload autotest -->
-            </li>
             <!--configure settings -->
             <li class="list-group-item">
                 <a href="{{configure_settings_url}}"
@@ -81,12 +98,20 @@
                 >{{#str}}configure_bot_settings, block_ai_assistant{{/str}}
                 </a>
             </li>
+            <li class="list-group-item">
+                <!--upload autotest -->
+                <a href="{{autotest_url}}"
+                   class="btn btn-link btn-sm" title="{{#str}}autotest, block_ai_assistant{{/str}}">
+                    {{#str}}autotest, block_ai_assistant{{/str}}
+                </a>
+                <!--upload autotest -->
+            </li>
             <!-- Document Templates-->
             <li class="list-group-item">
                 <a href="{{config.wwwroot}}/blocks/ai_assistant/document_templates.php?courseid={{courseid}}"
                 class="btn btn-link btn-sm"
                 title="{{#str}}document_templates, block_ai_assistant{{/str}}">
-                {{#str}}document_templates, block_ai_assistant{{/str}}
+                {{#str}}help, block_ai_assistant{{/str}}
                 </a>
             </li>
         </ul>

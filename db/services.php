@@ -18,6 +18,15 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_get_question_training_status' => array(
+        'classname' => 'block_ai_assistant_question_ws',
+        'methodname' => 'training_status',
+        'classpath' => 'blocks/ai_assistant/classes/external/question_ws.php',
+        'description' => 'Returns two values: training_status_id and training_status (HTML)',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
     'block_ai_assistant_delete_question' => array(
         'classname' => 'block_ai_assistant_question_ws',
         'methodname' => 'delete',

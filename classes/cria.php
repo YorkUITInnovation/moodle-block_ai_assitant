@@ -798,7 +798,9 @@ class cria
     public static function run_autotest($course_id)
     {
         global $CFG;
-        exec("php $CFG->dirroot/blocks/ai_assistant/cli/autotest.php -cid=$course_id > /dev/null 2>&1 &");
+//        exec("php $CFG->dirroot/blocks/ai_assistant/cli/autotest.php -cid=$course_id > /dev/null 2>&1 &");
+        $handle = popen("php $CFG->dirroot/blocks/ai_assistant/cli/autotest.php -cid=$course_id", 'r');
+        pclose($handle);
     }
 
     /**

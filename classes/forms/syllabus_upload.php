@@ -49,7 +49,7 @@ class syllabus_upload_form extends \moodleform
             get_string('syllabus', 'block_ai_assistant'),
             null,
             array(
-                'accepted_types' => array('.docx', '.xlsx')
+                'accepted_types' => array('.docx')
             )
         );
 
