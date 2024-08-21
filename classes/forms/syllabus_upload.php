@@ -64,6 +64,21 @@ class syllabus_upload_form extends \moodleform
             'required'
         );
 
+        // Adde help header
+        $mform->addElement(
+            'header',
+            'help',
+            get_string('help', 'block_ai_assistant')
+        );
+        // Header should be closed
+        $mform->setExpanded('help', false);
+
+        // Add html element for help text
+        $mform->addElement(
+            'html',
+            $OUTPUT->render_from_template('block_ai_assistant/document_template_syllabus', [])
+        );
+
         $this->add_action_buttons();
         $this->set_data($formdata);
 

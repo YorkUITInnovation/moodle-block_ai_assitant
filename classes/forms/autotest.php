@@ -70,6 +70,21 @@ class autotest_form extends \moodleform
             get_string('delete_questions', 'block_ai_assistant')
         );
 
+        // Adde help header
+        $mform->addElement(
+            'header',
+            'help',
+            get_string('help', 'block_ai_assistant')
+        );
+        // Header should be closed
+        $mform->setExpanded('help', false);
+
+        // Add html element for help text
+        $mform->addElement(
+            'html',
+            $OUTPUT->render_from_template('block_ai_assistant/document_template_autotest', [])
+        );
+
 
         $this->add_action_buttons();
         $this->set_data($formdata);
