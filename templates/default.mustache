@@ -124,13 +124,13 @@
         <br>
         {{^published}}
             <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
-                    data-courseid="{{courseid}}">Enable AI Assistant
+                    data-courseid="{{courseid}}">{{#str}}enable_ai_assistant, block_ai_assistant{{/str}}
             </button>
         {{/published}}
 
         {{#published}}
             <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
-                    data-courseid="{{courseid}}">Disable AI Assistant
+                    data-courseid="{{courseid}}">{{#str}}disaple_ai_assistant, block_ai_assistant{{/str}}
             </button>
         {{/published}}
         {{{teacher_embed_code}}}

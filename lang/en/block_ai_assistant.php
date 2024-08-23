@@ -68,6 +68,7 @@ $string['delete_syllabus_help'] = 'Are you sure you want to delete the syllabus?
 $string['delete_question'] = 'Delete Question';
 $string['delete_questions'] = 'Delete Questions';
 $string['delete_question_help'] = 'Are you sure you want to delete the question?';
+$string['disable_ai_assistant'] = 'Disable AI Assistant';
 $string['document_templates'] = 'Document Templates';
 $string['download'] = 'Download';
 $string['download_english'] = 'Download (English)';
@@ -79,6 +80,7 @@ $string['edit_questions'] = "Edit questions";
 $string['embed_position_teacher'] = "Embed position for teacher";
 $string['embed_position_teacher_help'] = "If your Moodle instance has another chatbot, you can choose to postion the AI Assistant above it. "
     . "Enter the number of pixels you want to offset the AI Assistant from the bottom. If the bot is positioned at teh top, put in a negative number.";
+$string['enable_ai_assistant'] = 'Enable AI Assistant';
 $string['error'] = 'Error';
 $string['file_deleted_successfully'] = 'File deleted successfully';
 $string['file_uploaded_successfully'] = 'File uploaded successfully';
