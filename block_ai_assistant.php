@@ -149,11 +149,14 @@ class block_ai_assistant extends block_base
             $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest.php?courseid=' . $this->page->course->id;
         }
 
+        $teacher_embed_code = '';
+
         // Get training status
         if ($course_record->cria_file_id) {
             $results = cria::get_content_training_status($course_record->cria_file_id);
             $training_status_id = $results->training_status_id;
             $training_status = $results->training_status;
+            $teacher_embed_code = cria::get_embed_bot_code($bot_id);
         } else {
             $training_status_id = 4;
             $training_status = '';
@@ -167,6 +170,7 @@ class block_ai_assistant extends block_base
             $results = cria::get_content_training_status($question_file->cria_fileid);
             $question_training_status_id = $results->training_status_id;
             $question_training_status = $results->training_status;
+            $teacher_embed_code = cria::get_embed_bot_code($bot_id);
         } else {
             $question_training_status_id = 4;
             $question_training_status = '';
@@ -186,7 +190,7 @@ class block_ai_assistant extends block_base
             'questions_url' => $questions_url,
             'question_id' => $question_file->id,
             'embed_code' => $embed_code,
-            'teacher_embed_code' => cria::get_embed_bot_code($bot_id),
+            'teacher_embed_code' => $teacher_embed_code,
             'autotest_url' => $autotest_url,
             'embed_offset' => $config->embed_position_teacher,
             'training_status' => $training_status,
@@ -255,13 +259,17 @@ class block_ai_assistant extends block_base
         // Delete Autotest questions
         $DB->delete_records('block_aia_autotest', array('courseid' => $COURSE->id));
         // Questions
-        $DB->delete_records('block_aia_questions', array('courseid' => $COURSE->id));
+        $DB->delete_records('block_aia_question_files', array('courseid' => $COURSE->id));
         // Delete the files in filearea syllabus
         $fs = get_file_storage();
         $context = \context_course::instance($COURSE->id);
         $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $COURSE->id);
         foreach ($files as $file) {
             $file->delete();
+        }
+        $question_files = $fs->get_area_files($context->id, 'block_ai_assistant', 'questions', $COURSE->id);
+        foreach ($question_files as $question_file) {
+            $question_file->delete();
         }
         return true;
     }
