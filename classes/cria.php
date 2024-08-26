@@ -101,12 +101,16 @@ class cria
             $no_context_message = $config->no_context_message;
             $embed_position = $config->embed_position;
             $parsing_strategy = $config->parse_strategy;
+            $bot_contact = '';
+            $bot_help_text = '';
         } else {
             // Set variables
             $subtitle = $block_settings->subtitle;
             $welcome_message = $block_settings->welcome_message;
             $no_context_message = $block_settings->no_context_message;
             $embed_position = $block_settings->embed_position;
+            $bot_contact = $block_settings->bot_contact;
+            $bot_help_text = $block_settings->bot_help_text;
             // Parsing strategy is based on if this is a syllabus
             if ($is_syllabus) {
                 // If block_settings lang is set to French, use ALSYLLABUS_FR
@@ -165,7 +169,9 @@ class cria
             'icon_file_content' => $image->filecontent,
             'bot_locale' => $config->bot_locale,
             'child_bots' => $config->child_bots,
-            'publish' => 0
+            'publish' => 0,
+            'bot_contact' => $bot_contact,
+            'bot_help_text' => $bot_help_text
         );
         return $data;
     }

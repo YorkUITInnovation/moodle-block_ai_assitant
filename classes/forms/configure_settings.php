@@ -77,6 +77,41 @@ class configure_settings extends \moodleform
             'no_context_message',
             PARAM_TEXT
         );
+
+        // Add bot_contact field
+        $mform->addElement(
+            'text',
+            'bot_contact',
+            get_string('bot_contact', 'block_ai_assistant'),
+        );
+        $mform->setType(
+            'bot_contact',
+            PARAM_TEXT
+        );
+        // Add help button
+        $mform->addHelpButton(
+            'bot_contact',
+            'bot_contact',
+            'block_ai_assistant'
+        );
+
+        // Add bot_help_text field
+        $mform->addElement(
+            'text',
+            'bot_help_text',
+            get_string('bot_help_text', 'block_ai_assistant'),
+        );
+        $mform->setType(
+            'bot_help_text',
+            PARAM_TEXT
+        );
+        // Add help button
+        $mform->addHelpButton(
+            'bot_help_text',
+            'bot_help_text',
+            'block_ai_assistant'
+        );
+
         $options =array(
             1 => get_string('bottom_left', 'block_ai_assistant'),
             2 => get_string('bottom_right', 'block_ai_assistant'),

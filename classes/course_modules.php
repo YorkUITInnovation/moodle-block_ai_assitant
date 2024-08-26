@@ -11,7 +11,7 @@ class course_modules
      */
     public static function get_course_modules($courseid)
     {
-        global $CFG, $OUTPUT;
+        global $DB, $OUTPUT;
         $config = get_config('block_ai_assistant');
         $course_structure = new \stdClass();
         // Get accepted modules
@@ -53,6 +53,34 @@ class course_modules
                         $course_structure->sections[$i]->modules[$x]->instanceid = $mod[0]->id;
                         $course_structure->sections[$i]->modules[$x]->cmid = $mod[1]->id;
                         $course_structure->sections[$i]->modules[$x]->modname = $mod[1]->modname;
+                        // Is this module trained?
+                        if ($ai_assistant_module = $DB->get_record('block_aia_course_modules', ['cmid' => $mod[1]->id])) {
+                            switch ($ai_assistant_module->trained) {
+                                case 0:
+                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-warning">'
+                                        .  get_string('pending', 'block_ai_assistant')
+                                        . '</span>';
+                                    break;
+                                case 1:
+                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-success">'
+                                        .  get_string('trained', 'block_ai_assistant')
+                                        . '</span>';;
+                                    break;
+                                case 2:
+                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-danger">'
+                                        .  get_string('error', 'block_ai_assistant')
+                                        . '</span>';
+                                    break;
+                                case 3:
+                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-info">'
+                                        .  get_string('training', 'block_ai_assistant')
+                                        . '</span>';
+                                    break;
+                            }
+                            $course_structure->sections[$i]->modules[$x]->cria_fileid = $ai_assistant_module->cria_fileid;
+                        } else {
+                            $course_structure->sections[$i]->modules[$x]->trained = false;
+                        }
                         // Get module pix
                         // Prepare the content based on the type of module
                         switch ($mod[1]->modname) {

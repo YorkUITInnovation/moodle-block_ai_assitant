@@ -402,6 +402,30 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2024081600, 'ai_assistant');
     }
 
+    if ($oldversion < 2024082500) {
+
+        // Define field bot_help_text to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('bot_help_text', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'bot_name');
+
+        // Conditionally launch add field bot_help_text.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field bot_contact to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('bot_contact', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'bot_help_text');
+
+        // Conditionally launch add field bot_contact.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024082500, 'ai_assistant');
+    }
+
     return true;
 
 }

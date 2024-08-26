@@ -2,17 +2,14 @@
     <div class="col-md-12">
         <div class="blockAiAssistantFolder">
             {{#sections}}
-                <input type="checkbox" class="blockAiAssistantCheckboxCheckbox" id="{{idname}}">
+                <input type="checkbox" class="blockAiAssistantCheckbox" id="{{idname}}">
                 <label class="blockAiAssistant" for="{{idname}}"><i class="fa fa-folder"></i>  {{name}}</label>
                 <div class="blockAiAssistantContent">
                     <input type="checkbox" id="selectAll-{{idname}}" data-idname="{{idname}}"
                            class="select-all-checkbox">
                     <label for="selectAll-{{idname}}">Select All</label>
                     {{#modules}}
-                        <p>
-
-
-                        <div class="activitytitle media modtype_{{modname}} position-relative align-self-start">
+                        <div class="activitytitle media modtype_{{modname}} position-relative align-self-start mb-1">
                             <input
                                     type="checkbox"
                                     class="courseModuleCheckbox module-checkbox-{{idname}} align-self-start mr-3"
@@ -32,11 +29,9 @@
                                      style="width: 12px; hight:12px;">
                             </div>
                             <div class="activityname">
-                                    {{name}}</p>
+                                {{name}} {{{trained}}}
                             </div>
                         </div>
-
-
                     {{/modules}}
                 </div>
                 <br>

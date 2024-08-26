@@ -20,7 +20,7 @@ $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/blocks/ai_assistant/modtest.php'));
 $PAGE->set_title('Test');
 $PAGE->set_heading('Test');
-$PAGE->requires->css(new moodle_url('/blocks/ai_assistant/tmp_files/styles.css'));
+$PAGE->requires->css(new moodle_url('/blocks/ai_assistant/css/styles.css'));
 $PAGE->requires->js_call_amd('block_ai_assistant/select');
 $config = get_config('block_ai_assistant');
 echo $OUTPUT->header();
