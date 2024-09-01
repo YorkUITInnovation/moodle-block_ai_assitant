@@ -1,86 +1,87 @@
-{{#embed_offset}}
-    <style>
-        #cria-wrapper {
-            bottom: {{embed_offset}}px !important;
-        }
-    </style>
-{{/embed_offset}}
-<input type="hidden" id="block-ai_assistant-training-status-id" data-course_id="{{courseid}}" value="{{training_status_id}}">
-<input type="hidden" id="block-ai_assistant-question-training-status-id" data-question_id="{{question_id}}" value="{{question_training_status_id}}">
-<div class="row">
-    <div class="col-md-12">
-        <div class="alert alert-info">
-            <p>{{#str}}ai_assistant_instructions, block_ai_assistant{{/str}}</p>
+{{^error_code}}
+    {{#embed_offset}}
+        <style>
+            #cria-wrapper {
+                bottom: {{embed_offset}}px !important;
+            }
+        </style>
+    {{/embed_offset}}
+    <input type="hidden" id="block-ai_assistant-training-status-id" data-course_id="{{courseid}}" value="{{training_status_id}}">
+    <input type="hidden" id="block-ai_assistant-question-training-status-id" data-question_id="{{question_id}}" value="{{question_training_status_id}}">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <p>{{#str}}ai_assistant_instructions, block_ai_assistant{{/str}}</p>
+            </div>
         </div>
     </div>
-</div>
-<div class="row">
-    <div class="col-md-12">
-        <ul class="list-group">
-            <li class="list-group-item">
-                <!--upload syllabus -->
-                {{^syllabus_url}}
-                    <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_upload.php?courseid={{courseid}}"
-                    class="btn btn-link btn-sm"
-                    title="{{#str}}upload_syllabus, block_ai_assistant{{/str}}"
-                    >{{#str}}upload_syllabus, block_ai_assistant{{/str}}</a>
-                {{/syllabus_url}}
-                <!--download syllabus -->
-                {{#syllabus_url}}
-                    <a href="{{syllabus_url}}"
+    <div class="row">
+        <div class="col-md-12">
+            <ul class="list-group">
+                <li class="list-group-item">
+                    <!--upload syllabus -->
+                    {{^syllabus_url}}
+                        <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_upload.php?courseid={{courseid}}"
+                        class="btn btn-link btn-sm"
+                        title="{{#str}}upload_syllabus, block_ai_assistant{{/str}}"
+                        >{{#str}}upload_syllabus, block_ai_assistant{{/str}}</a>
+                    {{/syllabus_url}}
+                    <!--download syllabus -->
+                    {{#syllabus_url}}
+                        <a href="{{syllabus_url}}"
+                           class="btn btn-link btn-sm"
+                           title="{{#str}}download_syllabus, block_ai_assistant{{/str}}"
+                        >{{#str}}syllabus, block_ai_assistant{{/str}}
+                        </a>
+                        <!-- Content training status -->
+                        <span id="block-ai-assistant-training-status">
+                            {{{training_status}}}
+                        </span>
+                        <!-- Upload questions -->
+                        <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_upload.php?courseid={{courseid}}"
+                        class="btn btn-link btn-sm"
+                        title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
+                        ><i class="fa fa-upload"></i></a>
+                        <!-- Delete syllabus -->
+                        <button
+                                id="btn-ai-assistant-delete-syllabus"
+                                data-courseid="{{courseid}}"
+                                class="btn btn-link btn-sm"
+                                title="{{#str}}delete_syllabus, block_ai_assistant{{/str}}"
+                                data-confirm="{{#str}}confirm_file_deletion, block_ai_assistant{{/str}}">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    {{/syllabus_url}}
+                </li>
+                <li class="list-group-item">
+                    <!--upload questions -->
+                    <a href="{{questions_url}}"
                        class="btn btn-link btn-sm"
-                       title="{{#str}}download_syllabus, block_ai_assistant{{/str}}"
-                    >{{#str}}syllabus, block_ai_assistant{{/str}}
-                    </a>
+                       title="{{#str}}
+                custom_questions, block_ai_assistant{{/str}}">{{#str}}
+                        custom_questions, block_ai_assistant{{/str}}</a>
                     <!-- Content training status -->
-                    <span id="block-ai-assistant-training-status">
-                        {{{training_status}}}
+                    <span id="block-ai-assistant-question-training-status">
+                        {{{question_training_status}}}
                     </span>
                     <!-- Upload questions -->
-                    <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_upload.php?courseid={{courseid}}"
+                    <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_import.php?courseid={{courseid}}"
                     class="btn btn-link btn-sm"
                     title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
                     ><i class="fa fa-upload"></i></a>
-                    <!-- Delete syllabus -->
+                    <!-- Delete questions -->
                     <button
-                            id="btn-ai-assistant-delete-syllabus"
+                            id="btn-ai-assistant-delete-question"
                             data-courseid="{{courseid}}"
+                            data-questionid="{{question_id}}"
                             class="btn btn-link btn-sm"
-                            title="{{#str}}delete_syllabus, block_ai_assistant{{/str}}"
-                            data-confirm="{{#str}}confirm_file_deletion, block_ai_assistant{{/str}}">
+                            title="{{#str}}delete_question, block_ai_assistant{{/str}}"
+                            data-confirm="{{#str}}confirm_question_deletion, block_ai_assistant{{/str}}">
                         <i class="fa fa-trash"></i>
                     </button>
-                {{/syllabus_url}}
-            </li>
-            <li class="list-group-item">
-                <!--upload questions -->
-                <a href="{{questions_url}}"
-                class="btn btn-link btn-sm"
-                title="{{#str}}
-                custom_questions, block_ai_assistant{{/str}}" >{{#str}}
-                custom_questions, block_ai_assistant{{/str}}</a>
-                <!-- Content training status -->
-                <span id="block-ai-assistant-question-training-status">
-                    {{{question_training_status}}}
-                </span>
-                <!-- Upload questions -->
-                <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_import.php?courseid={{courseid}}"
-                   class="btn btn-link btn-sm"
-                   title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
-                ><i class="fa fa-upload"></i></a>
-                <!-- Delete questions -->
-                <button
-                        id="btn-ai-assistant-delete-question"
-                        data-courseid="{{courseid}}"
-                        data-questionid="{{question_id}}"
-                        class="btn btn-link btn-sm"
-                        title="{{#str}}delete_question, block_ai_assistant{{/str}}"
-                        data-confirm="{{#str}}confirm_question_deletion, block_ai_assistant{{/str}}">
-                    <i class="fa fa-trash"></i>
-                </button>
 
-            </li>
-            <!--
+                </li>
+                <!--
             <li class="list-group-item">
                 <button type="button"
                         id="btn-ai-assistant-train-modules"
@@ -90,53 +91,63 @@
                 </button>
             </li>
             -->
-            <!--configure settings -->
-            <li class="list-group-item">
-                <a href="{{configure_settings_url}}"
-                   class="btn btn-link btn-sm edit-button"
-                   title="{{#str}}configure_bot_settings, block_ai_assistant{{/str}}"
-                >{{#str}}configure_bot_settings, block_ai_assistant{{/str}}
-                </a>
-            </li>
-            <li class="list-group-item">
-                <!--upload autotest -->
-                <a href="{{autotest_url}}"
-                   class="btn btn-link btn-sm" title="{{#str}}autotest, block_ai_assistant{{/str}}">
-                    {{#str}}autotest, block_ai_assistant{{/str}}
-                </a>
-                <!--upload autotest -->
-            </li>
-            <!-- Document Templates-->
-            <li class="list-group-item">
-                <a href="{{config.wwwroot}}/blocks/ai_assistant/document_templates.php?courseid={{courseid}}"
-                class="btn btn-link btn-sm"
-                title="{{#str}}document_templates, block_ai_assistant{{/str}}">
-                {{#str}}help, block_ai_assistant{{/str}}
-                </a>
-            </li>
-        </ul>
+                <!--configure settings -->
+                <li class="list-group-item">
+                    <a href="{{configure_settings_url}}"
+                       class="btn btn-link btn-sm edit-button"
+                       title="{{#str}}configure_bot_settings, block_ai_assistant{{/str}}"
+                    >{{#str}}configure_bot_settings, block_ai_assistant{{/str}}
+                    </a>
+                </li>
+                <li class="list-group-item">
+                    <!--upload autotest -->
+                    <a href="{{autotest_url}}"
+                       class="btn btn-link btn-sm" title="{{#str}}autotest, block_ai_assistant{{/str}}">
+                        {{#str}}autotest, block_ai_assistant{{/str}}
+                    </a>
+                    <!--upload autotest -->
+                </li>
+                <!-- Document Templates-->
+                <li class="list-group-item">
+                    <a href="{{config.wwwroot}}/blocks/ai_assistant/document_templates.php?courseid={{courseid}}"
+                    class="btn btn-link btn-sm"
+                    title="{{#str}}document_templates, block_ai_assistant{{/str}}">
+                    {{#str}}help, block_ai_assistant{{/str}}
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
-</div>
 
-<div class="row">
-    <div class="col-md-12">
-        <br>
-        <br>
-        {{^published}}
-            <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
-                    data-courseid="{{courseid}}">{{#str}}enable_ai_assistant, block_ai_assistant{{/str}}
-            </button>
-        {{/published}}
+    <div class="row">
+        <div class="col-md-12">
+            <br>
+            <br>
+            {{^published}}
+                <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
+                        data-courseid="{{courseid}}">{{#str}}enable_ai_assistant, block_ai_assistant{{/str}}
+                </button>
+            {{/published}}
 
-        {{#published}}
-            <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
-                    data-courseid="{{courseid}}">{{#str}}disable_ai_assistant, block_ai_assistant{{/str}}
-            </button>
-        {{/published}}
-        {{{teacher_embed_code}}}
+            {{#published}}
+                <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
+                        data-courseid="{{courseid}}">{{#str}}disable_ai_assistant, block_ai_assistant{{/str}}
+                </button>
+            {{/published}}
+            {{{teacher_embed_code}}}
+        </div>
     </div>
-</div>
 
-
+{{/error_code}}
+{{#error_code}}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-danger">
+                <h3{{error_code}}</h3>
+                <p>{{error_message}}</p>
+            </div>
+        </div>
+    </div>
+{{/error_code}}
 
 

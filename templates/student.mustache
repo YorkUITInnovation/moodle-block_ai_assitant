@@ -1,14 +1,26 @@
-<div class="row">
-    {{{embed_code}}}
-    <div class="col-md-12">
-        {{#syllabus_url}}
-            <label for="syllabus">{{#str}}syllabus, block_ai_assistant{{/str}}</label>
-            <a href="{{syllabus_url}}"
-            class="btn btn-link btn-sm"
-            title="{{#str}}download_syllabus, block_ai_assistant{{/str}}"
-            >
-            <i class="fa fa-download"></i>
-            </a>
-        {{/syllabus_url}}
+{{^error_code}}
+    <div class="row">
+        {{{embed_code}}}
+        <div class="col-md-12">
+            {{#syllabus_url}}
+                <label for="syllabus">{{#str}}syllabus, block_ai_assistant{{/str}}</label>
+                <a href="{{syllabus_url}}"
+                   class="btn btn-link btn-sm"
+                   title="{{#str}}download_syllabus, block_ai_assistant{{/str}}"
+                >
+                    <i class="fa fa-download"></i>
+                </a>
+            {{/syllabus_url}}
+        </div>
     </div>
-</div>
+{{/error_code}}
+{{#error_code}}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-danger">
+                <h3{{error_code}}</h3>
+                <p>{{error_message}}</p>
+            </div>
+        </div>
+    </div>
+{{/error_code}}

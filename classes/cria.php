@@ -80,6 +80,34 @@ class cria
     }
 
     /**
+     * Checks to see if cria is in maintenance mode
+     * @return stdClass object
+     * @return int
+     */
+    public static function get_availability() {
+        $method = 'cria_get_availability';
+        $data = array();
+        $availability = json_decode(webservice::exec($method, $data));
+
+        if (is_array($availability)) {
+            $data = new \stdClass();
+            $data->exception = $availability[0]->exception;
+            $data->errorcode = $availability[0]->errorcode;
+            $data->message = $availability[0]->message;
+            return $data;
+        } else if (is_object($availability)) {
+            return $availability;
+        } else {
+            $data = new \stdClass();
+            $data->exception = 'error';
+            $data->errorcode = '404: Site unavailable';
+            $data->message = 'Cria is currently unreachable. Please try again later.';
+            return $data;
+        }
+
+    }
+
+    /**
      * Returns the config for creating bot instance
      * @param int $course_id
      * @param bool $is_syllabus

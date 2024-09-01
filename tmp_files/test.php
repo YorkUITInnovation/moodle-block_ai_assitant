@@ -21,19 +21,7 @@ $PAGE->set_title('Test');
 $PAGE->set_heading('Test');
 $config = get_config('block_ai_assistant');
 echo $OUTPUT->header();
-if (!$settings = $DB->get_record('block_aia_settings', ['courseid' => $courseid])) {
-    \core\notification::error('Settings not found');
-} else {
-    $bot_name = explode('-', $settings->bot_name);
-    $bot_id = str_replace('"', '', $bot_name[0]);
-    $chat_id = cria::get_chat_id();
-    $prompt = 'Who teaches the course?';
-
-    $response = cria::get_gpt_response($chat_id, $bot_id, $prompt);
-
-    print_object(json_decode($response));
-    echo 'Answwer: ' . json_decode($response)->message;
-}
+print_object(cria::get_availability());
 
 
 

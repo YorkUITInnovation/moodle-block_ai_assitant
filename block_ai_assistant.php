@@ -47,22 +47,36 @@ class block_ai_assistant extends block_base
         global $PAGE, $DB, $USER, $CFG;
         $config = get_config('block_ai_assistant');
 
-        if (!$course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id))) {
-            $record = new stdClass();
-            $record->courseid = $this->page->course->id;
-            $record->blockid = $this->instance->id;
-            $record->bot_name = cria::create_bot_instance($this->page->course->id);
-            $record->no_context_message = $config->no_context_message;
-            $record->subtitle = $config->subtitle;
-            $record->welcome_message = $config->welcome_message;
-            $record->lang = $config->default_language;
-            $record->published = 0;
-            $record->usermodified = $USER->id;
-            $record->timecreated = time();
-            $record->timemodified = time();
-            $DB->insert_record('block_aia_settings', $record);
-            $small_talk = cria::create_small_talk_questions($this->page->course->id);
-            $course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id));
+        $availability = cria::get_availability();
+        if ($availability->exception == 'success') {
+            if (!$course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id))) {
+                $record = new stdClass();
+                $record->courseid = $this->page->course->id;
+                $record->blockid = $this->instance->id;
+                $record->bot_name = cria::create_bot_instance($this->page->course->id);
+                $record->no_context_message = $config->no_context_message;
+                $record->subtitle = $config->subtitle;
+                $record->welcome_message = $config->welcome_message;
+                $record->lang = $config->default_language;
+                $record->published = 0;
+                $record->usermodified = $USER->id;
+                $record->timecreated = time();
+                $record->timemodified = time();
+                $DB->insert_record('block_aia_settings', $record);
+                $small_talk = cria::create_small_talk_questions($this->page->course->id);
+                $course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id));
+            }
+        } else {
+            $course_record = new stdClass();
+            $course_record->courseid = $this->page->course->id;
+            $course_record->cria_file_id = '';
+            $course_record->block_id = '';
+            $course_record->bot_name = '';
+            $course_record->no_context_message = '';
+            $course_record->subtitle = '';
+            $course_record->welcome_message = '';
+            $course_record->lang = '';
+            $course_record->published = 0;
         }
 
         if ($this->content !== null) {
@@ -95,7 +109,10 @@ class block_ai_assistant extends block_base
             'syllabus',
             $this->page->course->id
         );
-        $bot_id = cria::get_bot_id($this->page->course->id);
+        $bot_id = '';
+        if ($availability->exception == 'success') {
+            $bot_id = cria::get_bot_id($this->page->course->id);
+        }
 
 
         // Set syllabus_url
@@ -136,44 +153,65 @@ class block_ai_assistant extends block_base
             }
         }
 
-        if ($course_record->published == 1) {
-            $embed_code = cria::get_embed_bot_code($bot_id);
-        } else {
-            $embed_code = '';
+        $embed_code = '';
+        if ($availability->exception == 'success') {
+            if ($course_record->published == 1) {
+                $embed_code = cria::get_embed_bot_code($bot_id);
+            } else {
+                $embed_code = '';
+            }
         }
 
         // Find out if there are any autotest questions uploaded
-        if (!$autotest = $DB->get_records('block_aia_autotest', ['courseid' => $this->page->course->id])) {
-            $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest_import.php?courseid=' . $this->page->course->id;
-        } else {
-            $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest.php?courseid=' . $this->page->course->id;
+        $autotest_url = '';
+        if ($availability->exception == 'success') {
+            if (!$autotest = $DB->get_records('block_aia_autotest', ['courseid' => $this->page->course->id])) {
+                $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest_import.php?courseid=' . $this->page->course->id;
+            } else {
+                $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest.php?courseid=' . $this->page->course->id;
+            }
         }
 
         $teacher_embed_code = '';
+        $training_status_id = '';
+        $training_status = '';
 
         // Get training status
-        if ($course_record->cria_file_id) {
-            $results = cria::get_content_training_status($course_record->cria_file_id);
-            $training_status_id = $results->training_status_id;
-            $training_status = $results->training_status;
-            $teacher_embed_code = cria::get_embed_bot_code($bot_id);
-        } else {
-            $training_status_id = 4;
-            $training_status = '';
+        if ($availability->exception == 'success') {
+            if ($course_record->cria_file_id) {
+                $results = cria::get_content_training_status($course_record->cria_file_id);
+                $training_status_id = $results->training_status_id;
+                $training_status = $results->training_status;
+                $teacher_embed_code = cria::get_embed_bot_code($bot_id);
+            } else {
+                $training_status_id = 4;
+                $training_status = '';
+            }
         }
 
         // Get question files
         $question_file = $DB->get_record('block_aia_question_files', array('courseid' => $this->page->course->id));
 
         // Get training status
-        if ($question_file->cria_fileid) {
-            $results = cria::get_content_training_status($question_file->cria_fileid);
-            $question_training_status_id = $results->training_status_id;
-            $question_training_status = $results->training_status;
-            $teacher_embed_code = cria::get_embed_bot_code($bot_id);
-        } else {
-            $question_training_status_id = 4;
-            $question_training_status = '';
+        $question_training_status_id = '';
+        $question_training_status = '';
+        if ($availability->exception == 'success') {
+            if ($question_file->cria_fileid) {
+                $results = cria::get_content_training_status($question_file->cria_fileid);
+                $question_training_status_id = $results->training_status_id;
+                $question_training_status = $results->training_status;
+                $teacher_embed_code = cria::get_embed_bot_code($bot_id);
+            } else {
+                $question_training_status_id = 4;
+                $question_training_status = '';
+            }
+        }
+
+        $error_code = '';
+        $error_message = '';
+        if ($availability->exception != 'success') {
+            $error_code = $availability->errorcode;
+            $error_message = $availability->message;
         }
 
         $params = array(
@@ -196,7 +234,9 @@ class block_ai_assistant extends block_base
             'training_status' => $training_status,
             'training_status_id' => $training_status_id,
             'question_training_status' => $question_training_status,
-            'question_training_status_id' => $question_training_status_id
+            'question_training_status_id' => $question_training_status_id,
+            'error_code' => $error_code,
+            'error_message' => $error_message
         );
 
         if (!empty($this->config->text)) {
@@ -217,10 +257,11 @@ class block_ai_assistant extends block_base
     public function applicable_formats()
     {
         return array(
+            'course-view' => true,
             'site-index' => false,
             'my' => false,
-            'course-view' => true,
-            'mod' => false
+            'mod' => false,
+            'tag' => false
         );
     }
 
