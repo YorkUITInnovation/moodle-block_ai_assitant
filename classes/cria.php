@@ -873,4 +873,40 @@ class cria
         return self::split_bot_name($course_id)->intent_id;
     }
 
+    /**
+     * Get bot api key
+     * @param $chat_id
+     * @param $bot_id
+     * @param $prompt
+     * @param $content
+     * @return string
+     */
+    public static function get_api_key($bot_id): string
+    {
+        $method = 'cria_get_bot_api_key';
+        $data = array(
+            'bot_id' => (int)$bot_id,
+        );
+        $response = webservice::exec($method, $data);
+        // Remove "quotes from response
+        $response = str_replace('"', '', $response);
+        return $response;
+    }
+
+
+    /**
+     * @param $course_id
+     * @param $payload
+     * @return string
+     */
+    public static function start_session($course_id, $api_key, $payload = "{}"): string
+    {
+        $session = webservice::exec_embed(
+            (int)self::get_bot_id($course_id),
+            $api_key,
+            json_encode($payload)
+        );
+        return $session;
+    }
+
 }
