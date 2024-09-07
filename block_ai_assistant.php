@@ -45,6 +45,7 @@ class block_ai_assistant extends block_base
     {
         global $OUTPUT;
         global $PAGE, $DB, $USER, $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
         $config = get_config('block_ai_assistant');
 
         $availability = cria::get_availability();
@@ -77,6 +78,15 @@ class block_ai_assistant extends block_base
             $course_record->welcome_message = '';
             $course_record->lang = '';
             $course_record->published = 0;
+        }
+
+        if ($availability->exception == 'success') {
+            // Update $course_record->bot_api_key if empty
+            if (empty($course_record->bot_api_key)) {
+                $course_record->bot_api_key = cria::get_api_key(cria::get_bot_id($this->page->course->id));
+
+                $DB->set_field('block_aia_settings', 'bot_api_key', $course_record->bot_api_key, ['courseid' => $this->page->course->id]);
+            }
         }
 
         if ($this->content !== null) {
@@ -152,11 +162,32 @@ class block_ai_assistant extends block_base
                 $questions_url = $question_file->out();
             }
         }
+        // Get the users grade
+        // Get the grade item for the course
+        $user_grade = 0;
+        $grade_item = grade_item::fetch(array('itemtype' => 'course', 'courseid' => $this->page->course->id));
+        if ($grade_item) {
+            // Get the user's grade
+            $grades = grade_grade::fetch_users_grades($grade_item, array($USER->id), true);
+            $user_grade = $grades[$USER->id]->finalgrade;
+        }
+        // Set payload
+        $payload = array(
+            'idnumber' => $USER->idnumber,
+            'firstname' => $USER->firstname,
+            'ip' => $_SERVER['REMOTE_ADDR'],
+            'grade' => $user_grade
+        );
+        // get embed code data
+        $embed_code_data = '<script>' . cria::start_session(
+                $this->page->course->id,
+                $course_record->bot_api_key,
+                $payload) . '</script>';
 
         $embed_code = '';
         if ($availability->exception == 'success') {
             if ($course_record->published == 1) {
-                $embed_code = cria::get_embed_bot_code($bot_id);
+                $embed_code .= $embed_code_data;
             } else {
                 $embed_code = '';
             }
@@ -182,7 +213,7 @@ class block_ai_assistant extends block_base
                 $results = cria::get_content_training_status($course_record->cria_file_id);
                 $training_status_id = $results->training_status_id;
                 $training_status = $results->training_status;
-                $teacher_embed_code = cria::get_embed_bot_code($bot_id);
+                $teacher_embed_code = $embed_code_data;
             } else {
                 $training_status_id = 4;
                 $training_status = '';
@@ -200,7 +231,7 @@ class block_ai_assistant extends block_base
                 $results = cria::get_content_training_status($question_file->cria_fileid);
                 $question_training_status_id = $results->training_status_id;
                 $question_training_status = $results->training_status;
-                $teacher_embed_code = cria::get_embed_bot_code($bot_id);
+                $teacher_embed_code = $embed_code_data;
             } else {
                 $question_training_status_id = 4;
                 $question_training_status = '';
@@ -282,6 +313,32 @@ class block_ai_assistant extends block_base
     public function instance_allow_multiple()
     {
         return false;
+    }
+
+    public function instance_create()
+    {
+        global $DB, $USER;
+        $config = get_config('block_ai_assistant');
+
+        $availability = cria::get_availability();
+        if ($availability->exception == 'success') {
+            if (!$course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id))) {
+                $record = new stdClass();
+                $record->courseid = $this->page->course->id;
+                $record->blockid = $this->instance->id;
+                $record->bot_name = cria::create_bot_instance($this->page->course->id);
+                $record->no_context_message = $config->no_context_message;
+                $record->subtitle = $config->subtitle;
+                $record->welcome_message = $config->welcome_message;
+                $record->lang = $config->default_language;
+                $record->published = 0;
+                $record->usermodified = $USER->id;
+                $record->timecreated = time();
+                $record->timemodified = time();
+                $DB->insert_record('block_aia_settings', $record);
+                $small_talk = cria::create_small_talk_questions($this->page->course->id);
+            }
+        }
     }
 
     public function instance_delete()
