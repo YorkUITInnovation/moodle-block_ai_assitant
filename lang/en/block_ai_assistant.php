@@ -134,6 +134,13 @@ $string['upload_questions'] = 'Upload Q&A File';
 $string['welcome_message'] = 'Welcome Message';
 $string['welcome_message_help'] = 'Welcome Message help text here';
 
+// Capabilites
+$string['ai_assistant:addinstance'] = 'Add Block to course';
+$string['ai_assistant:view_autotest'] = 'View/Run AutoTest';
+$string['ai_assistant:student'] = 'Available to students';
+$string['ai_assistant:teacher'] = 'Available to teachers';
+
+
 // Bot tuning
 $string['max_tokens'] = 'Max tokens';
 $string['max_tokens_help'] = '4000 for GPT-4o';
@@ -196,6 +203,17 @@ $string['syllabus_template_instructions'] = '<h3>Instructions for Using the Syll
         </ul>
     </li>
 </ol>
+<div class="alert alert-warning">
+    <p><strong>Important:</strong> </p>
+    <p>Ensure that all placeholders are replaced with accurate information to provide
+        students with the correct details about the course.</p>
+        <p>Be precise! Avoid modal sentences such as "you might", "you may", "it is possible", "you could possibly" etc. These introduce
+        ambiquity and uncertainty which can lead to inconsistent repsonses and user mistrust in the AI. For AI training, it’s crucial to have clear and precise instructions 
+        to ensure the AI learns accurately</p>
+        <p>Avoid using HMTL tags (<>) within your document as this will cause the data to be skipped.</p>
+        <p>If you add new topics/sections, make sure to format them with headings (Heading 1, Heading 2 etc.)</p>
+        <p>If you add new tables, ensure that the first row is a header and all cells have content. (No empty cells)</p>
+</div>
 
 <h4>Step 4: Review and Save</h4>
 <ol start="4">
@@ -333,3 +351,10 @@ The AutoTest template is an Excel file that allows instructors to define questio
         </ul>
     </li>
 </ol>';
+
+$string['help_intro'] = '<h3>AI Assistant Help</h3>' .
+    'Properly formatting a document is crucial when training an AI bot to ensure it responds accurately and effectively. ' .
+    'The AI Assistant uses the content of the document to generate responses to user queries. ' .
+    'To help you get the best results from the AI Assistant, we have provided templates for syllabi and questions. ' .
+    'These templates are designed to ensure that the AI Assistant receives accurate and consistent information. ' .
+    'Follow the instructions below to use the templates effectively.';

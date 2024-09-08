@@ -267,7 +267,8 @@ class block_ai_assistant extends block_base
             'question_training_status' => $question_training_status,
             'question_training_status_id' => $question_training_status_id,
             'error_code' => $error_code,
-            'error_message' => $error_message
+            'error_message' => $error_message,
+            'is_admin' => has_capability('block/ai_assistant:view_autotest', $course_context),
         );
 
         if (!empty($this->config->text)) {

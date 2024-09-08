@@ -106,6 +106,7 @@
                     >{{#str}}configure_bot_settings, block_ai_assistant{{/str}}
                     </a>
                 </li>
+                {{#is_admin}}
                 <li class="list-group-item">
                     <!--upload autotest -->
                     <a href="{{autotest_url}}"
@@ -114,6 +115,7 @@
                     </a>
                     <!--upload autotest -->
                 </li>
+                {{/is_admin}}
                 <!-- Document Templates-->
                 <li class="list-group-item">
                     <a href="{{config.wwwroot}}/blocks/ai_assistant/document_templates.php?courseid={{courseid}}"
