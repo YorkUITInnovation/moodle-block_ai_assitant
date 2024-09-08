@@ -64,7 +64,7 @@ $string['criadex_model_id'] = 'Criadex Model ID';
 $string['criadex_model_id_help'] = 'Enter the criadex model id to your Cria server. You might have to ask your system administrator.';
 $string['criadex_rerank_id'] = 'Criadex Rerank ID';
 $string['criadex_rerank_id_help'] = 'Enter the criadex rerank id to your Cria server. You might have to ask your system administrator.';
-$string['custom_questions'] = 'Question File';
+$string['custom_questions'] = 'Q&A File';
 $string['default_content_language'] = 'Default content language';
 $string['delete'] = 'Delete';
 $string['delete_syllabus'] = 'Delete Syllabus';
@@ -130,7 +130,7 @@ $string['training'] = 'Training';
 $string['update_successful'] = 'Update succssful';
 $string['upload_assessment_dates'] = 'Upload Assessment Dates';
 $string['upload_syllabus'] = 'Upload Syllabus';
-$string['upload_questions'] = 'Upload question file';
+$string['upload_questions'] = 'Upload Q&A File';
 $string['welcome_message'] = 'Welcome Message';
 $string['welcome_message_help'] = 'Welcome Message help text here';
 

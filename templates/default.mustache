@@ -54,32 +54,39 @@
                     {{/syllabus_url}}
                 </li>
                 <li class="list-group-item">
-                    <!--upload questions -->
-                    <a href="{{questions_url}}"
-                       class="btn btn-link btn-sm"
-                       title="{{#str}}
+                    {{^questions_url}}
+                        <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_import.php?courseid={{courseid}}"
+                        class="btn btn-link btn-sm"
+                        title="{{#str}}upload_syllabus, block_ai_assistant{{/str}}"
+                        >{{#str}}upload_questions, block_ai_assistant{{/str}}</a>
+                    {{/questions_url}}
+                    {{#questions_url}}
+                        <!--download questions -->
+                        <a href="{{questions_url}}"
+                           class="btn btn-link btn-sm"
+                           title="{{#str}}
                 custom_questions, block_ai_assistant{{/str}}">{{#str}}
-                        custom_questions, block_ai_assistant{{/str}}</a>
-                    <!-- Content training status -->
-                    <span id="block-ai-assistant-question-training-status">
-                        {{{question_training_status}}}
-                    </span>
-                    <!-- Upload questions -->
-                    <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_import.php?courseid={{courseid}}"
-                    class="btn btn-link btn-sm"
-                    title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
-                    ><i class="fa fa-upload"></i></a>
-                    <!-- Delete questions -->
-                    <button
-                            id="btn-ai-assistant-delete-question"
-                            data-courseid="{{courseid}}"
-                            data-questionid="{{question_id}}"
-                            class="btn btn-link btn-sm"
-                            title="{{#str}}delete_question, block_ai_assistant{{/str}}"
-                            data-confirm="{{#str}}confirm_question_deletion, block_ai_assistant{{/str}}">
-                        <i class="fa fa-trash"></i>
-                    </button>
-
+                            custom_questions, block_ai_assistant{{/str}}</a>
+                        <!-- Content training status -->
+                        <span id="block-ai-assistant-question-training-status">
+                            {{{question_training_status}}}
+                        </span>
+                        <!-- Upload questions -->
+                        <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_import.php?courseid={{courseid}}"
+                        class="btn btn-link btn-sm"
+                        title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
+                        ><i class="fa fa-upload"></i></a>
+                        <!-- Delete questions -->
+                        <button
+                                id="btn-ai-assistant-delete-question"
+                                data-courseid="{{courseid}}"
+                                data-questionid="{{question_id}}"
+                                class="btn btn-link btn-sm"
+                                title="{{#str}}delete_question, block_ai_assistant{{/str}}"
+                                data-confirm="{{#str}}confirm_question_deletion, block_ai_assistant{{/str}}">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    {{/questions_url}}
                 </li>
                 <!--
             <li class="list-group-item">
