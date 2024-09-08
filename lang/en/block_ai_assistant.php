@@ -128,6 +128,7 @@ $string['train_modules'] = 'Add activities to the AI Assistant';
 $string['trained'] = 'Trained';
 $string['training'] = 'Training';
 $string['update_successful'] = 'Update succssful';
+$string['upload_assessment_dates'] = 'Upload Assessment Dates';
 $string['upload_syllabus'] = 'Upload Syllabus';
 $string['upload_questions'] = 'Upload question file';
 $string['welcome_message'] = 'Welcome Message';

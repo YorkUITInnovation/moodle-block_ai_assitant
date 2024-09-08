@@ -3,6 +3,7 @@
 
 use block_ai_assistant\webservice;
 use block_ai_assistant\cria;
+use block_ai_assistant\course_modules;
 
 require_once("../../../config.php");
 
@@ -21,8 +22,7 @@ $PAGE->set_title('Test');
 $PAGE->set_heading('Test');
 $config = get_config('block_ai_assistant');
 echo $OUTPUT->header();
-echo  cria::start_session(52, 'o1to-ztDif8ygsXmr6V8D3S5VArGTc48HE6LrbZZv2g','{"idnumber":"123456","firstname": "Patrick"}');
-
+course_modules::upload_course_dates($courseid);
 
 
 echo $OUTPUT->footer();
