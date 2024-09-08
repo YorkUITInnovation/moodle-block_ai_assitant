@@ -173,17 +173,30 @@ class block_ai_assistant extends block_base
         }
         // Set payload
         $payload = array(
-            'idnumber' => $USER->idnumber,
-            'firstname' => $USER->firstname,
+            'idNumber' => $USER->idnumber,
+            'firstName' => $USER->firstname,
             'ip' => $_SERVER['REMOTE_ADDR'],
             'grade' => $user_grade
         );
         // get embed code data
-        $embed_code_data = '<script>' . cria::start_session(
+        $embed_session_data = cria::start_session(
                 $this->page->course->id,
                 $course_record->bot_api_key,
-                $payload) . '</script>';
+                $payload) ;
 
+        // Extract the JSON string using a regular expression
+        preg_match('/window\.CRIA\s*=\s*(\{.*?\});/', $embed_session_data, $matches);
+
+        // Check if a match was found
+        if (isset($matches[1])) {
+            $jsonString = $matches[1];
+
+            // Decode the JSON string into a PHP array
+            $embed_array = json_decode($jsonString, true);
+            $payload['chatId'] = $embed_array['chatId'];
+        }
+
+        $embed_code_data = '<script>' . $embed_session_data . '</script>';
         $embed_code = '';
         if ($availability->exception == 'success') {
             if ($course_record->published == 1) {
