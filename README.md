@@ -17,6 +17,17 @@ The AI Course Assistant is automatically trained on all important course dates, 
 Instructors can train the AI on existing course content, enabling it to provide detailed and context-specific answers to student questions. This feature ensures that the AI Course Assistant is always up-to-date with the latest course materials.
 
 ---
+## Dependency
+
+The AI Course Assistant block relies on the AI RAG platform called **Cria**, which was designed and built by the UIT Education Design & IT Innovation team at York University. Cria provides the underlying AI capabilities that power the AI Course Assistant, enabling it to deliver accurate and context-specific responses to student inquiries.
+
+### Why Cria?
+
+- **Advanced AI Capabilities**: Cria offers state-of-the-art AI functionalities that enhance the performance and accuracy of the AI Course Assistant.
+- **Seamless Integration**: The platform is designed to integrate smoothly with Moodle, ensuring a hassle-free setup and operation.
+- **Customizable Training**: Cria allows for easy training on specific course content, making it adaptable to the unique needs of each course.
+
+This dependency ensures that the AI Course Assistant can provide a high-quality, reliable, and efficient service to both students and professors.
 
 
 
