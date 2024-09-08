@@ -27,9 +27,7 @@ The AI Course Assistant block relies on the AI RAG platform called **Cria**, whi
 - **Seamless Integration**: The platform is designed to integrate smoothly with Moodle, ensuring a hassle-free setup and operation.
 - **Customizable Training**: Cria allows for easy training on specific course content, making it adaptable to the unique needs of each course.
 
-This dependency ensures that the AI Course Assistant can provide a high-quality, reliable, and efficient service to both students and professors.
-
-
+---
 
 
 ## Installing via uploaded ZIP file ##
