@@ -171,12 +171,23 @@ class block_ai_assistant extends block_base
             $grades = grade_grade::fetch_users_grades($grade_item, array($USER->id), true);
             $user_grade = $grades[$USER->id]->finalgrade;
         }
-        // Set payload
+
+        // Get the user's groups
+        $user_groups = groups_get_all_groups($this->page->course->id, $USER->id, 0, 'g.*', false);
+        $groups = '';
+        foreach ($user_groups as $group) {
+            $groups .= $group->name . ',';
+        }
+        // Remove trialing comma
+        $groups = rtrim($groups, ',');
+
+        // Set payload. The payload is used to modify the prompt so that the user can get personilized information
         $payload = array(
             'idNumber' => $USER->idnumber,
-            'firstName' => $USER->firstname,
+            'name' => fullname($USER),
             'ip' => $_SERVER['REMOTE_ADDR'],
-            'grade' => $user_grade
+            'grade' => $user_grade,
+            'groups' => $groups,
         );
         // get embed code data
         $embed_session_data = cria::start_session(

@@ -22,7 +22,7 @@ $PAGE->set_title('Test');
 $PAGE->set_heading('Test');
 $config = get_config('block_ai_assistant');
 echo $OUTPUT->header();
-course_modules::upload_course_dates($courseid);
 
+0
 
 echo $OUTPUT->footer();

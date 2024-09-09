@@ -456,6 +456,35 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2024090701, 'ai_assistant');
     }
 
+    if ($oldversion < 2024090802) {
+
+        // Define field cria_group_file_id to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('cria_group_file_id', XMLDB_TYPE_INTEGER, '10', null, null, null, '0', 'cria_assignment_file_id');
+
+        // Conditionally launch add field cria_group_file_id.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024090802, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024090900) {
+
+        // Define field cria_group_file_id to be dropped from block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('cria_group_file_id');
+
+        // Conditionally launch drop field cria_group_file_id.
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024090900, 'ai_assistant');
+    }
     return true;
 
 }
