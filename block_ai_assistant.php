@@ -195,18 +195,6 @@ class block_ai_assistant extends block_base
                 $course_record->bot_api_key,
                 $payload) ;
 
-        // Extract the JSON string using a regular expression
-        preg_match('/window\.CRIA\s*=\s*(\{.*?\});/', $embed_session_data, $matches);
-
-        // Check if a match was found
-        if (isset($matches[1])) {
-            $jsonString = $matches[1];
-
-            // Decode the JSON string into a PHP array
-            $embed_array = json_decode($jsonString, true);
-            $payload['chatId'] = $embed_array['chatId'];
-        }
-
         $embed_code_data = '<script>' . $embed_session_data . '</script>';
         $embed_code = '';
         if ($availability->exception == 'success') {
