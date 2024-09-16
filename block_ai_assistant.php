@@ -181,10 +181,17 @@ class block_ai_assistant extends block_base
         // Remove trialing comma
         $groups = rtrim($groups, ',');
 
+        // Check to see if user is a student
+        if (has_capability('block/ai_assistant:teacher', $course_context)) {
+            $name = get_string('teacher_and_name', 'block_ai_assistant', fullname($USER));
+        } else {
+            $name = get_string('student_and_name', 'block_ai_assistant', fullname($USER));
+        }
+
         // Set payload. The payload is used to modify the prompt so that the user can get personilized information
         $payload = array(
             'idNumber' => $USER->idnumber,
-            'name' => fullname($USER),
+            'name' => $name,
             'ip' => $_SERVER['REMOTE_ADDR'],
             'grade' => $user_grade,
             'groups' => $groups,
