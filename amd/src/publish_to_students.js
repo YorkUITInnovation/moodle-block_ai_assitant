@@ -1,6 +1,4 @@
-import notification from 'core/notification';
 import ajax from 'core/ajax';
-import * as Str from 'core/str';
 
 export const init = () => {
     enable_ai_assitant();
@@ -9,7 +7,6 @@ export const init = () => {
 /**
  * Enable AI assistant
  */
-
 function enable_ai_assitant() {
     document.getElementById('btn-enable-ai-assistant').addEventListener('click', function () {
         // get data-courseid from current element

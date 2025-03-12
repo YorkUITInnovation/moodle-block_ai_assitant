@@ -1,6 +1,4 @@
-import notification from 'core/notification';
 import ajax from 'core/ajax';
-import * as Str from 'core/str';
 
 export const init = () => {
     get_training_status();
@@ -20,7 +18,6 @@ function get_training_status() {
 
     // if statusId does not equal 1, repeat the ajax call every 10 seconds that checks the training staus
     // if statusId equals 1, stop the ajax call
-    console.log(statusId);
     if (statusId !== "4" && statusId !== "1") {
         setInterval(function () {
             var get_status = ajax.call([{
@@ -48,6 +45,9 @@ function get_training_status() {
     }
 }
 
+/**
+ * Delete a content
+ */
 function get_question_training_status() {
     // Get element value for element with id block-ai_assistant-training-status-id
     var statusElement = document.getElementById('block-ai_assistant-question-training-status-id');

@@ -24,9 +24,9 @@ label.blockAiAssistant:hover {
     margin-left: 20px;
 }
 
-.blockAiAssistantCheckbox:checked + label + .blockAiAssistantContent {
-    display: block;
-}
+/*.blockAiAssistantCheckbox:checked + label + .blockAiAssistantContent {*/
+/*    display: block;*/
+/*}*/
 
 
 .courseModuleCheckbox {
@@ -38,4 +38,9 @@ label.blockAiAssistant:hover {
     display: inline-block !important;
     visibility: visible  !important;
 
+}
+
+.activityicon {
+    width:16px;
+    height:100%;
 }

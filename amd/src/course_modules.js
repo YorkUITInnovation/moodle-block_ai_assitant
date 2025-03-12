@@ -1,12 +1,14 @@
 import notification from 'core/notification';
 import ajax from 'core/ajax';
 import * as Str from 'core/str';
-import jQuery from 'jquery';
 
 export const init = () => {
-    // display_modules();
+    display_modules();
 };
+
 /**
+ * Display course modules
+ */
 function display_modules() {
     document.getElementById('btn-ai-assistant-train-modules').addEventListener('click', function () {
         // get data-courseid from current element
@@ -25,7 +27,8 @@ function display_modules() {
                 results,
                 Str.get_string('save', 'block_ai_assistant'),
                 Str.get_string('cancel', 'block_ai_assistant'), function () {
-                    // Get all checkboxes with class courseModuleCheckbox and store the attribute data-filename, data-content, datacourseid for each checked checkbox
+                    // Get all checkboxes with class courseModuleCheckbox and store the attribute data-filename,
+                    // data-content, datacourseid for each checked checkbox
                     var checkboxes = document.querySelectorAll('.courseModuleCheckbox');
                     var selected_modules = [];
                     checkboxes.forEach(function (checkbox) {
@@ -43,23 +46,18 @@ function display_modules() {
                                 methodname: 'block_ai_assistant_insert_course_modules',
                                 args: {
                                     'courseid': courseid,
-                                    'selected_modules':selected_modules
+                                    'selected_modules': selected_modules
                                 }
 
                             }]);
-                            insert_modules[0].done(function(response){
-                                    console.log("response", response);
-                                    alert("Successfully added, record id is: " + response);
-                                    // You can now use the data variable for further processing
-                            }).fail(function(error){
+                            insert_modules[0].done(function (response) {
+                                alert("Successfully added, record id is: " + response);
+                                // You can now use the data variable for further processing
+                            }).fail(function (error) {
                                 alert("error in ajax call of insert modules" + error);
                             });
                         }
                     });
-                    console.log("selected_module structure",selected_modules);
-
-
-
 
 
                     // var save_content = ajax.call([{
@@ -75,12 +73,46 @@ function display_modules() {
                     //     alert('An error has occurred. The record was not deleted');
                     // });
                 });
+
+            // Time out required so that components can be discovered
+            setTimeout(function () {
+                // Get all elements with the class 'blockAiAssistant'
+                var blocks = document.querySelectorAll('.blockAiAssistant');
+                // Add click event listener to each block
+                blocks.forEach(function (block) {
+                    block.addEventListener('click', function () {
+                        // Get the data-id of the clicked block
+                        var dataId = this.getAttribute('data-id');
+
+                        // Construct the class name of the corresponding content block
+                        var contentClassName = 'blockAiAssistantContent-' + dataId;
+
+                        // Get the content block element
+                        var contentBlock = document.querySelector('.' + contentClassName);
+
+                        var folderIcon = this.querySelector('.blockAiAssistantFolderIcon');
+
+                        // Toggle the display property of the content block
+                        if (contentBlock.style.display === 'none' || contentBlock.style.display === '') {
+                            contentBlock.style.display = 'block';
+                            // Change the icon to a folder open icon
+                            folderIcon.classList.remove('fa-folder');
+                            folderIcon.classList.add('fa-folder-open');
+                        } else {
+                            contentBlock.style.display = 'none';
+                            // Change the icon to a folder closed icon
+                            folderIcon.classList.remove('fa-folder-open');
+                            folderIcon.classList.add('fa-folder');
+                        }
+                    });
+                });
+            }, 1000);
+
         }).fail(function () {
             alert('An error has occurred. Cannot display data');
         });
 
     });
 }
- */
 
 

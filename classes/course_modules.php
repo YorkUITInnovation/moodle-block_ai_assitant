@@ -86,6 +86,17 @@ class course_modules
                         // Get module pix
                         // Prepare the content based on the type of module
                         switch ($mod[1]->modname) {
+                            case 'forum':
+                                $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
+                                    $mod[0]->id,
+                                    $mod[0]->name,
+                                    $mod[0]->intro,
+                                    $mod[0]->content,
+                                    $mod[1]->modname
+                                );
+                                $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'forum');
+                                $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration ';
+                                break;
                             case 'page':
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                     $mod[0]->id,

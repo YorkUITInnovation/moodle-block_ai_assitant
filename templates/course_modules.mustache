@@ -2,14 +2,13 @@
     <div class="col-md-12">
         <div class="blockAiAssistantFolder">
             {{#sections}}
-                <input type="checkbox" class="blockAiAssistantCheckbox" id="{{idname}}">
-                <label class="blockAiAssistant" for="{{idname}}"><i class="fa fa-folder"></i>  {{name}}</label>
-                <div class="blockAiAssistantContent">
+                <div class="blockAiAssistant" data-id="{{idname}}"><i class="fa fa-folder blockAiAssistantFolderIcon"></i> {{name}}</div>
+                <div class="blockAiAssistantContent-{{idname}} mb-1" style="display: none;">
                     <input type="checkbox" id="selectAll-{{idname}}" data-idname="{{idname}}"
                            class="select-all-checkbox">
                     <label for="selectAll-{{idname}}">Select All</label>
                     {{#modules}}
-                        <div class="activitytitle media modtype_{{modname}} position-relative align-self-start mb-1">
+                        <div class="activitytitle media modtype_{{modname}} position-relative align-self-start mt-1 mb-1">
                             <input
                                     type="checkbox"
                                     class="courseModuleCheckbox module-checkbox-{{idname}} align-self-start mr-3"
@@ -25,8 +24,7 @@
                                  style="width: 24px; height:24px;">
                                 <!--<img src="http://localhost:8180/theme/image.php/moove/page/1722556551/monologo?filtericon=1" class="activityicon " alt="Page icon">-->
 
-                                <img src="{{icon}}?filtericon=1" class="activityicon " alt="{{modname}} icon"
-                                     style="width: 12px; hight:12px;">
+                                <img src="{{icon}}?filtericon=1" class="activityicon " alt="{{modname}} icon">
                             </div>
                             <div class="activityname">
                                 {{name}} {{{trained}}}
@@ -34,7 +32,6 @@
                         </div>
                     {{/modules}}
                 </div>
-                <br>
             {{/sections}}
         </div>
     </div>

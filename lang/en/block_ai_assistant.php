@@ -126,6 +126,7 @@ $string['title'] = 'Title';
 $string['title_help'] = 'Title help text here';
 $string['top_left'] = 'Top left';
 $string['top_right'] = 'Top right';
+$string['train_course_assistant'] = 'Train the course assistant on the selected content';
 $string['train_modules'] = 'Add activities to the AI Assistant';
 $string['trained'] = 'Trained';
 $string['training'] = 'Training';
