@@ -89,7 +89,7 @@ if ($mform->is_cancelled()) {
             cria::delete_content_from_bot($record->cria_fileid);
         }
         // Create file on Cria
-        $cria_file_id = cria::upload_content_to_bot($data->courseid, $file_name, $file_content, 'ALSYLLABUS');
+        $cria_file_id = cria::upload_content_to_bot($data->courseid, $file_name, $file_content, 'GENERIC');
         $record->name = $file_name;
         $record->cria_fileid = $cria_file_id;
         $record->usermodified = $USER->id;
@@ -97,7 +97,7 @@ if ($mform->is_cancelled()) {
         $DB->update_record('block_aia_question_files', $record);
     } else {
         // Create file on Cria
-        $cria_file_id = cria::upload_content_to_bot($data->courseid, $file_name, $file_content, 'ALSYLLABUS');
+        $cria_file_id = cria::upload_content_to_bot($data->courseid, $file_name, $file_content, 'GENERIC');
         // Add record into block_aia_quesiton_files
         $record = new stdClass();
         $record->courseid = $data->courseid;

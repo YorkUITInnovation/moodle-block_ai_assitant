@@ -316,7 +316,7 @@ set_config('no_context_use_message', 1, 'block_ai_assistant');
 set_config('no_context_llm_guess', 0, 'block_ai_assistant');
 set_config('email', '', 'block_ai_assistant');
 set_config('available_child', 0, 'block_ai_assistant');
-set_config('parse_strategy', 'ALSYLLABUS', 'block_ai_assistant');
+set_config('parse_strategy', 'GENERIC', 'block_ai_assistant');
 set_config('botwatermark', 0, 'block_ai_assistant');
 set_config('icon_url', '', 'block_ai_assistant');
 set_config('bot_locale', 'en-US', 'block_ai_assistant');
