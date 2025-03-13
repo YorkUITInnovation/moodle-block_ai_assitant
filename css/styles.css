@@ -2,20 +2,16 @@
     margin-left: 5px;
 }
 
-.blockAiAssistantCheckbox {
-    display: none;
-}
-
-label.blockAiAssistant {
+.blockAiAssistant {
     cursor: pointer;
     display: block;
-    padding: 5px;
+    padding: 2px;
     background-color: #fff;
 
     margin-bottom: 5px;
 }
 
-label.blockAiAssistant:hover {
+.blockAiAssistant:hover {
     background-color: #fff;
 }
 
@@ -23,11 +19,6 @@ label.blockAiAssistant:hover {
     display: none;
     margin-left: 20px;
 }
-
-/*.blockAiAssistantCheckbox:checked + label + .blockAiAssistantContent {*/
-/*    display: block;*/
-/*}*/
-
 
 .courseModuleCheckbox {
     display: inline-block !important;
