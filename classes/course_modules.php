@@ -25,6 +25,8 @@ class course_modules
         // Loop through sections
         $i = 0; // Used to count the number of sections
         foreach ($sections as $sectionnum => $section) {
+            // Set number of modules to 0
+            $number_of_modules_in_section = 0;
             $course_structure->sections[$i] = new \stdClass();
             $course_structure->sections[$i]->courseid = $courseid;
             $course_structure->sections[$i]->sectionnum = $sectionnum;
@@ -49,6 +51,7 @@ class course_modules
                     $mod = self::get_module_from_cmid($cmid);
                     // Only get the modules that are accepted
                     if (in_array($mod[1]->modname, $accepted_modules)) {
+                        $number_of_modules_in_section++;
                         $course_structure->sections[$i]->modules[$x] = new \stdClass();
                         $course_structure->sections[$i]->modules[$x]->name = $mod[0]->name;
                         $course_structure->sections[$i]->modules[$x]->intro = strip_tags($mod[0]->intro);
@@ -87,15 +90,18 @@ class course_modules
                         // Prepare the content based on the type of module
                         switch ($mod[1]->modname) {
                             case 'forum':
-                                $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
-                                    $mod[0]->id,
-                                    $mod[0]->name,
-                                    $mod[0]->intro,
-                                    $mod[0]->content,
-                                    $mod[1]->modname
-                                );
-                                $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'forum');
-                                $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration ';
+                                // Only print if it's the news forum
+                                if ($mod[0]->type == 'news') {
+                                    $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
+                                        $mod[0]->id,
+                                        $mod[0]->name,
+                                        $mod[0]->intro,
+                                        $mod[0]->content,
+                                        $mod[1]->modname
+                                    );
+                                    $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'forum');
+                                    $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration ';
+                                }
                                 break;
                             case 'page':
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
@@ -171,6 +177,7 @@ class course_modules
                     }
                 }
             }
+            $course_structure->sections[$i]->number_of_modules = $number_of_modules_in_section;
             $i++;
         }
         return $course_structure;
@@ -212,11 +219,23 @@ class course_modules
      */
     public static function set_module_content($id, $name, $intro, $content, $module_type)
     {
+        //Create object
         $module = new \stdClass();
-        // Set the file name
-        $file_name = $module_type . ' ' . $id . ' ' . substr($name, 0, 30) . '.html';
+        // Set default variable values
+        $file_name = '';
+        $module_content = '';
+        if (isset($name)) {
+            // Set the file name
+            $file_name = $module_type . ' ' . $id . ' ' . substr($name, 0, 30) . '.html';
+        }
         // Set the content
-        $module_content = $intro . '<br><br>' . $content;
+        if (isset($intro) ) {
+            $module_content = $intro;
+        }
+        if (isset($content)) {
+            $module_content .=  '<br><br>' . $content;
+        }
+
         $module->file_name = $file_name;
         $module->content = base64_encode($module_content);
 
@@ -299,6 +318,11 @@ class course_modules
         $glossary->content = $html;
         $glossary->files = $glossary_files;
 
+        // If the glossary files are empty, set it to null
+        if (empty($glossary_files)) {
+            $glossary->files = new \stdClass() ;
+        }
+
         return $glossary;
     }
 
@@ -342,6 +366,11 @@ class course_modules
                 $file_info->content = base64_encode($content);
                 $file_info->file_name = 'resource ' . $id . ' ' . $file_name;
             }
+        }
+        // If no files are available, set the content to empty
+        if (empty($file_info)) {
+            $file_info->file_name = '';
+            $file_info->content = '';
         }
 
         return $file_info;
@@ -406,6 +435,10 @@ class course_modules
                 unlink($path . $file_name);
                 $i++;
             }
+        }
+
+        if (empty($folder_files)) {
+            $folder_data->content = new \stdClass();
         }
 
         $folder_data->files = $folder_files;
@@ -494,7 +527,7 @@ class course_modules
     private static function get_availability_content($name, $availability)
     {
         $availability = json_decode($availability);
-        print_object($availability);
+
         $content = '';
         $i = 0;
         foreach($availability->c as $c) {
@@ -733,7 +766,6 @@ class course_modules
                             }
                             break;
                         case 'glossary':
-                            print_object('In glossary');
                             $sql = "SELECT glossary.*, cm.availability FROM {glossary} glossary 
                                         Inner Join {course_modules} cm ON cm.instance = glossary.id WHERE cm.id = ?";
                             $data = $DB->get_record_sql($sql, [$mod[1]->id]);

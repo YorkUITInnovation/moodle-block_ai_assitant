@@ -27,7 +27,6 @@ echo $OUTPUT->header();
 
 $course_modules = (course_modules::get_course_modules($courseid));
 
-// print_object($course_modules);
 echo $OUTPUT->render_from_template('block_ai_assistant/course_modules', $course_modules);
 
 //$content = base64_decode('')

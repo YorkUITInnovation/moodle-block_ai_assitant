@@ -292,13 +292,7 @@ if ($hassiteconfig) {
         ''
     ));
 
-    $settings->add(new admin_setting_configtextarea(
-        'block_ai_assistant/accepted_modules',
-        get_string('accepted_modules', 'block_ai_assistant'),
-        get_string('accepted_modules_help', 'block_ai_assistant'),
-        "book,forum,glossary,page,resource",
-        PARAM_TEXT
-    ));
+
     // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
     if ($ADMIN->fulltree) {
         // TODO: Define actual plugin settings page and add it to the tree - {@link https://docs.moodle.org/dev/Admin_settings}.
@@ -321,3 +315,5 @@ set_config('botwatermark', 0, 'block_ai_assistant');
 set_config('icon_url', '', 'block_ai_assistant');
 set_config('bot_locale', 'en-US', 'block_ai_assistant');
 set_config('child_bots', '', 'block_ai_assistant');
+// Accepted modules
+set_config('blockAiAssistant', 'book,forum,glossary,page,resource', 'block_ai_assistant');

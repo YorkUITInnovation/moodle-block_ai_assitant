@@ -2,33 +2,40 @@
     <div class="col-md-12">
         <div class="blockAiAssistantFolder">
             {{#sections}}
-                <div class="blockAiAssistant" data-id="{{idname}}"><i class="fa fa-folder blockAiAssistantFolderIcon"></i> {{name}}</div>
+                <div class="blockAiAssistant" data-id="{{idname}}"><i
+                        class="fa fa-folder blockAiAssistantFolderIcon"></i> {{name}} ({{number_of_modules}})
+                </div>
                 <div class="blockAiAssistantContent-{{idname}} mb-1" style="display: none;">
                     <input type="checkbox" id="selectAll-{{idname}}" data-idname="{{idname}}"
                            class="select-all-checkbox">
                     <label for="selectAll-{{idname}}">Select All</label>
                     {{#modules}}
                         <div class="activitytitle media modtype_{{modname}} position-relative align-self-start mt-1 mb-1">
-                            <input
-                                    type="checkbox"
-                                    class="courseModuleCheckbox module-checkbox-{{idname}} align-self-start mr-3"
-                                    data-section="{{idname}}"
-                                    data-filename="{{#content}}{{file_name}}{{/content}}"
-                                    data-content="{{#content}}{{content}}{{/content}}"
-                                    data-cmid="{{cmid}}"
-                                    data-instanceid="{{instanceid}}"
-                                    data-modname="{{modname}}"
-                                    data-courseid="{{courseid}}"
-                            >
-                            <div class="activityiconcontainer {{icontype}} courseicon align-self-start mr-3"
-                                 style="width: 24px; height:24px;">
-                                <!--<img src="http://localhost:8180/theme/image.php/moove/page/1722556551/monologo?filtericon=1" class="activityicon " alt="Page icon">-->
+                            <label>
+                                <div class="d-flex align-items-center">
+                                    <input
+                                            type="checkbox"
+                                            class="courseModuleCheckbox module-checkbox-{{idname}} align-self-start mr-3"
+                                            data-section="{{idname}}"
+                                            data-filename="{{#content}}{{file_name}}{{/content}}"
+                                            data-content="{{#content}}{{content}}{{/content}}"
+                                            data-cmid="{{cmid}}"
+                                            data-instanceid="{{instanceid}}"
+                                            data-modname="{{modname}}"
+                                            data-courseid="{{courseid}}"
+                                    >
+                                    <span class="activityiconcontainer {{icontype}} courseicon align-self-start mr-3"
+                                          style="width: 24px; height:24px;">
+                                    <!--<img src="http://localhost:8180/theme/image.php/moove/page/1722556551/monologo?filtericon=1" class="activityicon " alt="Page icon">-->
 
-                                <img src="{{icon}}?filtericon=1" class="activityicon " alt="{{modname}} icon">
-                            </div>
-                            <div class="activityname">
-                                {{name}} {{{trained}}}
-                            </div>
+                                    <img src="{{icon}}?filtericon=1" class="activityicon " alt="{{modname}} icon">
+
+                                </span>
+                                    <span class="activityname">
+                                        {{name}} {{{trained}}}
+                                </span>
+                                </div>
+                            </label>
                         </div>
                     {{/modules}}
                 </div>
@@ -48,7 +55,6 @@
                 var idname = this.getAttribute('data-idname');
                 var checkboxes = document.querySelectorAll('.module-checkbox-' + idname);
                 checkboxes.forEach(function (checkbox) {
-                    console.log(checkbox);
                     // if the checkbox is checked, uncheck it, otherwise check it
                     checkbox.checked = !checkbox.checked;
                 });

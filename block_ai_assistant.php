@@ -237,6 +237,9 @@ class block_ai_assistant extends block_base
                 $training_status_id = 4;
                 $training_status = '';
             }
+        } else {
+            $training_status_id = 4;
+            $training_status = '';
         }
 
         // Get question files
@@ -246,11 +249,16 @@ class block_ai_assistant extends block_base
         $question_training_status_id = '';
         $question_training_status = '';
         if ($availability->exception == 'success') {
-            if ($question_file->cria_fileid) {
-                $results = cria::get_content_training_status($question_file->cria_fileid);
-                $question_training_status_id = $results->training_status_id;
-                $question_training_status = $results->training_status;
-                $teacher_embed_code = $embed_code_data;
+            if ($question_file) {
+                if ($question_file->cria_fileid) {
+                    $results = cria::get_content_training_status($question_file->cria_fileid);
+                    $question_training_status_id = $results->training_status_id;
+                    $question_training_status = $results->training_status;
+                    $teacher_embed_code = $embed_code_data;
+                } else {
+                    $question_training_status_id = 4;
+                    $question_training_status = '';
+                }
             } else {
                 $question_training_status_id = 4;
                 $question_training_status = '';
@@ -262,6 +270,12 @@ class block_ai_assistant extends block_base
         if ($availability->exception != 'success') {
             $error_code = $availability->errorcode;
             $error_message = $availability->message;
+        }
+
+        // Set question file id
+        $question_file_id = 0;
+        if ($question_file) {
+           $question_file_id = $question_file->id;
         }
 
         $params = array(
@@ -276,7 +290,7 @@ class block_ai_assistant extends block_base
             ]))->out(false),
             'syllabus_url' => $syllabus_url,
             'questions_url' => $questions_url,
-            'question_id' => $question_file->id,
+            'question_id' => $question_file_id,
             'embed_code' => $embed_code,
             'teacher_embed_code' => $teacher_embed_code,
             'autotest_url' => $autotest_url,
