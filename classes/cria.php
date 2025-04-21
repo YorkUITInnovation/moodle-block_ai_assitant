@@ -6,7 +6,7 @@ namespace block_ai_assistant;
 use block_ai_assistant\webservice;
 use Exception;
 
-require_once($CFG->libdir . '/phpspreadsheet/vendor/autoload.php');
+//require_once($CFG->libdir . '/phpspreadsheet/vendor/autoload.php');
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
