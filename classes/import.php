@@ -2,8 +2,6 @@
 
 namespace block_ai_assistant;
 
-require_once($CFG->libdir . '/phpspreadsheet/vendor/autoload.php');
-
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 

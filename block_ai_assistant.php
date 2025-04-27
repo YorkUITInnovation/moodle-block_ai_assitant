@@ -385,7 +385,6 @@ class block_ai_assistant extends block_base
         $bot_id = str_replace('"', '', $bot_name[0]);
         // Delete bot from Cria
         $results = cria::delete_bot_instance($bot_id);
-        file_put_contents('/var/www/moodledata/temp/delete_cria_bot.json', json_encode($results, JSON_PRETTY_PRINT));
         // Delete all settings for this course
         $DB->delete_records('block_aia_settings', array('courseid' => $COURSE->id));
         // Delete Autotest questions
