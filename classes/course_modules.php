@@ -91,12 +91,13 @@ class course_modules
                         switch ($mod[1]->modname) {
                             case 'forum':
                                 // Only print if it's the news forum
+                                $content = self::get_forum_content($mod[1]->id, $mod[0]->id, $mod[0]->name);
                                 if ($mod[0]->type == 'news') {
                                     $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                         $mod[0]->id,
                                         $mod[0]->name,
                                         $mod[0]->intro,
-                                        $mod[0]->content,
+                                        $content,
                                         $mod[1]->modname
                                     );
                                     $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'forum');
@@ -230,13 +231,17 @@ class course_modules
         }
         // Set the content
         if (isset($intro) ) {
-            $module_content = $intro;
+            $module_content .= $intro;
         }
         if (isset($content)) {
             $module_content .=  '<br><br>' . $content;
         }
 
         $module->file_name = $file_name;
+        // Make sure $module_content is UTF-8 encoded
+        if (!mb_detect_encoding($module_content, 'UTF-8', true)) {
+            $module_content = mb_convert_encoding($module_content, 'UTF-8');
+        }
         $module->content = base64_encode($module_content);
 
         return $module;
@@ -322,6 +327,17 @@ class course_modules
         if (empty($glossary_files)) {
             $glossary->files = new \stdClass() ;
         }
+
+        return $glossary;
+    }
+
+    public static function get_forum_content($cmid, $id, $name)
+    {
+        global $CFG, $DB;
+
+        $context = \context_module::instance($cmid);
+
+
 
         return $glossary;
     }

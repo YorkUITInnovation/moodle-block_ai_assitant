@@ -7,10 +7,11 @@
  * @copyright  2011 Moodle Pty Ltd (http://moodle.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-require_once($CFG->libdir . "/externallib.php");
+require_once("$CFG->libdir/externallib.php");
 require_once("$CFG->dirroot/config.php");
 
 use block_ai_assistant\course_modules;
+use block_ai_assistant\cria;
 
 class block_ai_assistant_course_modules_ws extends external_api
 {
@@ -104,7 +105,7 @@ class block_ai_assistant_course_modules_ws extends external_api
      */
     public static function insert($courseid, $selected_modules)
     {
-        global $OUTPUT;
+        global $DB;
 
         //Parameter validation
         $params = self::validate_parameters(
@@ -119,10 +120,19 @@ class block_ai_assistant_course_modules_ws extends external_api
         self::validate_context($context);
 
         foreach ($selected_modules as $module) {
-            $module['courseid'] = $courseid;
-            $fileId = course_modules::insert_record((object)$module); // Ensure the data is cast to an object
+            if (isset($module['cmid']) && isset($module['courseid'])) {
+                $file_id = course_modules::insert_record((object)$module); // Ensure the data is cast to an object
+                // If there is a file id, send the content to cria
+                if ($file_id > 0) {
+                    file_put_contents('/var/www/moodledata/temp/' . $module['filename'], base64_decode($module['content']));
+                    $cria_file_id = cria::upload_content_to_bot($module['courseid'], $module['filename'], $module['content']);
+                    if ($cria_file_id > 0) {
+                        $DB->set_field('block_aia_course_modules', 'cria_fileid', $cria_file_id, ['id' => $file_id]);
+                    }
+                }
+            }
         }
-        return $fileId;
+        return true;
     }
 
     /**
@@ -131,6 +141,6 @@ class block_ai_assistant_course_modules_ws extends external_api
      */
     public static function insert_returns()
     {
-        return new external_value(PARAM_INT, 'File id');
+        return new external_value(PARAM_BOOL, 'True or false');
     }
 }

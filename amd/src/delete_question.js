@@ -10,6 +10,10 @@ export const init = () => {
  * Delete a content
  */
 function delete_question() {
+    // Check to see if element btn-ai-assistant-delete-question exists on the page
+    if (!document.getElementById('btn-ai-assistant-delete-question')) {
+        return;
+    }
     document.getElementById('btn-ai-assistant-delete-question').addEventListener('click', function() {
             // get data-courseid from current element
             var questionid = this.getAttribute('data-questionid');
