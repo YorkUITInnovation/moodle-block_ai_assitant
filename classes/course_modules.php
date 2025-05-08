@@ -336,10 +336,41 @@ class course_modules
         global $CFG, $DB;
 
         $context = \context_module::instance($cmid);
+        $forum_discussions = $DB->get_records('forum_discussions', array('forum' => $id));
+        $html = '';
+        foreach ($forum_discussions as $fd) {
+            // Get forum posts
+            $forum_posts = $DB->get_records('forum_posts', array('discussion' => $fd->id));
+            foreach($forum_posts as $fp) {
+                $html .= '<h3>' . $fp->subject . '</h3>';
+                $html .= $fp->message . "\n";
+                // Get files for this entry
+//                $fs = get_file_storage();
+//                $files = $fs->get_area_files($context->id, 'mod_forum', 'attachment', $fp->id);
+//                foreach ($files as $file) {
+//                    if (!$file->is_directory()) {
+//                        $path = $CFG->dataroot . '/temp/ai_assistant/forum/' . $fd->id . '/';
+//                        if (!file_exists($path)) {
+//                            mkdir($path, 0777, true);
+//                        }
+//                        // Set the file name
+//                        $file_name = str_replace(' ', '_', $file->get_filename());
+//                        // Save a copy of the file
+//                        $file->copy_content_to($path . $file_name);
+//                        // Get the content of the file
+//                        $content = file_get_contents($path . $file_name);
+//                        // Delete the file
+//                        unlink($path . $file_name);
+//                    }
+//                }
+            }
+        }
 
+        $forum = new \stdClass();
+        $forum->file_name = 'forum ' . $id . ' ' . str_replace(' ', '_', $name) . '.html';
+        $forum->content = $html;
 
-
-        return $glossary;
+        return $forum;
     }
 
     /**
