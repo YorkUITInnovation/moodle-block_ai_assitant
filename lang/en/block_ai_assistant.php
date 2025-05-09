@@ -46,6 +46,7 @@ $string['bottom_left'] = 'Bottom left';
 $string['bottom_right'] = 'Bottom right';
 $string['close'] = '  Close';
 $string['column_name_must_exist'] = 'Column {$a} must exist';
+$string['confirm_delete_trained_module'] = 'Are you sure you want to delete the trained module?';
 $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
 $string['confirm_question_deletion'] = 'Are you sure you want to delete the question?';
 $string['configure_bot_settings'] = 'Bot Display Settings';

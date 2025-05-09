@@ -13,7 +13,9 @@
                         <div class="activitytitle media modtype_{{modname}} position-relative align-self-start mt-1 mb-1">
                             <label>
                                 <div class="d-flex align-items-center">
+
                                     <input
+                                            id="block-aia-{{cmid}}"
                                             type="checkbox"
                                             class="courseModuleCheckbox module-checkbox-{{idname}} align-self-start mr-3"
                                             data-section="{{idname}}"
@@ -23,6 +25,9 @@
                                             data-instanceid="{{instanceid}}"
                                             data-modname="{{modname}}"
                                             data-courseid="{{courseid}}"
+                                            {{#trained}}
+                                                disabled
+                                            {{/trained}}
                                     >
                                     <span class="activityiconcontainer {{icontype}} courseicon align-self-start mr-3"
                                           style="width: 24px; height:24px;">
@@ -32,8 +37,18 @@
 
                                 </span>
                                     <span class="activityname">
-                                        {{name}} {{{trained}}}
-                                </span>
+                                        {{name}} <span id="block-aia-trained-status-{{cmid}}"{{{trained}}}</span>
+                                    </span>
+                                    {{#trained}}
+                                        <button id="block-aia-delete-button-{{cmid}}"
+                                                type="button"
+                                                class="ai-aisstant-delete-content btn btn-link"
+                                                data-block_aia_cmid="{{block_aia_course_moduel_id}}"
+                                                data-cmid="{{cmid}}"
+                                        >
+                                            <i class="fa fa-trash"></i>
+                                        </button>
+                                    {{/trained}}
                                 </div>
                             </label>
                         </div>

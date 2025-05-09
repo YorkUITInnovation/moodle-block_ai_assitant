@@ -83,6 +83,7 @@ class course_modules
                                     break;
                             }
                             $course_structure->sections[$i]->modules[$x]->cria_fileid = $ai_assistant_module->cria_fileid;
+                            $course_structure->sections[$i]->modules[$x]->block_aia_course_moduel_id = $ai_assistant_module->id;
                         } else {
                             $course_structure->sections[$i]->modules[$x]->trained = false;
                         }
@@ -91,8 +92,8 @@ class course_modules
                         switch ($mod[1]->modname) {
                             case 'forum':
                                 // Only print if it's the news forum
-                                $content = self::get_forum_content($mod[1]->id, $mod[0]->id, $mod[0]->name);
                                 if ($mod[0]->type == 'news') {
+                                    $content = self::get_forum_content($mod[0]->id, $mod[0]->name);
                                     $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                         $mod[0]->id,
                                         $mod[0]->name,
@@ -331,11 +332,10 @@ class course_modules
         return $glossary;
     }
 
-    public static function get_forum_content($cmid, $id, $name)
+    public static function get_forum_content($id, $name)
     {
-        global $CFG, $DB;
-
-        $context = \context_module::instance($cmid);
+        global $DB;
+        // Get forum discussions
         $forum_discussions = $DB->get_records('forum_discussions', array('forum' => $id));
         $html = '';
         foreach ($forum_discussions as $fd) {
@@ -344,33 +344,10 @@ class course_modules
             foreach($forum_posts as $fp) {
                 $html .= '<h3>' . $fp->subject . '</h3>';
                 $html .= $fp->message . "\n";
-                // Get files for this entry
-//                $fs = get_file_storage();
-//                $files = $fs->get_area_files($context->id, 'mod_forum', 'attachment', $fp->id);
-//                foreach ($files as $file) {
-//                    if (!$file->is_directory()) {
-//                        $path = $CFG->dataroot . '/temp/ai_assistant/forum/' . $fd->id . '/';
-//                        if (!file_exists($path)) {
-//                            mkdir($path, 0777, true);
-//                        }
-//                        // Set the file name
-//                        $file_name = str_replace(' ', '_', $file->get_filename());
-//                        // Save a copy of the file
-//                        $file->copy_content_to($path . $file_name);
-//                        // Get the content of the file
-//                        $content = file_get_contents($path . $file_name);
-//                        // Delete the file
-//                        unlink($path . $file_name);
-//                    }
-//                }
             }
         }
 
-        $forum = new \stdClass();
-        $forum->file_name = 'forum ' . $id . ' ' . str_replace(' ', '_', $name) . '.html';
-        $forum->content = $html;
-
-        return $forum;
+        return $html;
     }
 
     /**

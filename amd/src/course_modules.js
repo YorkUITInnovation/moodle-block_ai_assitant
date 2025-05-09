@@ -30,9 +30,19 @@ function display_modules() {
                     // Get all checkboxes with class courseModuleCheckbox and store the attribute data-filename,
                     // data-content, datacourseid for each checked checkbox
                     var checkboxes = document.querySelectorAll('.courseModuleCheckbox');
-                    var selected_modules = [];
+                    // Get the number of boxes checked
+                    var checkedCount = 0;
                     checkboxes.forEach(function (checkbox) {
                         if (checkbox.checked) {
+                            checkedCount++;
+                        }
+                    });
+
+                    var selected_modules = [];
+                    var currentNumberChecked = 0;
+                    checkboxes.forEach(function (checkbox) {
+                        if (checkbox.checked) {
+                            currentNumberChecked++;
                             selected_modules.push({
                                 'filename': checkbox.getAttribute('data-filename'),
                                 'content': checkbox.getAttribute('data-content'),
@@ -51,31 +61,60 @@ function display_modules() {
 
                             }]);
                             insert_modules[0].done(function (response) {
-                                alert("Successfully added, record id is: " + response);
+                                if (currentNumberChecked === checkedCount) {
+                                    alert("Successfully added, record id is: " + response);
+                                }
                                 // You can now use the data variable for further processing
                             }).fail(function (error) {
                                 alert("error in ajax call of insert modules" + error);
                             });
                         }
                     });
-
-
-                    // var save_content = ajax.call([{
-                    //     methodname: 'block_ai_assistant_some_new_method',
-                    //     args: {
-                    //         'courseid': courseid
-                    //     }
-                    // }]);
-                    //
-                    // save_content[0].done(function () {
-                    //
-                    // }).fail(function () {
-                    //     alert('An error has occurred. The record was not deleted');
-                    // });
                 });
 
             // Time out required so that components can be discovered
             setTimeout(function () {
+                // When button with class ai-aisstant-delete-content is clicked, perform ajax call to delete the content
+                var deleteButtons = document.querySelectorAll('.ai-aisstant-delete-content');
+                deleteButtons.forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        // Get the data-cmid of the clicked button
+                        var dataBlockAiaCmid = this.getAttribute('data-block_aia_cmid');
+                        var uniqueCmid = this.getAttribute('data-cmid');
+                        // Add a notification pop up to confirm delete
+                        notification.confirm(Str.get_string('delete', 'block_ai_assistant'),
+                            Str.get_string('confirm_delete_trained_module', 'block_ai_assistant'),
+                            Str.get_string('delete', 'block_ai_assistant'),
+                            Str.get_string('no', 'block_ai_assistant'), function () {
+
+                                // Perform ajax call to delete the content
+                                var delete_content = ajax.call([{
+                                    methodname: 'block_ai_assistant_delete_course_modules',
+                                    args: {
+                                        'cmid': dataBlockAiaCmid
+                                    }
+                                }]);
+
+                                delete_content[0].done(function () {
+                                        // Hide element with id  block-aia-trained-status-uniqueCmid
+                                        var blockAiaTrainedStatus = document.getElementById(
+                                            'block-aia-trained-status-' + uniqueCmid);
+                                        blockAiaTrainedStatus.style.display = 'none';
+                                        // Hide element with id block-aia-delete-button-uniqueCmid
+                                        var blockAiaDeleteButton = document.getElementById('block-aia-delete-button-' + uniqueCmid);
+                                        blockAiaDeleteButton.style.display = 'none';
+                                        // Remove disable form element with id block-aia-uniqueCmid
+                                        var blockAiaUniqueCmid = document.getElementById('block-aia-' + uniqueCmid);
+                                        blockAiaUniqueCmid.removeAttribute('disabled');
+                                        alert("Successfully deleted");
+                                }).fail(function (error) {
+                                    alert("error in ajax call of delete modules" + error);
+                                });
+                            });
+                    });
+                });
+
+
                 // Get all elements with the class 'blockAiAssistant'
                 var blocks = document.querySelectorAll('.blockAiAssistant');
                 // Add click event listener to each block
@@ -106,6 +145,8 @@ function display_modules() {
                         }
                     });
                 });
+
+
             }, 1000);
 
         }).fail(function () {
