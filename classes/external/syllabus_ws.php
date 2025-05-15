@@ -202,7 +202,6 @@ class block_ai_assistant_syllabus_ws extends external_api
         $results = [];
         $results[]['training_status_id'] = $data->training_status_id;
         $results[]['training_status'] = $data->training_status;
-       file_put_contents('/var/www/moodledata/temp/training_status.json', json_encode($results, JSON_PRETTY_PRINT));
         return  json_encode($data);
     }
 
