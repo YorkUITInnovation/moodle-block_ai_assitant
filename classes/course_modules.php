@@ -60,8 +60,7 @@ class course_modules
                         $course_structure->sections[$i]->modules[$x]->modname = $mod[1]->modname;
                         // Is this module trained?
                         if ($ai_assistant_module = $DB->get_record('block_aia_course_modules', ['cmid' => $mod[1]->id])) {
-                            file_put_contents('/var/www/moodledata/temp/course_module.txt', print_r($ai_assistant_module,true));
-                            if ($ai_assistant_module->trained == 0) {
+                            if ($ai_assistant_module->trained != 1) {
                                 $data = cria::get_content_training_status($ai_assistant_module->cria_fileid);
                                 $ai_assistant_module->trained = $data->training_status_id;
                                 $DB->set_field('block_aia_course_modules',
