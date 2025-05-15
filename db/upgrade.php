@@ -485,6 +485,21 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         // Ai_assistant savepoint reached.
         upgrade_block_savepoint(true, 2024090900, 'ai_assistant');
     }
+
+    if ($oldversion < 2025051500) {
+
+        // Define field embed_position to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('embed_position', XMLDB_TYPE_INTEGER, '1', null, null, null, '1', 'no_context_message');
+
+        // Conditionally launch add field embed_position.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025051500, 'ai_assistant');
+    }
     return true;
 
 }
