@@ -86,7 +86,8 @@ class block_ai_assistant_course_modules_ws extends external_api
                             'content' => new external_value(PARAM_RAW, 'Content'),
                             'courseid' => new external_value(PARAM_INT, 'Course id'),
                             'cmid' => new external_value(PARAM_INT, 'CM ID'),
-                            'modname' => new external_value(PARAM_TEXT, 'Module Name')
+                            'modname' => new external_value(PARAM_TEXT, 'Module Name'),
+                            'modtimemodified' => new external_value(PARAM_INT, 'Module Time Modified')
                         )
                     )
                 )

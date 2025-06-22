@@ -13,7 +13,7 @@ Professors can upload a Q&A file to address common questions that may not be cov
 ### 3. Automated Training on Course Dates
 The AI Course Assistant is automatically trained on all important course dates, including assessments, activities, and assignments. This helps students stay informed about upcoming deadlines and events.
 
-### 4. Training on Existing Course Content (coming soon)
+### 4. Training on Existing Course Content
 Instructors can train the AI on existing course content, enabling it to provide detailed and context-specific answers to student questions. This feature ensures that the AI Course Assistant is always up-to-date with the latest course materials.
 
 ---
