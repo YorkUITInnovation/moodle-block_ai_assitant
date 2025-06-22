@@ -66,7 +66,7 @@ function display_modules() {
                             }]);
                             insert_modules[0].done(function (response) {
                                 if (currentNumberChecked === checkedCount) {
-                                    alert("Successfully added, record id is: " + response);
+                                    alert("Successfully added content to the course assistant");
                                 }
                                 // You can now use the data variable for further processing
                             }).fail(function (error) {
