@@ -125,11 +125,6 @@ class block_ai_assistant_course_modules_ws extends external_api
                 $file_id = course_modules::insert_record((object)$module); // Ensure the data is cast to an object
                 // If there is a file id, send the content to cria
                 if ($file_id > 0) {
-                    file_put_contents(
-                        '/var/www/moodledata/temp/modulecontent.log',
-                        $module['content'],
-                        FILE_APPEND
-                    );
                     $cria_file_id = cria::upload_content_to_bot($module['courseid'], $module['filename'], $module['content']);
                     if ($cria_file_id > 0) {
                         $DB->set_field('block_aia_course_modules', 'cria_fileid', $cria_file_id, ['id' => $file_id]);
