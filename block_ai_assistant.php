@@ -227,15 +227,26 @@ class block_ai_assistant extends block_base
         $training_status = '';
 
         // Get training status
+        $show_bot = false;
         if ($availability->exception == 'success') {
             if ($course_record->cria_file_id) {
                 $results = cria::get_content_training_status($course_record->cria_file_id);
                 $training_status_id = $results->training_status_id;
                 $training_status = $results->training_status;
-                $teacher_embed_code = $embed_code_data;
+                $show_bot = true;
             } else {
                 $training_status_id = 4;
                 $training_status = '';
+            }
+
+            // Check to see if there are any trained modules
+            $modules = $DB->count_records('block_aia_course_modules', array('courseid' => $this->page->course->id));
+            if ($modules > 0) {
+                $show_bot = true;
+            }
+            // Display bot
+            if ($show_bot == true) {
+                $teacher_embed_code = $embed_code_data;
             }
         } else {
             $training_status_id = 4;
