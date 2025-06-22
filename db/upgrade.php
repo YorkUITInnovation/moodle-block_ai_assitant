@@ -486,7 +486,7 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2024090900, 'ai_assistant');
     }
 
-    if ($oldversion < 2025051500) {
+    if ($oldversion < 2025060101) {
 
         // Define field embed_position to be added to block_aia_settings.
         $table = new xmldb_table('block_aia_settings');
@@ -498,7 +498,7 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         }
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2025051500, 'ai_assistant');
+        upgrade_block_savepoint(true, 2025060101, 'ai_assistant');
     }
     return true;
 
