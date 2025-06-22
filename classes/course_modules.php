@@ -25,6 +25,8 @@ class course_modules
         // Loop through sections
         $i = 0; // Used to count the number of sections
         foreach ($sections as $sectionnum => $section) {
+            // Set number of modules to 0
+            $number_of_modules_in_section = 0;
             $course_structure->sections[$i] = new \stdClass();
             $course_structure->sections[$i]->courseid = $courseid;
             $course_structure->sections[$i]->sectionnum = $sectionnum;
@@ -49,6 +51,7 @@ class course_modules
                     $mod = self::get_module_from_cmid($cmid);
                     // Only get the modules that are accepted
                     if (in_array($mod[1]->modname, $accepted_modules)) {
+                        $number_of_modules_in_section++;
                         $course_structure->sections[$i]->modules[$x] = new \stdClass();
                         $course_structure->sections[$i]->modules[$x]->name = $mod[0]->name;
                         $course_structure->sections[$i]->modules[$x]->intro = strip_tags($mod[0]->intro);
@@ -57,6 +60,23 @@ class course_modules
                         $course_structure->sections[$i]->modules[$x]->modname = $mod[1]->modname;
                         // Is this module trained?
                         if ($ai_assistant_module = $DB->get_record('block_aia_course_modules', ['cmid' => $mod[1]->id])) {
+
+                            file_put_contents(
+                                '/var/www/moodledata/temp/module.txt',
+                                print_r($ai_assistant_module, true) . "\n",
+                                FILE_APPEND
+                            );
+
+                            if ($ai_assistant_module->trained == 0) {
+                                $status = self::check_module_status($ai_assistant_module->cria_fileid);
+                                $ai_assistant_module->trained = $status;
+                            }
+                            file_put_contents(
+                                '/var/www/moodledata/temp/status.txt',
+                                'Module ' . $mod[1]->id . ' trained status: ' . $ai_assistant_module->trained . "\n",
+                                FILE_APPEND
+                            );
+
                             switch ($ai_assistant_module->trained) {
                                 case 0:
                                     $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-warning">'
@@ -80,12 +100,28 @@ class course_modules
                                     break;
                             }
                             $course_structure->sections[$i]->modules[$x]->cria_fileid = $ai_assistant_module->cria_fileid;
+                            $course_structure->sections[$i]->modules[$x]->block_aia_course_moduel_id = $ai_assistant_module->id;
                         } else {
                             $course_structure->sections[$i]->modules[$x]->trained = false;
                         }
                         // Get module pix
                         // Prepare the content based on the type of module
                         switch ($mod[1]->modname) {
+                            case 'forum':
+                                // Only print if it's the news forum
+                                if ($mod[0]->type == 'news') {
+                                    $content = self::get_forum_content($mod[0]->id, $mod[0]->name);
+                                    $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
+                                        $mod[0]->id,
+                                        $mod[0]->name,
+                                        $mod[0]->intro,
+                                        $content,
+                                        $mod[1]->modname
+                                    );
+                                    $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'forum');
+                                    $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration ';
+                                }
+                                break;
                             case 'page':
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                     $mod[0]->id,
@@ -160,6 +196,7 @@ class course_modules
                     }
                 }
             }
+            $course_structure->sections[$i]->number_of_modules = $number_of_modules_in_section;
             $i++;
         }
         return $course_structure;
@@ -201,12 +238,28 @@ class course_modules
      */
     public static function set_module_content($id, $name, $intro, $content, $module_type)
     {
+        //Create object
         $module = new \stdClass();
-        // Set the file name
-        $file_name = $module_type . ' ' . $id . ' ' . substr($name, 0, 30) . '.html';
+        // Set default variable values
+        $file_name = '';
+        $module_content = '';
+        if (isset($name)) {
+            // Set the file name
+            $file_name = $module_type . ' ' . $id . ' ' . substr($name, 0, 30) . '.html';
+        }
         // Set the content
-        $module_content = $intro . '<br><br>' . $content;
+        if (isset($intro) ) {
+            $module_content .= $intro;
+        }
+        if (isset($content)) {
+            $module_content .=  '<br><br>' . $content;
+        }
+
         $module->file_name = $file_name;
+        // Make sure $module_content is UTF-8 encoded
+        if (!mb_detect_encoding($module_content, 'UTF-8', true)) {
+            $module_content = mb_convert_encoding($module_content, 'UTF-8');
+        }
         $module->content = base64_encode($module_content);
 
         return $module;
@@ -288,7 +341,30 @@ class course_modules
         $glossary->content = $html;
         $glossary->files = $glossary_files;
 
+        // If the glossary files are empty, set it to null
+        if (empty($glossary_files)) {
+            $glossary->files = new \stdClass() ;
+        }
+
         return $glossary;
+    }
+
+    public static function get_forum_content($id, $name)
+    {
+        global $DB;
+        // Get forum discussions
+        $forum_discussions = $DB->get_records('forum_discussions', array('forum' => $id));
+        $html = '';
+        foreach ($forum_discussions as $fd) {
+            // Get forum posts
+            $forum_posts = $DB->get_records('forum_posts', array('discussion' => $fd->id));
+            foreach($forum_posts as $fp) {
+                $html .= '<h3>' . $fp->subject . '</h3>';
+                $html .= $fp->message . "\n";
+            }
+        }
+
+        return $html;
     }
 
     /**
@@ -331,6 +407,11 @@ class course_modules
                 $file_info->content = base64_encode($content);
                 $file_info->file_name = 'resource ' . $id . ' ' . $file_name;
             }
+        }
+        // If no files are available, set the content to empty
+        if (empty($file_info)) {
+            $file_info->file_name = '';
+            $file_info->content = '';
         }
 
         return $file_info;
@@ -395,6 +476,10 @@ class course_modules
                 unlink($path . $file_name);
                 $i++;
             }
+        }
+
+        if (empty($folder_files)) {
+            $folder_data->content = new \stdClass();
         }
 
         $folder_data->files = $folder_files;
@@ -483,7 +568,7 @@ class course_modules
     private static function get_availability_content($name, $availability)
     {
         $availability = json_decode($availability);
-        print_object($availability);
+
         $content = '';
         $i = 0;
         foreach($availability->c as $c) {
@@ -722,7 +807,6 @@ class course_modules
                             }
                             break;
                         case 'glossary':
-                            print_object('In glossary');
                             $sql = "SELECT glossary.*, cm.availability FROM {glossary} glossary 
                                         Inner Join {course_modules} cm ON cm.instance = glossary.id WHERE cm.id = ?";
                             $data = $DB->get_record_sql($sql, [$mod[1]->id]);
@@ -879,5 +963,75 @@ class course_modules
         $DB->set_field('block_aia_settings', 'cria_assignment_file_id', $new_cria_file_id, ['courseid' => $courseid]);
         // Delete file
         unlink($file_name);
+    }
+
+    /**
+     * Check the status of course modules and update trained status in the database.
+     * @param int $courseid
+     * @return false|void
+     * @throws \dml_exception
+     */
+    public static function check_module_status_for_course(int $courseid) {
+        global $DB;
+
+        // Check if the course has any modules
+        $modules = $DB->get_records('block_aia_course_modules', ['courseid' => $courseid]);
+        if (empty($modules)) {
+            return false; // No modules found
+        }
+
+        foreach ($modules as $module) {
+            // Check if the module has a valid Cria file ID
+            if (empty($module->cria_fileid) || $module->cria_fileid == 0) {
+                // Use cria to check the status of the module
+                $status = cria::get_content_training_status($module->cria_fileid);
+                if ($status->training_status_id != 0) {
+                    // Update the record with the new Cria file ID
+                    $DB->set_field(
+                        'block_aia_course_modules',
+                        'trained',
+                        $status->training_status_id,
+                        ['id' => $module->id]
+                    );
+                }
+            }
+        }
+
+        return true; // All modules checked
+    }
+
+    /**
+     * Check the status of a specific module and update its trained status in the database.
+     * @param int $cria_fileid
+     * @return false
+     * @throws \dml_exception
+     */
+    public static function check_module_status(int $cria_fileid) {
+        global $DB;
+
+        // Check if the module has a valid Cria file ID
+        if (empty($cria_fileid) || $cria_fileid == 0) {
+            return false; // No valid Cria file ID
+        }
+
+        // Use cria to check the status of the module
+        $status = cria::get_content_training_status($cria_fileid);
+        file_put_contents(
+            '/var/www/moodledata/temp/aia_debug.txt',
+            'Status: ' . print_r($status, true) . "\n",
+            FILE_APPEND
+        );
+        if ($status->training_status_id != 0) {
+            // Update the record with the new Cria file ID
+            $DB->set_field(
+                'block_aia_course_modules',
+                'trained',
+                $status->training_status_id,
+                ['cria_fileid' => $cria_fileid]
+            );
+            return $status->training_status_id; // Status updated successfully
+        }
+
+        return false; // No update needed
     }
 }

@@ -7,10 +7,11 @@
  * @copyright  2011 Moodle Pty Ltd (http://moodle.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-require_once($CFG->libdir . "/externallib.php");
+require_once("$CFG->libdir/externallib.php");
 require_once("$CFG->dirroot/config.php");
 
 use block_ai_assistant\course_modules;
+use block_ai_assistant\cria;
 
 class block_ai_assistant_course_modules_ws extends external_api
 {
@@ -104,7 +105,7 @@ class block_ai_assistant_course_modules_ws extends external_api
      */
     public static function insert($courseid, $selected_modules)
     {
-        global $OUTPUT;
+        global $DB;
 
         //Parameter validation
         $params = self::validate_parameters(
@@ -119,10 +120,18 @@ class block_ai_assistant_course_modules_ws extends external_api
         self::validate_context($context);
 
         foreach ($selected_modules as $module) {
-            $module['courseid'] = $courseid;
-            $fileId = course_modules::insert_record((object)$module); // Ensure the data is cast to an object
+            if (isset($module['cmid']) && isset($module['courseid'])) {
+                $file_id = course_modules::insert_record((object)$module); // Ensure the data is cast to an object
+                // If there is a file id, send the content to cria
+                if ($file_id > 0) {
+                    $cria_file_id = cria::upload_content_to_bot($module['courseid'], $module['filename'], $module['content']);
+                    if ($cria_file_id > 0) {
+                        $DB->set_field('block_aia_course_modules', 'cria_fileid', $cria_file_id, ['id' => $file_id]);
+                    }
+                }
+            }
         }
-        return $fileId;
+        return true;
     }
 
     /**
@@ -131,6 +140,65 @@ class block_ai_assistant_course_modules_ws extends external_api
      */
     public static function insert_returns()
     {
-        return new external_value(PARAM_INT, 'File id');
+        return new external_value(PARAM_BOOL, 'True or false');
+    }
+
+
+    // Delete course module
+
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function delete_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'cmid' => new external_value(PARAM_INT, 'cmid', VALUE_REQUIRED)
+            )
+        );
+    }
+
+    /**
+     * Deletes course module
+     * @param int $cmid
+     * @return bool
+     * @throws dml_exception
+     * @throws invalid_parameter_exception
+     * @throws restricted_context_exception
+     */
+    public static function delete($cmid)
+    {
+        global $DB;
+
+        //Parameter validation
+        $params = self::validate_parameters(
+            self::delete_parameters(),
+            array(
+                'cmid' => $cmid
+            )
+        );
+
+        // Get record
+        $record = $DB->get_record('block_aia_course_modules', ['id' => $cmid], '*', MUST_EXIST);
+        // Delete in cria
+        if ($record->cria_fileid != 0) {
+            $status = cria::delete_content_from_bot($record->cria_fileid);
+            file_put_contents('/var/www/moodledata/temp/status_2.txt', $status);
+            if ($status == '"200"') {
+                $DB->delete_records('block_aia_course_modules', ['id' => $cmid]);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Returns method result value
+     * @return external_description
+     */
+    public static function delete_returns()
+    {
+        return new external_value(PARAM_BOOL, 'True or false');
     }
 }
