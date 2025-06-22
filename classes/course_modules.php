@@ -235,11 +235,11 @@ class course_modules
             $file_name = $module_type . ' ' . $id . ' ' . substr($name, 0, 30) . '.html';
         }
         // Set the content
-        if (isset($intro)) {
+        if (isset($intro) ) {
             $module_content .= $intro;
         }
         if (isset($content)) {
-            $module_content .= '<br><br>' . $content;
+            $module_content .=  '<br><br>' . $content;
         }
 
         $module->file_name = $file_name;
@@ -330,7 +330,7 @@ class course_modules
 
         // If the glossary files are empty, set it to null
         if (empty($glossary_files)) {
-            $glossary->files = new \stdClass();
+            $glossary->files = new \stdClass() ;
         }
 
         return $glossary;
@@ -345,7 +345,7 @@ class course_modules
         foreach ($forum_discussions as $fd) {
             // Get forum posts
             $forum_posts = $DB->get_records('forum_posts', array('discussion' => $fd->id));
-            foreach ($forum_posts as $fp) {
+            foreach($forum_posts as $fp) {
                 $html .= '<h3>' . $fp->subject . '</h3>';
                 $html .= $fp->message . "\n";
             }
@@ -558,7 +558,7 @@ class course_modules
 
         $content = '';
         $i = 0;
-        foreach ($availability->c as $c) {
+        foreach($availability->c as $c) {
             if (trim($c->type) == 'date') {
                 $date_operator = $c->d;
                 $date = $c->t;
@@ -950,77 +950,5 @@ class course_modules
         $DB->set_field('block_aia_settings', 'cria_assignment_file_id', $new_cria_file_id, ['courseid' => $courseid]);
         // Delete file
         unlink($file_name);
-    }
-
-    /**
-     * Check the status of course modules and update trained status in the database.
-     * @param int $courseid
-     * @return false|void
-     * @throws \dml_exception
-     */
-    public static function check_module_status_for_course(int $courseid)
-    {
-        global $DB;
-
-        // Check if the course has any modules
-        $modules = $DB->get_records('block_aia_course_modules', ['courseid' => $courseid]);
-        if (empty($modules)) {
-            return false; // No modules found
-        }
-
-        foreach ($modules as $module) {
-            // Check if the module has a valid Cria file ID
-            if (empty($module->cria_fileid) || $module->cria_fileid == 0) {
-                // Use cria to check the status of the module
-                $status = cria::get_content_training_status($module->cria_fileid);
-                if ($status->training_status_id != 0) {
-                    // Update the record with the new Cria file ID
-                    $DB->set_field(
-                        'block_aia_course_modules',
-                        'trained',
-                        $status->training_status_id,
-                        ['id' => $module->id]
-                    );
-                }
-            }
-        }
-
-        return true; // All modules checked
-    }
-
-    /**
-     * Check the status of a specific module and update its trained status in the database.
-     * @param int $cria_fileid
-     * @return false
-     * @throws \dml_exception
-     */
-    public static function check_module_status(int $cria_fileid)
-    {
-        global $DB;
-
-        // Check if the module has a valid Cria file ID
-        if (empty($cria_fileid) || $cria_fileid == 0) {
-            return false; // No valid Cria file ID
-        }
-
-        // Use cria to check the status of the module
-        $status = cria::get_content_training_status($cria_fileid);
-        file_put_contents(
-            '/var/www/moodledata/temp/aia_debug.txt',
-            'Status: ' . print_r($status, true) . "\n",
-            FILE_APPEND
-        );
-        if ($status->training_status_id != 0) {
-            // Update the record with the new Cria file ID
-            $DB->set_field(
-                'block_aia_course_modules',
-                'trained',
-                $status->training_status_id,
-                ['cria_fileid' => $cria_fileid]
-            );
-            return $status->training_status_id; // Status updated successfully
-        }
-
-        return false; // No update needed
     }
 }

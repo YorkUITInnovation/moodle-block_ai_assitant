@@ -8,6 +8,10 @@ export const init = () => {
  * Enable AI assistant
  */
 function enable_ai_assitant() {
+    //Check to see if the button exists
+    if (!document.getElementById('btn-enable-ai-assistant')) {
+        return;
+    }
     document.getElementById('btn-enable-ai-assistant').addEventListener('click', function () {
         // get data-courseid from current element
         var courseid = this.getAttribute('data-courseid');

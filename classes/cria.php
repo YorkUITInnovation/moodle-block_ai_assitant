@@ -560,8 +560,6 @@ class cria
                 if ($published_question != 1) {
                     continue;
                 } else {
-                    file_put_contents('/var/www/moodledata/temp/small_talk_error.log',
-                        date('Y-m-d H:i:s', time()) . ' - $question id:' . $question_id . ' - ' . ' course id: ' . $course_id . ' - error: ' . $published_question . PHP_EOL, FILE_APPEND);
                     return false;
                 }
             } else {
