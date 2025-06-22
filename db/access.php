@@ -24,7 +24,7 @@ $capabilities = array(
     'block/ai_assistant:student' => array(
         'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_CONFIG,
         'captype' => 'write',
-        'contextlevel' => CONTEXT_SYSTEM,
+        'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
             'manager' => CAP_ALLOW,
             'student' => CAP_ALLOW
@@ -33,11 +33,10 @@ $capabilities = array(
     'block/ai_assistant:view_autotest' => array(
         'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_CONFIG,
         'captype' => 'write',
-        'contextlevel' => CONTEXT_SYSTEM,
+        'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
             'manager' => CAP_ALLOW,
-            'student' => CAP_PROHIBIT,
-            'editingteacher' => CAP_PREVENT
+            'student' => CAP_PROHIBIT
         )
     )
 );

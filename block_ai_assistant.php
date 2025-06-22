@@ -213,12 +213,14 @@ class block_ai_assistant extends block_base
         }
 
         // Find out if there are any autotest questions uploaded
-        $autotest_url = '';
-        if ($availability->exception == 'success') {
-            if (!$autotest = $DB->get_records('block_aia_autotest', ['courseid' => $this->page->course->id])) {
-                $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest_import.php?courseid=' . $this->page->course->id;
-            } else {
-                $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest.php?courseid=' . $this->page->course->id;
+        if (has_capability('block/ai_assistant:view_autotest', $course_context)) {
+            $autotest_url = '';
+            if ($availability->exception == 'success') {
+                if (!$autotest = $DB->get_records('block_aia_autotest', ['courseid' => $this->page->course->id])) {
+                    $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest_import.php?courseid=' . $this->page->course->id;
+                } else {
+                    $autotest_url = $CFG->wwwroot . '/blocks/ai_assistant/autotest.php?courseid=' . $this->page->course->id;
+                }
             }
         }
 
