@@ -53,6 +53,7 @@ function display_modules() {
                                 'courseid': checkbox.getAttribute('data-courseid'),
                                 'cmid': checkbox.getAttribute('data-cmid'),
                                 'modname': checkbox.getAttribute('data-modname'),
+                                'modtimemodified': checkbox.getAttribute('data-modtimemodified'),
                             });
                             //make a new ajax call to a new webservice that calls insert from course_module class
                             //block_ai_assistant_insert_course_modules

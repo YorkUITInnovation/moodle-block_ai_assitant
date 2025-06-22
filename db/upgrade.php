@@ -500,6 +500,22 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         // Ai_assistant savepoint reached.
         upgrade_block_savepoint(true, 2025060101, 'ai_assistant');
     }
+
+    if ($oldversion < 2025072201) {
+
+        // Define field modtimemodified to be added to block_aia_course_modules.
+        $table = new xmldb_table('block_aia_course_modules');
+        $field = new xmldb_field('modtimemodified', XMLDB_TYPE_INTEGER, '16', null, null, null, null, 'modname');
+
+        // Conditionally launch add field modtimemodified.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072201, 'ai_assistant');
+    }
+
     return true;
 
 }

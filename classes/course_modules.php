@@ -51,6 +51,11 @@ class course_modules
                     $mod = self::get_module_from_cmid($cmid);
                     // Only get the modules that are accepted
                     if (in_array($mod[1]->modname, $accepted_modules)) {
+                        file_put_contents(
+                             '/var/www/moodledata/temp/' . $courseid . '_course_modules.log',
+                            print_r($mod, true) . "\n",
+                            FILE_APPEND
+                        );
                         $number_of_modules_in_section++;
                         $course_structure->sections[$i]->modules[$x] = new \stdClass();
                         $course_structure->sections[$i]->modules[$x]->name = $mod[0]->name;
@@ -58,6 +63,7 @@ class course_modules
                         $course_structure->sections[$i]->modules[$x]->instanceid = $mod[0]->id;
                         $course_structure->sections[$i]->modules[$x]->cmid = $mod[1]->id;
                         $course_structure->sections[$i]->modules[$x]->modname = $mod[1]->modname;
+                        $course_structure->sections[$i]->modules[$x]->modtimemodified = $mod[0]->timemodified;
                         // Is this module trained?
                         if ($ai_assistant_module = $DB->get_record('block_aia_course_modules', ['cmid' => $mod[1]->id])) {
                             if ($ai_assistant_module->trained == 0) {
