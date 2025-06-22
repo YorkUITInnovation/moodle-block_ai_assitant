@@ -6,8 +6,10 @@
             }
         </style>
     {{/embed_offset}}
-    <input type="hidden" id="block-ai_assistant-training-status-id" data-course_id="{{courseid}}" value="{{training_status_id}}">
-    <input type="hidden" id="block-ai_assistant-question-training-status-id" data-question_id="{{question_id}}" value="{{question_training_status_id}}">
+    <input type="hidden" id="block-ai_assistant-training-status-id" data-course_id="{{courseid}}"
+           value="{{training_status_id}}">
+    <input type="hidden" id="block-ai_assistant-question-training-status-id" data-question_id="{{question_id}}"
+           value="{{question_training_status_id}}">
     <div class="row">
         <div class="col-md-12">
             <div class="alert alert-info">
@@ -88,16 +90,14 @@
                         </button>
                     {{/questions_url}}
                 </li>
-                <!--
-            <li class="list-group-item">
-                <button type="button"
-                        id="btn-ai-assistant-train-modules"
-                        data-courseid="{{courseid}}"
-                        class="btn btn-link btn-sm" title="{{#str}}train_modules, block_ai_assistant{{/str}}">
-                    {{#str}}train_modules, block_ai_assistant{{/str}}
-                </button>
-            </li>
-            -->
+                <li class="list-group-item">
+                    <button type="button"
+                            id="btn-ai-assistant-train-modules"
+                            data-courseid="{{courseid}}"
+                            class="btn btn-link btn-sm" title="{{#str}}train_modules, block_ai_assistant{{/str}}">
+                        {{#str}}train_modules, block_ai_assistant{{/str}}
+                    </button>
+                </li>
                 <!--configure settings -->
                 <li class="list-group-item">
                     <a href="{{configure_settings_url}}"
@@ -107,14 +107,14 @@
                     </a>
                 </li>
                 {{#is_admin}}
-                <li class="list-group-item">
-                    <!--upload autotest -->
-                    <a href="{{autotest_url}}"
-                       class="btn btn-link btn-sm" title="{{#str}}autotest, block_ai_assistant{{/str}}">
-                        {{#str}}autotest, block_ai_assistant{{/str}}
-                    </a>
-                    <!--upload autotest -->
-                </li>
+                    <li class="list-group-item">
+                        <!--upload autotest -->
+                        <a href="{{autotest_url}}"
+                           class="btn btn-link btn-sm" title="{{#str}}autotest, block_ai_assistant{{/str}}">
+                            {{#str}}autotest, block_ai_assistant{{/str}}
+                        </a>
+                        <!--upload autotest -->
+                    </li>
                 {{/is_admin}}
                 <!-- Document Templates-->
                 <li class="list-group-item">

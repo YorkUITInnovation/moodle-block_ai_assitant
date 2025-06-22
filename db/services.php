@@ -77,7 +77,16 @@ $functions = array(
         'methodname' => 'insert',
         'classpath' => 'blocks/ai_assistant/classes/external/course_modules_ws.php',
         'description' => 'Inserts all course modules',
-        'type' => 'read',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_delete_course_modules' => array(
+        'classname' => 'block_ai_assistant_course_modules_ws',
+        'methodname' => 'delete',
+        'classpath' => 'blocks/ai_assistant/classes/external/course_modules_ws.php',
+        'description' => 'Deletes a course modules',
+        'type' => 'write',
         'capabilities' => '',
         'ajax' => true
     ),

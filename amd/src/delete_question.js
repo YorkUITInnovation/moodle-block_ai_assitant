@@ -10,11 +10,15 @@ export const init = () => {
  * Delete a content
  */
 function delete_question() {
+    // Check to see if element btn-ai-assistant-delete-question exists on the page
+    if (!document.getElementById('btn-ai-assistant-delete-question')) {
+        return;
+    }
     document.getElementById('btn-ai-assistant-delete-question').addEventListener('click', function() {
             // get data-courseid from current element
             var questionid = this.getAttribute('data-questionid');
             var courseid = this.getAttribute('data-courseid');
-            console.log(questionid);
+
             // Pop up notificaiton to confirm delete
             notification.confirm(Str.get_string('delete', 'block_ai_assistant'),
                 Str.get_string('delete_question_help', 'block_ai_assistant'),

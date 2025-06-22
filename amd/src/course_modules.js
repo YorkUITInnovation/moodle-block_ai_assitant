@@ -10,6 +10,10 @@ export const init = () => {
  * Display course modules
  */
 function display_modules() {
+    // Check to see if the button exists
+    if (!document.getElementById('btn-ai-assistant-train-modules')) {
+        return;
+    }
     document.getElementById('btn-ai-assistant-train-modules').addEventListener('click', function () {
         // get data-courseid from current element
         var courseid = this.getAttribute('data-courseid');

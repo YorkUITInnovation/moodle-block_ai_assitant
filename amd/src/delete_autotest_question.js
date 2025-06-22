@@ -41,6 +41,9 @@ function delete_autotest_question() {
     });
 }
 
+/**
+ * Append execute button to the form
+ */
 function append_execute_button() {
     const div = document.querySelector('.form-inline');
     const button = document.createElement('a');

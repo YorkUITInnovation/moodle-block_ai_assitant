@@ -10,6 +10,10 @@ export const init = () => {
  * Delete a content
  */
 function delete_syllabus() {
+    // Check to see if element btn-ai-assistant-delete-syllabus exists on the page
+    if (!document.getElementById('btn-ai-assistant-delete-syllabus')) {
+        return;
+    }
     document.getElementById('btn-ai-assistant-delete-syllabus').addEventListener('click', function () {
         // get data-courseid from current element
         var courseid = this.getAttribute('data-courseid');

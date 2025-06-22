@@ -60,23 +60,10 @@ class course_modules
                         $course_structure->sections[$i]->modules[$x]->modname = $mod[1]->modname;
                         // Is this module trained?
                         if ($ai_assistant_module = $DB->get_record('block_aia_course_modules', ['cmid' => $mod[1]->id])) {
-
-                            file_put_contents(
-                                '/var/www/moodledata/temp/module.txt',
-                                print_r($ai_assistant_module, true) . "\n",
-                                FILE_APPEND
-                            );
-
                             if ($ai_assistant_module->trained == 0) {
                                 $status = self::check_module_status($ai_assistant_module->cria_fileid);
                                 $ai_assistant_module->trained = $status;
                             }
-                            file_put_contents(
-                                '/var/www/moodledata/temp/status.txt',
-                                'Module ' . $mod[1]->id . ' trained status: ' . $ai_assistant_module->trained . "\n",
-                                FILE_APPEND
-                            );
-
                             switch ($ai_assistant_module->trained) {
                                 case 0:
                                     $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-warning">'
@@ -248,11 +235,11 @@ class course_modules
             $file_name = $module_type . ' ' . $id . ' ' . substr($name, 0, 30) . '.html';
         }
         // Set the content
-        if (isset($intro) ) {
+        if (isset($intro)) {
             $module_content .= $intro;
         }
         if (isset($content)) {
-            $module_content .=  '<br><br>' . $content;
+            $module_content .= '<br><br>' . $content;
         }
 
         $module->file_name = $file_name;
@@ -343,7 +330,7 @@ class course_modules
 
         // If the glossary files are empty, set it to null
         if (empty($glossary_files)) {
-            $glossary->files = new \stdClass() ;
+            $glossary->files = new \stdClass();
         }
 
         return $glossary;
@@ -358,7 +345,7 @@ class course_modules
         foreach ($forum_discussions as $fd) {
             // Get forum posts
             $forum_posts = $DB->get_records('forum_posts', array('discussion' => $fd->id));
-            foreach($forum_posts as $fp) {
+            foreach ($forum_posts as $fp) {
                 $html .= '<h3>' . $fp->subject . '</h3>';
                 $html .= $fp->message . "\n";
             }
@@ -571,7 +558,7 @@ class course_modules
 
         $content = '';
         $i = 0;
-        foreach($availability->c as $c) {
+        foreach ($availability->c as $c) {
             if (trim($c->type) == 'date') {
                 $date_operator = $c->d;
                 $date = $c->t;
@@ -971,7 +958,8 @@ class course_modules
      * @return false|void
      * @throws \dml_exception
      */
-    public static function check_module_status_for_course(int $courseid) {
+    public static function check_module_status_for_course(int $courseid)
+    {
         global $DB;
 
         // Check if the course has any modules
@@ -1006,7 +994,8 @@ class course_modules
      * @return false
      * @throws \dml_exception
      */
-    public static function check_module_status(int $cria_fileid) {
+    public static function check_module_status(int $cria_fileid)
+    {
         global $DB;
 
         // Check if the module has a valid Cria file ID
