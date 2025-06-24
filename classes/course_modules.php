@@ -11,7 +11,7 @@ class course_modules
      * @param $course_id
      * @return stdClass
      */
-    public static function get_course_modules($courseid)
+    public static function get_course_modules(int $courseid, bool $only_visible = false)
     {
         global $DB, $OUTPUT;
         $config = get_config('block_ai_assistant');
@@ -51,6 +51,9 @@ class course_modules
                     $mod = self::get_module_from_cmid($cmid);
                     // Only get the modules that are accepted
                     if (in_array($mod[1]->modname, $accepted_modules)) {
+                        if ($only_visible && !$mod[1]->visible) {
+                            continue; // Skip if the module is not visible
+                        }
                         $number_of_modules_in_section++;
                         $course_structure->sections[$i]->modules[$x] = new \stdClass();
                         $course_structure->sections[$i]->modules[$x]->name = $mod[0]->name;
