@@ -501,7 +501,7 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2025060101, 'ai_assistant');
     }
 
-    if ($oldversion < 2025072201) {
+    if ($oldversion < 2025062201) {
 
         // Define field modtimemodified to be added to block_aia_course_modules.
         $table = new xmldb_table('block_aia_course_modules');
@@ -513,7 +513,29 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         }
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2025072201, 'ai_assistant');
+        upgrade_block_savepoint(true, 2025062201, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025062202) {
+
+        // Define field plugin to be added to block_aia_course_modules.
+        $table = new xmldb_table('block_aia_course_modules');
+        $field = new xmldb_field('plugin', XMLDB_TYPE_CHAR, '255', null, null, null, 'local_ai_assistant', 'trained');
+
+        // Conditionally launch add field plugin.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define key courseid (foreign) to be added to block_aia_course_modules.
+        $table = new xmldb_table('block_aia_course_modules');
+        $key = new xmldb_key('courseid', XMLDB_KEY_FOREIGN, ['courseid'], 'course', ['id']);
+
+        // Launch add key courseid.
+        $dbman->add_key($table, $key);
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025062202, 'ai_assistant');
     }
 
     return true;
