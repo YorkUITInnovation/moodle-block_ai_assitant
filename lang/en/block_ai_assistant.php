@@ -51,6 +51,7 @@ $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
 $string['confirm_question_deletion'] = 'Are you sure you want to delete the question?';
 $string['configure_bot_settings'] = 'Bot Display Settings';
 $string['configure_settings'] = 'Configure Settings';
+$string['content_found_at'] = 'Content can be found at this link: ';
 $string['content_language'] = 'Content language';
 $string['content_language_help'] = 'Chosing the proper content language for your documents will result in better training of the AI Assistant. In return, the AI Assistant will be able to provide more accurate answers.';
 $string['cria_token'] = 'Cria Token';

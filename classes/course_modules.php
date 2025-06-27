@@ -13,7 +13,7 @@ class course_modules
      */
     public static function get_course_modules(int $courseid, bool $only_visible = false)
     {
-        global $DB, $OUTPUT;
+        global $CFG, $DB, $OUTPUT;
         $config = get_config('block_ai_assistant');
         $course_structure = new \stdClass();
         // Get accepted modules
@@ -31,12 +31,12 @@ class course_modules
             $course_structure->sections[$i]->courseid = $courseid;
             $course_structure->sections[$i]->sectionnum = $sectionnum;
             if ($sectionnum == 0) {
-                $course_structure->sections[$i]->name = get_string('general');
+                $course_structure->sections[$i]->sectionname = get_string('general');
             } else {
                 if (isset($section->name)) {
-                    $course_structure->sections[$i]->name = $section->name;
+                    $course_structure->sections[$i]->sectionname = $section->name;
                 } else {
-                    $course_structure->sections[$i]->name = 'Topic ' . $sectionnum;
+                    $course_structure->sections[$i]->sectionname = 'Topic ' . $sectionnum;
                 }
             }
             if (isset($section->name)) {
@@ -101,28 +101,34 @@ class course_modules
                             case 'forum':
                                 // Only print if it's the news forum
                                 if ($mod[0]->type == 'news') {
+                                    $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/forum/view.php?id=' . $mod[1]->id;
                                     $content = self::get_forum_content($mod[0]->id, $mod[0]->name);
                                     $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                         $mod[0]->id,
                                         $mod[0]->name,
                                         $mod[0]->intro,
                                         $content,
-                                        $mod[1]->modname
+                                        $mod[1]->modname,
+                                        $course_structure->sections[$i]->modules[$x]->modurl
                                     );
                                     $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'forum');
                                     $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration ';
+
                                 }
                                 break;
                             case 'page':
+                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/page/view.php?id=' . $mod[1]->id;
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                     $mod[0]->id,
                                     $mod[0]->name,
                                     $mod[0]->intro,
                                     $mod[0]->content,
-                                    $mod[1]->modname
+                                    $mod[1]->modname,
+                                    $course_structure->sections[$i]->modules[$x]->modurl
                                 );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'page');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
+
                                 break;
                             case 'label':
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
@@ -130,12 +136,14 @@ class course_modules
                                     $mod[0]->name,
                                     $mod[0]->intro,
                                     '',
-                                    $mod[1]->modname
+                                    $mod[1]->modname,
+                                    ''
                                 );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'label');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
                                 break;
                             case 'book':
+                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/book/view.php?id=' . $mod[1]->id;
                                 // Must get book content
                                 $content = self::get_book_content($mod[0]->id);
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
@@ -144,17 +152,21 @@ class course_modules
                                     $mod[0]->intro,
                                     $content,
                                     $mod[1]->modname
+                                    , $course_structure->sections[$i]->modules[$x]->modurl
                                 );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'book');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
+
                                 break;
                             case 'resource': // File
+                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/resource/view.php?id=' . $mod[1]->id;
                                 $course_structure->sections[$i]->modules[$x]->content = self::get_files_from_resource(
                                     $mod[1]->id,
                                     $mod[0]->id
                                 );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'resource');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
+
                                 break;
                             case 'folder':
                                 $folder_files = self::get_folder_files(
@@ -167,6 +179,7 @@ class course_modules
                                 $course_structure->sections[$i]->modules[$x]->files = $folder_files->files;
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'folder');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
+                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/folder/view.php?id=' . $mod[1]->id;
                                 break;
                             case 'glossary':
                                 $content = self::get_glossary_entries($mod[1]->id, $mod[0]->id, $mod[0]->name);
@@ -180,6 +193,7 @@ class course_modules
                                 $course_structure->sections[$i]->modules[$x]->files = $content->files;
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'glossary');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration';
+                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/glossary/view.php?id=' . $mod[1]->id;
 
                                 break;
                         }
@@ -190,6 +204,8 @@ class course_modules
             $course_structure->sections[$i]->number_of_modules = $number_of_modules_in_section;
             $i++;
         }
+        // Get section name
+        file_put_contents('/var/www/moodledata/temp/section.log', print_r($course_structure, true), FILE_APPEND);
         return $course_structure;
     }
 
@@ -225,9 +241,10 @@ class course_modules
      * @param $intro
      * @param $content
      * @param $module_type
+     * @param string $mod_url
      * @return stdClass
      */
-    public static function set_module_content($id, $name, $intro, $content, $module_type)
+    public static function set_module_content($id, $name, $intro, $content, $module_type, $mod_url)
     {
         //Create object
         $module = new \stdClass();
@@ -244,6 +261,12 @@ class course_modules
         }
         if (isset($content)) {
             $module_content .= '<br><br>' . $content;
+        }
+
+        if (isset($mod_url)) {
+            $module_content .= '<br><br>' . get_string('content_found_at', 'block_ai_assistant')
+                . ' <a href="' . $mod_url . '" target="_blank">' .
+                $name. '</a>';
         }
 
         $module->file_name = $file_name;
@@ -363,7 +386,7 @@ class course_modules
      * @param $cmid
      * @return array
      */
-    public static function get_files_from_resource($cmid, $id)
+    public static function get_files_from_resource($cmid, $id, $mod_url)
     {
         global $CFG;
 
@@ -395,6 +418,7 @@ class course_modules
                 $file->copy_content_to($path . $file_name);
                 // Get the content of the file
                 $content = file_get_contents($path . $file_name);
+
                 $file_info->content = base64_encode($content);
                 $file_info->file_name = 'resource ' . $id . ' ' . $file_name;
             }

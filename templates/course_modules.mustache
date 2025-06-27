@@ -3,7 +3,7 @@
         <div class="blockAiAssistantFolder">
             {{#sections}}
                 <div class="blockAiAssistant" data-id="{{idname}}"><i
-                        class="fa fa-folder blockAiAssistantFolderIcon"></i> {{name}} ({{number_of_modules}})
+                        class="fa fa-folder blockAiAssistantFolderIcon"></i> {{sectionname}} ({{number_of_modules}})
                 </div>
                 <div class="blockAiAssistantContent-{{idname}} mb-1" style="display: none;">
                     <input type="checkbox" id="selectAll-{{idname}}" data-idname="{{idname}}"
@@ -19,6 +19,9 @@
                                             type="checkbox"
                                             class="courseModuleCheckbox module-checkbox-{{idname}} align-self-start mr-3"
                                             data-section="{{idname}}"
+                                            data-sectionname="{{sectionname}}"
+                                            data-name="{{name}}"
+                                            data-modurl = "{{modurl}}"
                                             data-filename="{{#content}}{{file_name}}{{/content}}"
                                             data-content="{{#content}}{{content}}{{/content}}"
                                             data-cmid="{{cmid}}"
