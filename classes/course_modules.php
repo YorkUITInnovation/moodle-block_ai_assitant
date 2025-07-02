@@ -64,7 +64,7 @@ class course_modules
                         $course_structure->sections[$i]->modules[$x]->modtimemodified = $mod[0]->timemodified;
                         // Is this module trained?
                         if ($ai_assistant_module = $DB->get_record('block_aia_course_modules', ['cmid' => $mod[1]->id])) {
-                            if ($ai_assistant_module->trained == 0) {
+                            if ($ai_assistant_module->trained != 1) {
                                 $status = self::check_module_status($ai_assistant_module->cria_fileid);
                                 $ai_assistant_module->trained = $status;
                             }
@@ -102,7 +102,7 @@ class course_modules
                                 // Only print if it's the news forum
                                 if ($mod[0]->type == 'news') {
                                     $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/forum/view.php?id=' . $mod[1]->id;
-                                    $content = self::get_forum_content($mod[0]->id, $mod[0]->name);
+                                    $content = self::get_forum_content($mod[0]->id, $mod[0]->name, $course_structure->sections[$i]->modules[$x]->modurl);
                                     $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                         $mod[0]->id,
                                         $mod[0]->name,
@@ -117,12 +117,13 @@ class course_modules
                                 }
                                 break;
                             case 'page':
+                                $mod_context = \context_module::instance($mod[1]->id);
                                 $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/page/view.php?id=' . $mod[1]->id;
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                     $mod[0]->id,
                                     $mod[0]->name,
                                     $mod[0]->intro,
-                                    $mod[0]->content,
+                                    file_rewrite_pluginfile_urls($mod[0]->content, 'pluginfile.php', $mod_context->id, 'mod_page', 'content', $mod[0]->revision),
                                     $mod[1]->modname,
                                     $course_structure->sections[$i]->modules[$x]->modurl
                                 );
@@ -151,8 +152,8 @@ class course_modules
                                     $mod[0]->name,
                                     $mod[0]->intro,
                                     $content,
-                                    $mod[1]->modname
-                                    , $course_structure->sections[$i]->modules[$x]->modurl
+                                    $mod[1]->modname,
+                                    $course_structure->sections[$i]->modules[$x]->modurl
                                 );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'book');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
@@ -162,13 +163,15 @@ class course_modules
                                 $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/resource/view.php?id=' . $mod[1]->id;
                                 $course_structure->sections[$i]->modules[$x]->content = self::get_files_from_resource(
                                     $mod[1]->id,
-                                    $mod[0]->id
+                                    $mod[0]->id,
+                                    $course_structure->sections[$i]->modules[$x]->modurl
                                 );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'resource');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
 
                                 break;
                             case 'folder':
+                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/folder/view.php?id=' . $mod[1]->id;
                                 $folder_files = self::get_folder_files(
                                     $mod[1]->id,
                                     $mod[0]->id,
@@ -182,13 +185,20 @@ class course_modules
                                 $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/folder/view.php?id=' . $mod[1]->id;
                                 break;
                             case 'glossary':
-                                $content = self::get_glossary_entries($mod[1]->id, $mod[0]->id, $mod[0]->name);
+                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/glossary/view.php?id=' . $mod[1]->id;
+                                $content = self::get_glossary_entries(
+                                    $mod[1]->id,
+                                    $mod[0]->id,
+                                    $mod[0]->name,
+                                    $course_structure->sections[$i]->modules[$x]->modurl
+                                );
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                     $mod[0]->id,
                                     $mod[0]->name,
                                     $mod[0]->intro,
                                     $content->content,
-                                    $mod[1]->modname
+                                    $mod[1]->modname,
+                                    $course_structure->sections[$i]->modules[$x]->modurl
                                 );
                                 $course_structure->sections[$i]->modules[$x]->files = $content->files;
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'glossary');
@@ -255,18 +265,18 @@ class course_modules
             // Set the file name
             $file_name = $module_type . ' ' . $id . ' ' . substr($name, 0, 30) . '.html';
         }
+
+        if (isset($mod_url)) {
+            $module_content .=  get_string('content_found_at', 'block_ai_assistant')
+                . ' <a href="' . $mod_url . '" target="_blank">' .
+                $name. '</a><br><br>';
+        }
         // Set the content
         if (isset($intro)) {
             $module_content .= $intro;
         }
         if (isset($content)) {
             $module_content .= '<br><br>' . $content;
-        }
-
-        if (isset($mod_url)) {
-            $module_content .= '<br><br>' . get_string('content_found_at', 'block_ai_assistant')
-                . ' <a href="' . $mod_url . '" target="_blank">' .
-                $name. '</a>';
         }
 
         $module->file_name = $file_name;
@@ -282,17 +292,24 @@ class course_modules
     /**
      * Get book content
      * @param $cmid
+     * @param $name string Book name
+     * @param $mod_url
      * @return string
      */
-    public static function get_book_content($book_id)
+    public static function get_book_content($book_id, $name, $mod_url)
     {
         global $CFG, $DB;
 
-//    $content = file_get_contents($CFG->wwwroot . '/mod/book/tool/print/index.php?id=' . $cmid);
         $chapters = $DB->get_records('book_chapters', array('bookid' => $book_id));
         $content = '';
         foreach ($chapters as $chapter) {
             $content .= $chapter->content;
+        }
+
+        if (isset($mod_url)) {
+            $content .= '<br><br>' . get_string('content_found_at', 'block_ai_assistant')
+                . ' <a href="' . $mod_url . '" target="_blank">' .
+                $name. '</a>';
         }
         return $content;
     }
@@ -303,7 +320,7 @@ class course_modules
      * @param $id
      * @return stdClass
      */
-    public static function get_glossary_entries($cmid, $id, $name)
+    public static function get_glossary_entries($cmid, $id, $name, $mod_url)
     {
         global $CFG, $DB;
 
@@ -351,6 +368,13 @@ class course_modules
                 }
             }
         }
+
+        if (isset($mod_url)) {
+            $html .= '<br><br>' . get_string('content_found_at', 'block_ai_assistant')
+                . ' <a href="' . $mod_url . '" target="_blank">' .
+                $name. '</a>';
+        }
+
         $glossary->file_name = 'glossary ' . $id . ' ' . str_replace(' ', '_', $name) . '.html';
         $glossary->content = $html;
         $glossary->files = $glossary_files;
@@ -363,20 +387,31 @@ class course_modules
         return $glossary;
     }
 
-    public static function get_forum_content($id, $name)
+    public static function get_forum_content($id, $name, $cmid, $mod_url)
     {
         global $DB;
         // Get forum discussions
         $forum_discussions = $DB->get_records('forum_discussions', array('forum' => $id));
         $html = '';
+
+        if (isset($mod_url)) {
+            $html .= get_string('content_found_at', 'block_ai_assistant')
+                . ' <a href="' . $mod_url . '" target="_blank">' .
+                $name. '</a><br><br>';
+        }
+
         foreach ($forum_discussions as $fd) {
             // Get forum posts
             $forum_posts = $DB->get_records('forum_posts', array('discussion' => $fd->id));
             foreach ($forum_posts as $fp) {
                 $html .= '<h3>' . $fp->subject . '</h3>';
-                $html .= $fp->message . "\n";
+                $html .= file_rewrite_pluginfile_urls($fp->message, 'pluginfile.php',
+                    \context_module::instance($cmid),
+                    'mod_forum', 'post', $id) . "\n";
             }
         }
+
+
 
         return $html;
     }
@@ -384,7 +419,7 @@ class course_modules
     /**
      * Get files from resource
      * @param $cmid
-     * @return array
+     * @return \stdClass
      */
     public static function get_files_from_resource($cmid, $id, $mod_url)
     {
@@ -399,6 +434,22 @@ class course_modules
         // Loop through the files
         foreach ($files as $file) {
             if (!$file->is_directory() && $file->get_sortorder() == 1) {
+                // Only accept the following file formats: docx, pdf, txt, html, htm, pptx, ppt, odt, rtf, md
+                if (!in_array($file->get_mimetype(), [
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/pdf',
+                    'text/plain',
+                    'text/html',
+                    'text/rtf',
+                    'text/markdown',
+                    'application/vnd.oasis.opendocument.text',
+                    'application/vnd.ms-powerpoint',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                ])) {
+                    continue; // Skip unsupported file types
+                }
+
                 $path = $CFG->dataroot . '/temp/ai_assistant/';
                 if (!file_exists($path)) {
                     mkdir($path, 0777, true);
@@ -418,6 +469,7 @@ class course_modules
                 $file->copy_content_to($path . $file_name);
                 // Get the content of the file
                 $content = file_get_contents($path . $file_name);
+                file_put_contents('/var/www/moodledata/temp/resource.log', print_r($content, true), FILE_APPEND);
 
                 $file_info->content = base64_encode($content);
                 $file_info->file_name = 'resource ' . $id . ' ' . $file_name;
@@ -438,7 +490,7 @@ class course_modules
      * @param $id
      * @param $name
      * @param $intro
-     * @return stdClass
+     * @return \stdClass
      */
     public static function get_folder_files($cmid, $id, $name, $intro)
     {
@@ -460,12 +512,24 @@ class course_modules
         $folder_files = [];
         $i = 0;
         foreach ($files as $file) {
-            // Must ignore excel files as we don't know how to parse them yet
-            if (!$file->is_directory() &&
-                $file->get_mimetype() != 'application/vnd.ms-excel' &&
-                $file->get_mimetype() != 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            if (!$file->is_directory()
             ) {
-                $path = $CFG->dataroot . '/temp/ai_assistant/';
+                // Only accept the following file formats: docx, pdf, txt, html, htm, pptx, ppt, odt, rtf, md
+                if (!in_array($file->get_mimetype(), [
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/pdf',
+                    'text/plain',
+                    'text/html',
+                    'text/rtf',
+                    'text/markdown',
+                    'application/vnd.oasis.opendocument.text',
+                    'application/vnd.ms-powerpoint',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+                ])) {
+                    continue; // Skip unsupported file types
+                }
+                    $path = $CFG->dataroot . '/temp/ai_assistant/';
                 if (!file_exists($path)) {
                     mkdir($path, 0777, true);
                 }
@@ -504,7 +568,7 @@ class course_modules
 
     /**
      * Insert record
-     * @param stdClass $data $courseid, $cmid, $modname
+     * @param \stdClass $data $courseid, $cmid, $modname
      * @return int
      */
     public static function insert_record($data)
@@ -547,6 +611,7 @@ class course_modules
         // add the file to cria base on modname
         switch ($block_cm_info->modname) {
             case 'page':
+                $mod_url = new \moodle_url('/mod/page/view.php', ['id' => $block_cm_info->cmid]);
                 $sql = "SELECT page.* FROM {page} page 
                 INNER JOIN {course_modules} cm ON cm.instanceid = page.id WHERE cm.id = ?";
                 $page = $DB->get_record_sql($sql, [$block_cm_info->cmid]);
@@ -555,7 +620,8 @@ class course_modules
                     $page->name,
                     $page->intro,
                     $page->content,
-                    $block_cm_info->modname
+                    $block_cm_info->modname,
+                    $mod_url->out(false)
                 );
                 $data->cria_fileid = cria::upload_content_to_bot(
                     $block_cm_info->courseid,
@@ -1033,11 +1099,6 @@ class course_modules
 
         // Use cria to check the status of the module
         $status = cria::get_content_training_status($cria_fileid);
-        file_put_contents(
-            '/var/www/moodledata/temp/aia_debug.txt',
-            'Status: ' . print_r($status, true) . "\n",
-            FILE_APPEND
-        );
         if ($status->training_status_id != 0) {
             // Update the record with the new Cria file ID
             $DB->set_field(

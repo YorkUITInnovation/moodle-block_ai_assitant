@@ -185,9 +185,8 @@ class block_ai_assistant_course_modules_ws extends external_api
         // Delete in cria
         if ($record->cria_fileid != 0) {
             $status = cria::delete_content_from_bot($record->cria_fileid);
-            if ($status == '"200"') {
-                $DB->delete_records('block_aia_course_modules', ['id' => $cmid]);
-            }
+            $DB->delete_records('block_aia_course_modules', ['id' => $cmid]);
+
         }
 
         return true;

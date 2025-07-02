@@ -285,7 +285,32 @@ if ($hassiteconfig) {
         0
     ));
 
-// Add a header
+    // Add a header for Markitdown Server
+    $settings->add(new admin_setting_heading(
+        'block_ai_assistant/markitdown_server',
+        get_string('markitdown_server', 'block_ai_assistant'),
+        get_string('markitdown_server_desc', 'block_ai_assistant')
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/markitdown_url',
+        get_string('markitdown_url', 'block_ai_assistant'),
+        get_string('markitdown_url_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT,
+        50
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/markitdown_api_key',
+        get_string('markitdown_api_key', 'block_ai_assistant'),
+        get_string('markitdown_api_key_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT,
+        50
+    ));
+
+    // Add a header
     $settings->add(new admin_setting_heading(
         'block_ai_assistant/modules',
         get_string('modules', 'block_ai_assistant'),

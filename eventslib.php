@@ -26,23 +26,27 @@ function ai_assistant_course_module_updated($event)
             case 'forum':
                 // Only print if it's the news forum
                 if ($mod[0]->type == 'news') {
-                    $content = course_modules::get_forum_content($mod[0]->id, $mod[0]->name);
+                    $mod_url = new \moodle_url('/mod/forum/view.php', ['id' => $mod[0]->id]);
+                    $content = course_modules::get_forum_content($mod[0]->id, $mod[0]->name, $mod_url->out(false, true));
                     $module_content = course_modules::set_module_content(
                         $mod[0]->id,
                         $mod[0]->name,
                         $mod[0]->intro,
                         $content,
-                        $mod[1]->modname
+                        $mod[1]->modname,
+                        $mod_url->out(false, true)
                     );
                 }
                 break;
             case 'page':
+                $mod_url = new \moodle_url('/mod/page/view.php', ['id' => $mod[0]->id]);
                 $module_content = course_modules::set_module_content(
                     $mod[0]->id,
                     $mod[0]->name,
                     $mod[0]->intro,
                     $mod[0]->content,
-                    $mod[1]->modname
+                    $mod[1]->modname,
+                    $mod_url->out(false, true)
                 );
                 break;
             case 'label':
@@ -51,24 +55,29 @@ function ai_assistant_course_module_updated($event)
                     $mod[0]->name,
                     $mod[0]->intro,
                     '',
-                    $mod[1]->modname
+                    $mod[1]->modname,
+                    ''
                 );
                 break;
             case 'book':
+                $mod_url = new \moodle_url('/mod/book/view.php', ['id' => $mod[0]->id]);
                 // Must get book content
-                $content = course_modules::get_book_content($mod[0]->id);
+                $content = course_modules::get_book_content($mod[0]->id, $mod[0]->name, $mod_url->out(false, true));
                 $module_content = course_modules::set_module_content(
                     $mod[0]->id,
                     $mod[0]->name,
                     $mod[0]->intro,
                     $content,
-                    $mod[1]->modname
+                    $mod[1]->modname,
+                    $mod_url->out(false, true)
                 );
                 break;
             case 'resource': // File
+                $mod_url = new \moodle_url('/mod/resource/view.php', ['id' => $mod[0]->id]);
                 $module_content = course_modules::get_files_from_resource(
                     $mod[1]->id,
-                    $mod[0]->id
+                    $mod[0]->id,
+                    $mod_url->out(false, true),
                 );
                 break;
             case 'folder':
@@ -81,13 +90,15 @@ function ai_assistant_course_module_updated($event)
                 $module_content = $folder_files->content;
                 break;
             case 'glossary':
+                $mod_url = new \moodle_url('/mod/glossary/view.php', ['id' => $mod[0]->id]);
                 $content = course_modules::get_glossary_entries($mod[1]->id, $mod[0]->id, $mod[0]->name);
                 $module_content = course_modules::set_module_content(
                     $mod[0]->id,
                     $mod[0]->name,
                     $mod[0]->intro,
                     $content->content,
-                    $mod[1]->modname
+                    $mod[1]->modname,
+                    $mod_url->out(false, true)
                 );
                 break;
         }
