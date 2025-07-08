@@ -87,7 +87,7 @@ class webservice
      * @return mixed|void
      * @throws \dml_exception
      */
-    public static function exec_convert($file_path, $mime_type)
+    public static function exec_convert_to_md($file_path, $mime_type)
     {
         $config = get_config('block_ai_assistant');
 
@@ -101,7 +101,7 @@ class webservice
 // Set headers
         $headers = [
             'accept: application/json',
-            'Authorization: Bearer test'
+            'Authorization: Bearer ' . $config->markitdown_api_key,
         ];
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 

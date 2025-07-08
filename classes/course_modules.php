@@ -331,6 +331,11 @@ class course_modules
         // We will need to get files from the glossary entries
         $fs = get_file_storage();
         $html = '';
+        if (isset($mod_url)) {
+            $html .= '<br><br>' . get_string('content_found_at', 'block_ai_assistant')
+                . ' <a href="' . $mod_url . '" target="_blank">' .
+                $name. '</a>';
+        }
         foreach ($glossary_entries as $entry) {
             $html .= '<h3>' . $entry->concept . '</h3>';
             $html .= $entry->definition;
@@ -369,11 +374,6 @@ class course_modules
             }
         }
 
-        if (isset($mod_url)) {
-            $html .= '<br><br>' . get_string('content_found_at', 'block_ai_assistant')
-                . ' <a href="' . $mod_url . '" target="_blank">' .
-                $name. '</a>';
-        }
 
         $glossary->file_name = 'glossary ' . $id . ' ' . str_replace(' ', '_', $name) . '.html';
         $glossary->content = $html;

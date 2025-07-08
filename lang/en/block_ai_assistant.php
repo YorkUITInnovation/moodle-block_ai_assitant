@@ -85,6 +85,7 @@ $string['embed_position_teacher'] = 'Position for Teachers';
 $string['embed_position_teacher_help'] = 'Set the position for the chatbot for teachers: 0 = disabled, 1 = bottom left, 2 = bottom right, 3 = top right, 4 = top left';
 $string['enabled'] = 'Enabled';
 $string['enable_assistant'] = 'Enable AI Assistant';
+$string['enable_ai_assistant'] = 'Enable AI Assistant';
 $string['error'] = 'Error';
 $string['error_required_field'] = 'This field is required.';
 $string['error_required_file'] = 'You must upload a file.';
