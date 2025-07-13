@@ -107,6 +107,7 @@ class block_ai_assistant extends block_base
         $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/training_status', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_question', 'init');
+        $PAGE->requires->js_call_amd('block_ai_assistant/disabled_assistant', 'init', [$course_record->published == 1]);
         $PAGE->requires->css(new moodle_url('/blocks/ai_assistant/css/styles.css'));
 
         $course_context = \context_course::instance($this->page->course->id);
@@ -296,6 +297,7 @@ class block_ai_assistant extends block_base
             'courseid' => $this->page->course->id,
             'cria_file_id' => $course_record->cria_file_id,
             'published' => $course_record->published,
+            'is_published' => ($course_record->published == 1),
             'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
             'configure_settings_url' => (new \moodle_url('/blocks/ai_assistant/configure_settings.php', [

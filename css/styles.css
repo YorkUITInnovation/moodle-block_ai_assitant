@@ -35,3 +35,35 @@
     width:16px;
     height:100%;
 }
+
+/* Diagonal red line for disabled AI Assistant */
+.cria-launcher.disabled {
+    position: relative;
+}
+
+.cria-launcher.disabled::before {
+    content: '';
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    width: calc(100% - 30px);
+    height: calc(100% - 30px);
+    background: linear-gradient(-45deg, transparent 46%, red 48%, red 52%, transparent 54%);
+    pointer-events: none;
+    z-index: 999;
+}
+
+/* Alternative approach using border */
+.cria-launcher.disabled::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 2px solid red;
+    border-radius: inherit;
+    background: linear-gradient(-45deg, transparent 46%, rgba(255, 0, 0, 0.8) 48%, rgba(255, 0, 0, 0.8) 52%, transparent 54%);
+    pointer-events: none;
+    z-index: 999;
+}
