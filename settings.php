@@ -285,7 +285,7 @@ if ($hassiteconfig) {
         0
     ));
 
-// Add a header
+    // Add a header
     $settings->add(new admin_setting_heading(
         'block_ai_assistant/modules',
         get_string('modules', 'block_ai_assistant'),

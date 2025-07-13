@@ -32,9 +32,9 @@ $string['add'] = 'Add';
 $string['ai_assistant_instructions'] = 'To get the best results from the AI Assistant, please use the syllabus template provided in the Help section. '
     . 'To make the AI Assistant available to students, click to Enable AI Assistant button below.';
 $string['answer'] = 'Answer';
-$string['autotest']= 'AutoTest';
-$string['autotest_questions']= 'AutoTest questions';
-$string['autotest_template']= 'AutoTest Template';
+$string['autotest'] = 'AutoTest';
+$string['autotest_questions'] = 'AutoTest questions';
+$string['autotest_template'] = 'AutoTest Template';
 $string['bot_contact'] = 'Contact';
 $string['bot_contact_help'] = 'Enter an email and/or phone number for users to contact for support';
 $string['bot_help_text'] = 'Hover text';
@@ -51,6 +51,7 @@ $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
 $string['confirm_question_deletion'] = 'Are you sure you want to delete the question?';
 $string['configure_bot_settings'] = 'Bot Display Settings';
 $string['configure_settings'] = 'Configure Settings';
+$string['content_found_at'] = 'Content can be found at this link: ';
 $string['content_language'] = 'Content language';
 $string['content_language_help'] = 'Chosing the proper content language for your documents will result in better training of the AI Assistant. In return, the AI Assistant will be able to provide more accurate answers.';
 $string['cria_token'] = 'Cria Token';
@@ -73,24 +74,31 @@ $string['delete_syllabus_help'] = 'Are you sure you want to delete the syllabus?
 $string['delete_question'] = 'Delete Question';
 $string['delete_questions'] = 'Delete Questions';
 $string['delete_question_help'] = 'Are you sure you want to delete the question?';
-$string['disable_ai_assistant'] = 'Disable AI Assistant';
+$string['description'] = 'Description';
+$string['disabled'] = 'Disabled';
+$string['document_parse_error'] = 'Error parsing document.';
 $string['document_templates'] = 'Document Templates';
-$string['download'] = 'Download';
-$string['download_english'] = 'Download (English)';
-$string['download_example'] = 'Download example';
-$string['download_syllabus'] = 'Download Syllabus';
-$string['download_questions'] = 'Download Questions';
-$string['edit_question'] = "Edit question";
-$string['edit_questions'] = "Edit questions";
-$string['embed_position_teacher'] = "Embed position for teacher";
-$string['embed_position_teacher_help'] = "If your Moodle instance has another chatbot, you can choose to postion the AI Assistant above it. "
-    . "Enter the number of pixels you want to offset the AI Assistant from the bottom. If the bot is positioned at teh top, put in a negative number.";
+$string['edit'] = 'Edit';
+$string['edit_autotest_question'] = 'Edit AutoTest Question';
+$string['embed_position'] = 'Embed position';
+$string['embed_position_teacher'] = 'Position for Teachers';
+$string['embed_position_teacher_help'] = 'Set the position for the chatbot for teachers: 0 = disabled, 1 = bottom left, 2 = bottom right, 3 = top right, 4 = top left';
+$string['enabled'] = 'Enabled';
+$string['enable_assistant'] = 'Enable AI Assistant';
 $string['enable_ai_assistant'] = 'Enable AI Assistant';
 $string['error'] = 'Error';
+$string['error_required_field'] = 'This field is required.';
+$string['error_required_file'] = 'You must upload a file.';
+$string['error_unsupported_file'] = 'Unsupported file type.';
+$string['file'] = 'File';
 $string['file_deleted_successfully'] = 'File deleted successfully';
+$string['file_upload_error'] = 'Error uploading file.';
 $string['file_uploaded_successfully'] = 'File uploaded successfully';
 $string['format'] = '.xlsx, .docx only accepted';
-$string['help'] = "Help";
+$string['help'] = 'Help';
+$string['import'] = 'Import';
+$string['import_questions'] = 'Import Questions';
+$string['import_successful'] = 'Import successful.';
 $string['keywords'] = "Keywords";
 $string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
 $string['modules'] = "Modules";
@@ -115,6 +123,16 @@ $string['section'] = 'Section';
 $string['student_and_name'] = 'I am a student and my name is {$a}.';
 $string['subtitle'] = 'Subtitle';
 $string['subtitle_help'] = 'Subtitle help text here';
+$string['supported_formats'] = '<p>Note: Unsupported file formats will not be processed for training and will not be accessible through '
+    . 'the AI Assistant. Ensure that your files are in supported formats to enable training and usage.</p>'
+    . '<p>Supported file formats: <ul><li>Word documents (.doc, .docx)</li><li>PDF files (.pdf)</li><li>Text files (.txt)</li>'
+    . '<li>HTML files (.html)</li><li>Rich Text Format (.rtf)</li><li>Markdown files (.md)</li><li>OpenDocument Text (.odt)</li><li>'
+    . 'PowerPoint presentations (.ppt, .pptx)</li><li>Excel spreadsheets (.xls, .xlsx)</li><li>CSV files (.csv)</li><li>'
+    . 'Audio files (.mp3, .wav, .m4a)</li><li>Video files (.mp4)</li></ul></p>';
+$string['supported_formats_title'] = 'Supported Formats';
+$string['training_visibility_warning'] = 'Important: Once content is trained by the AI Assistant, it will be available '
+    . 'to all students in the course, regardless of whether they have permission to view the original resource '
+    . 'or activity. Please consider this when selecting content for training.';
 $string['syllabus'] = 'Syllabus';
 $string['syllabus_template'] = 'Syllabus Template';
 $string['syllabus_uploaded'] = 'Syllabus successfully uploaded';
@@ -135,6 +153,7 @@ $string['update_successful'] = 'Update succssful';
 $string['upload_assessment_dates'] = 'Upload Assessment Dates';
 $string['upload_syllabus'] = 'Upload Syllabus';
 $string['upload_questions'] = 'Upload Q&A File';
+$string['visible_to_students'] = 'Visible to Students';
 $string['welcome_message'] = 'Welcome Message';
 $string['welcome_message_help'] = 'Welcome Message help text here';
 

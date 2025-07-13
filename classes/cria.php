@@ -139,8 +139,6 @@ class cria
             $bot_help_text = $block_settings->bot_help_text;
             // Parsing strategy is based on if this is a syllabus
             if ($is_syllabus) {
-                // If block_settings lang is set to French, use ALSYLLABUS_FR
-                // otherwise use ALSYLLABUS
                 if ($block_settings->lang == 'fr') {
                     $parsing_strategy = 'GENERIC';
                 } else {
