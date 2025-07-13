@@ -1,5 +1,24 @@
 <div class="row">
     <div class="col-md-12">
+        <div class="alert alert-info">
+
+            <p>
+                <i class="fa fa-info-circle"></i>
+            {{#str}}training_visibility_warning, block_ai_assistant{{/str}}
+            </p>
+            <p>
+            <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    title="{{#str}}supported_formats_title, block_ai_assistant{{/str}}"
+                    data-toggle="popover"
+                    data-html="true"
+                    data-content="{{#str}}supported_formats, block_ai_assistant{{/str}}"
+            >
+                <i class="fa fa-question-circle"> {{#str}}supported_formats_title, block_ai_assistant{{/str}}</i>
+            </button>
+            </p>
+        </div>
         <div class="blockAiAssistantFolder">
             {{#sections}}
                 <div class="blockAiAssistant" data-id="{{idname}}"><i
@@ -21,7 +40,7 @@
                                             data-section="{{idname}}"
                                             data-sectionname="{{sectionname}}"
                                             data-name="{{name}}"
-                                            data-modurl = "{{modurl}}"
+                                            data-modurl="{{modurl}}"
                                             data-filename="{{#content}}{{file_name}}{{/content}}"
                                             data-content="{{#content}}{{content}}{{/content}}"
                                             data-cmid="{{cmid}}"
@@ -29,9 +48,9 @@
                                             data-modname="{{modname}}"
                                             data-modtimemodified="{{modtimemodified}}"
                                             data-courseid="{{courseid}}"
-                                            {{#trained}}
-                                                disabled
-                                            {{/trained}}
+                                        {{#trained}}
+                                            disabled
+                                        {{/trained}}
                                     >
                                     <span class="activityiconcontainer {{icontype}} courseicon align-self-start mr-3"
                                           style="width: 24px; height:24px;">
@@ -40,9 +59,22 @@
                                     <img src="{{icon}}?filtericon=1" class="activityicon " alt="{{modname}} icon">
 
                                 </span>
+
                                     <span class="activityname">
                                         {{name}} <span id="block-aia-trained-status-{{cmid}}"{{{trained}}}</span>
                                     </span>
+
+                                    {{^isavailable}}
+                                        <span class="text-danger ml-1" title="{{#str}}hiddenfromstudents, core{{/str}}">
+                                        <i class="fa fa-eye-slash"></i>
+                                    </span>
+                                    {{/isavailable}}
+                                    {{#isavailable}}
+                                        <span class="text-success ml-1"  title="{{#str}}visible_to_students, block_ai_assistant{{/str}}">
+                                        <i class="fa fa-eye"></i>
+                                    </span>
+                                    {{/isavailable}}
+
                                     {{#trained}}
                                         <button id="block-aia-delete-button-{{cmid}}"
                                                 type="button"
@@ -53,6 +85,7 @@
                                             <i class="fa fa-trash"></i>
                                         </button>
                                     {{/trained}}
+
                                 </div>
                             </label>
                         </div>

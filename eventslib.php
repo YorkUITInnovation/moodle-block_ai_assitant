@@ -39,14 +39,14 @@ function ai_assistant_course_module_updated($event)
                 }
                 break;
             case 'page':
-                $mod_url = new \moodle_url('/mod/page/view.php', ['id' => $mod[0]->id]);
+                $mod_url = new moodle_url('/mod/page/view.php', ['id' => $mod[0]->id]);
                 $module_content = course_modules::set_module_content(
                     $mod[0]->id,
                     $mod[0]->name,
                     $mod[0]->intro,
                     $mod[0]->content,
                     $mod[1]->modname,
-                    $mod_url->out(false, true)
+                    $mod_url->out(false)
                 );
                 break;
             case 'label':
@@ -69,7 +69,7 @@ function ai_assistant_course_module_updated($event)
                     $mod[0]->intro,
                     $content,
                     $mod[1]->modname,
-                    $mod_url->out(false, true)
+                    $mod_url->out(false)
                 );
                 break;
             case 'resource': // File
@@ -77,7 +77,7 @@ function ai_assistant_course_module_updated($event)
                 $module_content = course_modules::get_files_from_resource(
                     $mod[1]->id,
                     $mod[0]->id,
-                    $mod_url->out(false, true),
+                    $mod_url->out(false),
                 );
                 break;
             case 'folder':
@@ -98,7 +98,7 @@ function ai_assistant_course_module_updated($event)
                     $mod[0]->intro,
                     $content->content,
                     $mod[1]->modname,
-                    $mod_url->out(false, true)
+                    $mod_url->out(false)
                 );
                 break;
         }

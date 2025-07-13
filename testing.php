@@ -5,6 +5,7 @@ require_once(__DIR__ . '/../../config.php');
 global $CFG, $OUTPUT, $USER, $PAGE;
 
 use block_ai_assistant\webservice;
+use block_ai_assistant\course_modules;
 
 $context = context_system::instance();
 
@@ -19,6 +20,7 @@ $courseid = required_param('courseid', PARAM_INT);
 
 echo $OUTPUT->header();
 
+/**
 // Get file from mod_resource
 $fs = get_file_storage();
 
@@ -48,5 +50,9 @@ $md_data = json_decode(webservice::exec_convert_to_md($file_path, $file_type), t
 file_put_contents('/var/www/moodledata/temp/' . $md_data['filename'] . '.md', $md_data['content']);
 
 echo print_object($md_data);
+ * **/
+
+$cms = course_modules::get_course_modules($courseid);
+print_object($cms);
 echo $OUTPUT->footer();
 

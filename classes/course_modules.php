@@ -39,10 +39,11 @@ class course_modules
                     $course_structure->sections[$i]->sectionname = 'Topic ' . $sectionnum;
                 }
             }
+
             if (isset($section->name)) {
-                $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(str_replace(' ', '-', $course_structure->sections[$i]->name));
+                $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(str_replace(' ', '-', $course_structure->sections[$i]->sectionname));
             } else {
-                $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(str_replace(' ', '-', $course_structure->sections[$i]->name));
+                $course_structure->sections[$i]->idname = $sectionnum . '-topic-' . $sectionnum;
             }
             $x = 0; // Used to count the number of modules in a section
             if (isset($modules->sections[$section->section])) {
@@ -54,6 +55,10 @@ class course_modules
                         if ($only_visible && !$mod[1]->visible) {
                             continue; // Skip if the module is not visible
                         }
+                        // If the module is in the process of being deleted, skip it
+                        if ($mod[1]->deletioninprogress) {
+                            continue; // Skip deleted modules
+                        }
                         $number_of_modules_in_section++;
                         $course_structure->sections[$i]->modules[$x] = new \stdClass();
                         $course_structure->sections[$i]->modules[$x]->name = $mod[0]->name;
@@ -61,6 +66,8 @@ class course_modules
                         $course_structure->sections[$i]->modules[$x]->instanceid = $mod[0]->id;
                         $course_structure->sections[$i]->modules[$x]->cmid = $mod[1]->id;
                         $course_structure->sections[$i]->modules[$x]->modname = $mod[1]->modname;
+                        // Is this module available to students?
+                        $course_structure->sections[$i]->modules[$x]->isavailable = $mod[1]->visible;
                         $course_structure->sections[$i]->modules[$x]->modtimemodified = $mod[0]->timemodified;
                         // Is this module trained?
                         if ($ai_assistant_module = $DB->get_record('block_aia_course_modules', ['cmid' => $mod[1]->id])) {
@@ -102,7 +109,7 @@ class course_modules
                                 // Only print if it's the news forum
                                 if ($mod[0]->type == 'news') {
                                     $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/forum/view.php?id=' . $mod[1]->id;
-                                    $content = self::get_forum_content($mod[0]->id, $mod[0]->name, $course_structure->sections[$i]->modules[$x]->modurl);
+                                    $content = self::get_forum_content($mod[0]->id, $mod[0]->name, $mod[1]->id, $course_structure->sections[$i]->modules[$x]->modurl);
                                     $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                         $mod[0]->id,
                                         $mod[0]->name,
@@ -406,7 +413,7 @@ class course_modules
             foreach ($forum_posts as $fp) {
                 $html .= '<h3>' . $fp->subject . '</h3>';
                 $html .= file_rewrite_pluginfile_urls($fp->message, 'pluginfile.php',
-                    \context_module::instance($cmid),
+                    $cmid,
                     'mod_forum', 'post', $id) . "\n";
             }
         }
@@ -434,19 +441,8 @@ class course_modules
         // Loop through the files
         foreach ($files as $file) {
             if (!$file->is_directory() && $file->get_sortorder() == 1) {
-                // Only accept the following file formats: docx, pdf, txt, html, htm, pptx, ppt, odt, rtf, md
-                if (!in_array($file->get_mimetype(), [
-                    'application/msword',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'application/pdf',
-                    'text/plain',
-                    'text/html',
-                    'text/rtf',
-                    'text/markdown',
-                    'application/vnd.oasis.opendocument.text',
-                    'application/vnd.ms-powerpoint',
-                    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-                ])) {
+                // Only accept the following file formats: docx, pdf, txt, html, htm, pptx, ppt, odt, rtf, md, excel,csv, xlsx, mp3, mp4
+                if (!in_array($file->get_mimetype(), self::get_accepted_file_types())) {
                     continue; // Skip unsupported file types
                 }
 
@@ -515,18 +511,7 @@ class course_modules
             if (!$file->is_directory()
             ) {
                 // Only accept the following file formats: docx, pdf, txt, html, htm, pptx, ppt, odt, rtf, md
-                if (!in_array($file->get_mimetype(), [
-                    'application/msword',
-                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                    'application/pdf',
-                    'text/plain',
-                    'text/html',
-                    'text/rtf',
-                    'text/markdown',
-                    'application/vnd.oasis.opendocument.text',
-                    'application/vnd.ms-powerpoint',
-                    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-                ])) {
+                if (!in_array($file->get_mimetype(), self::get_accepted_file_types())) {
                     continue; // Skip unsupported file types
                 }
                     $path = $CFG->dataroot . '/temp/ai_assistant/';
@@ -686,9 +671,11 @@ class course_modules
     }
 
     /**
-     * Get course modules
-     * @param $course_id
-     * @return stdClass
+     * Upload course dates to a file for AI Assistant
+     * @param $courseid
+     * @return void
+     * @throws \dml_exception
+     * @throws \moodle_exception
      */
     public static function upload_course_dates($courseid)
     {
@@ -1111,5 +1098,37 @@ class course_modules
         }
 
         return false; // No update needed
+    }
+
+    /**
+     * Get the accepted file types for upload
+     * @return array
+     */
+    public static function get_accepted_file_types()
+    {
+        return [
+            'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/pdf',
+            'text/plain',
+            'text/html',
+            'text/rtf',
+            'text/markdown',
+            'application/vnd.oasis.opendocument.text',
+            'application/vnd.ms-powerpoint',
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/vnd.ms-excel',
+            'text/csv',
+            'audio/mpeg',
+            'audio/mp3',
+            'audio/x-mpeg-3',
+            'audio/x-mp3',
+            'audio/x-wav',
+            'audio/wav',
+            'audio/x-m4a',
+            'audio/m4a',
+            'video/mp4',
+        ];
     }
 }
