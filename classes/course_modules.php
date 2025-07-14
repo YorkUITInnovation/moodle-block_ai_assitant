@@ -73,7 +73,7 @@ class course_modules
 
                         // Set name based on type
                         if ($mod[1]->modname == 'label') {
-                            $mod[0]->name = substr($mod[0]->name, 0, 100) . '...';
+                            $mod[0]->name = substr($mod[0]->name, 0, 40) . '...';
                         }
                         $number_of_modules_in_section++;
                         $course_structure->sections[$i]->modules[$x] = new \stdClass();
