@@ -333,7 +333,7 @@ class course_modules
 
         $context = \context_module::instance($cmid);
 
-        $glossary_entries = $DB->get_records('glossary_entries', array('glossaryid' => $id));
+        $glossary_entries = $DB->get_records('glossary_entries', array('glossaryid' => $id, 'approved' => 1));
         $glossary = new \stdClass();
         // We will need to get files from the glossary entries
         $fs = get_file_storage();
@@ -380,7 +380,6 @@ class course_modules
                 }
             }
         }
-
 
         $glossary->file_name = 'glossary ' . $id . ' ' . str_replace(' ', '_', $name) . '.html';
         $glossary->content = $html;
@@ -494,7 +493,7 @@ class course_modules
 
         $context = \context_module::instance($cmid);
         $folder_data = new \stdClass();
-        // We will need to get files from the glossary entries
+        // We will need to get files from the folder
         $fs = get_file_storage();
         $html = '<h3>' . $name . '</h3>';
         $html .= $intro;
