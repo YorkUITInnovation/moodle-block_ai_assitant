@@ -6,6 +6,17 @@ use block_ai_assistant\cria;
 
 class course_modules
 {
+    private static function __accepted_modules() {
+        return [
+            'forum',
+            'page',
+            'label',
+            'book',
+            'resource',
+            'folder',
+            'glossary'
+        ];
+    }
     /**
      * Get course modules
      * @param $course_id
@@ -17,7 +28,7 @@ class course_modules
         $config = get_config('block_ai_assistant');
         $course_structure = new \stdClass();
         // Get accepted modules
-        $accepted_modules = explode(',', $config->accepted_modules);
+        $accepted_modules = self::__accepted_modules();
         // Get course modules
         $modules = get_fast_modinfo($courseid);
         // Get all sections from $modules and print them.
@@ -58,6 +69,11 @@ class course_modules
                         // If the module is in the process of being deleted, skip it
                         if ($mod[1]->deletioninprogress) {
                             continue; // Skip deleted modules
+                        }
+
+                        // Set name based on type
+                        if ($mod[1]->modname == 'label') {
+                            $mod[0]->name = substr($mod[0]->name, 0, 100) . '...';
                         }
                         $number_of_modules_in_section++;
                         $course_structure->sections[$i]->modules[$x] = new \stdClass();
@@ -139,13 +155,14 @@ class course_modules
 
                                 break;
                             case 'label':
+                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/course/view.php?id=' . $mod[0]->course;
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                     $mod[0]->id,
                                     $mod[0]->name,
                                     $mod[0]->intro,
                                     '',
                                     $mod[1]->modname,
-                                    ''
+                                    $course_structure->sections[$i]->modules[$x]->modurl
                                 );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'label');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
@@ -153,7 +170,7 @@ class course_modules
                             case 'book':
                                 $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/book/view.php?id=' . $mod[1]->id;
                                 // Must get book content
-                                $content = self::get_book_content($mod[0]->id);
+                                $content = self::get_book_content($mod[0]->id, $mod[0]->name, $course_structure->sections[$i]->modules[$x]->modurl);
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                     $mod[0]->id,
                                     $mod[0]->name,
