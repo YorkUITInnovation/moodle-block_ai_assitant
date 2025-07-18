@@ -39,30 +39,34 @@ function block_ai_assistant_course_module_updated($event)
                 }
                 break;
             case 'page':
+                $mod_context = \context_module::instance($mod[0]->id);
                 $mod_url = new moodle_url('/mod/page/view.php', ['id' => $mod[0]->id]);
                 $module_content = course_modules::set_module_content(
                     $mod[0]->id,
                     $mod[0]->name,
                     $mod[0]->intro,
-                    $mod[0]->content,
+                    file_rewrite_pluginfile_urls($mod[0]->content, 'pluginfile.php', $mod_context->id, 'mod_page', 'content', $mod[0]->revision),
                     $mod[1]->modname,
                     $mod_url->out(false)
                 );
                 break;
             case 'label':
+                // Set the course url
+                $mod_url = new \moodle_url('/course/view.php', ['id' => $data->courseid]);
+                $name = substr($mod[0]->name,0,30);
                 $module_content = course_modules::set_module_content(
                     $mod[0]->id,
                     $mod[0]->name,
                     $mod[0]->intro,
                     '',
                     $mod[1]->modname,
-                    ''
+                    $mod_url
                 );
                 break;
             case 'book':
                 $mod_url = new \moodle_url('/mod/book/view.php', ['id' => $mod[0]->id]);
                 // Must get book content
-                $content = course_modules::get_book_content($mod[0]->id, $mod[0]->name, $mod_url->out(false, true));
+                $content = course_modules::get_book_content($mod[1]->id,$mod[0]->id, $mod[0]->name, $mod_url->out(false, true));
                 $module_content = course_modules::set_module_content(
                     $mod[0]->id,
                     $mod[0]->name,

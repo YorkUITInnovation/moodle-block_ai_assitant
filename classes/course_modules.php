@@ -170,7 +170,7 @@ class course_modules
                             case 'book':
                                 $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/book/view.php?id=' . $mod[1]->id;
                                 // Must get book content
-                                $content = self::get_book_content($mod[0]->id, $mod[0]->name, $course_structure->sections[$i]->modules[$x]->modurl);
+                                $content = self::get_book_content($mod[1]->id, $mod[0]->id, $mod[0]->name, $course_structure->sections[$i]->modules[$x]->modurl);
                                 $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
                                     $mod[0]->id,
                                     $mod[0]->name,
@@ -239,7 +239,6 @@ class course_modules
             $i++;
         }
         // Get section name
-        file_put_contents('/var/www/moodledata/temp/section.log', print_r($course_structure, true), FILE_APPEND);
         return $course_structure;
     }
 
@@ -320,14 +319,15 @@ class course_modules
      * @param $mod_url
      * @return string
      */
-    public static function get_book_content($book_id, $name, $mod_url)
+    public static function get_book_content($cmid, $book_id, $name, $mod_url)
     {
         global $CFG, $DB;
-
+        $context =  \context_module::instance($cmid);
         $chapters = $DB->get_records('book_chapters', array('bookid' => $book_id));
         $content = '';
         foreach ($chapters as $chapter) {
-            $content .= $chapter->content;
+            $content .= file_rewrite_pluginfile_urls($chapter->content, 'pluginfile.php', $context->id, 'mod_book', 'chapter',
+                $chapter->id);
         }
 
         if (isset($mod_url)) {
@@ -362,7 +362,7 @@ class course_modules
         }
         foreach ($glossary_entries as $entry) {
             $html .= '<h3>' . $entry->concept . '</h3>';
-            $html .= $entry->definition;
+            $html .= file_rewrite_pluginfile_urls($entry->definition, 'pluginfile.php', $context->id, 'mod_glossary', 'entry', $entry->id);
             // Get files for this entry
             $files = $fs->get_area_files($context->id, 'mod_glossary', 'attachment', $entry->id);
             $glossary_files = [];
