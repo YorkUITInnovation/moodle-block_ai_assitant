@@ -149,14 +149,23 @@ $string['top_right'] = 'Top right';
 $string['train_course_assistant'] = 'Train the course assistant on the selected content';
 $string['train_modules'] = 'Add activities to the AI Assistant';
 $string['trained'] = 'Trained';
-$string['training'] = 'Training';
-$string['update_successful'] = 'Update succssful';
-$string['upload_assessment_dates'] = 'Upload Assessment Dates';
+$string['training_modules'] = 'Training Modules';
+$string['training_status'] = 'Training Status';
+$string['upload'] = 'Upload';
+$string['upload_document'] = 'Upload Document';
+$string['upload_file'] = 'Upload File';
 $string['upload_syllabus'] = 'Upload Syllabus';
-$string['upload_questions'] = 'Upload Q&A File';
-$string['visible_to_students'] = 'Visible to Students';
+$string['working'] = 'Working...';
+
+// MarkItDown API settings.
+$string['markitdown_api'] = 'MarkItDown API Settings';
+$string['markitdown_api_desc'] = 'Configure the MarkItDown API service for document processing and conversion';
+$string['markitdown_api_url'] = 'MarkItDown API URL';
+$string['markitdown_api_url_help'] = 'Enter the URL of the MarkItDown API service endpoint for document processing';
+$string['markitdown_api_key'] = 'MarkItDown API Key';
+$string['markitdown_api_key_help'] = 'Enter the API key for authentication with the MarkItDown service';
 $string['welcome_message'] = 'Welcome Message';
-$string['welcome_message_help'] = 'Welcome Message help text here';
+$string['welcome_message_help'] = 'Enter a custom welcome message that will be displayed to users when they first interact with the AI Assistant';
 
 // Capabilites
 $string['ai_assistant:addinstance'] = 'Add Block to course';
