@@ -538,6 +538,47 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2025062202, 'ai_assistant');
     }
 
+    if ($oldversion < 2025071800) {
+
+        // Define table block_aia_course_mod_files to be created.
+        $table = new xmldb_table('block_aia_course_mod_files');
+
+        // Adding fields to table block_aia_course_mod_files.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('bacmid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('cria_fileid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+
+        // Adding keys to table block_aia_course_mod_files.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Adding indexes to table block_aia_course_mod_files.
+        $table->add_index('xbacmid', XMLDB_INDEX_NOTUNIQUE, ['bacmid']);
+
+        // Conditionally launch create table for block_aia_course_mod_files.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025071800, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025071801) {
+
+        // Define field trained to be added to block_aia_course_mod_files.
+        $table = new xmldb_table('block_aia_course_mod_files');
+        $field = new xmldb_field('trained', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'cria_fileid');
+
+        // Conditionally launch add field trained.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025071801, 'ai_assistant');
+    }
+
+
     return true;
 
 }

@@ -12,6 +12,7 @@ require_once("$CFG->dirroot/config.php");
 
 use block_ai_assistant\course_modules;
 use block_ai_assistant\cria;
+use block_ai_assistant\course_module_training;
 
 class block_ai_assistant_course_modules_ws extends external_api
 {
@@ -82,8 +83,6 @@ class block_ai_assistant_course_modules_ws extends external_api
                 'selected_modules' => new external_multiple_structure(
                     new external_single_structure(
                         array(
-                            'filename' => new external_value(PARAM_TEXT, 'Filename'),
-                            'content' => new external_value(PARAM_RAW, 'Content'),
                             'courseid' => new external_value(PARAM_INT, 'Course id'),
                             'cmid' => new external_value(PARAM_INT, 'CM ID'),
                             'modname' => new external_value(PARAM_TEXT, 'Module Name'),
@@ -119,15 +118,17 @@ class block_ai_assistant_course_modules_ws extends external_api
 
         $context = \context_course::instance($courseid);
         self::validate_context($context);
-
-        foreach ($selected_modules as $module) {
+        file_put_contents('/var/www/moodledata/temp/selected_modules.json', json_encode($selected_modules));
+        foreach ($selected_modules as $key => $module) {
             if (isset($module['cmid']) && isset($module['courseid'])) {
                 $file_id = course_modules::insert_record((object)$module); // Ensure the data is cast to an object
                 // If there is a file id, send the content to cria
                 if ($file_id > 0) {
-                    $cria_file_id = cria::upload_content_to_bot($module['courseid'], $module['filename'], $module['content']);
-                    if ($cria_file_id > 0) {
-                        $DB->set_field('block_aia_course_modules', 'cria_fileid', $cria_file_id, ['id' => $file_id]);
+                    // Train the module
+                    $trained = self::train_module($module['cmid']);
+                    if ($trained) {
+                        // Delete the module from the array
+                        unset($selected_modules[$key]);
                     }
                 }
             }
@@ -155,7 +156,7 @@ class block_ai_assistant_course_modules_ws extends external_api
     {
         return new external_function_parameters(
             array(
-                'cmid' => new external_value(PARAM_INT, 'cmid', VALUE_REQUIRED)
+                'bacmid' => new external_value(PARAM_INT, 'block_aia_course_modules->id', VALUE_REQUIRED)
             )
         );
     }
@@ -168,7 +169,7 @@ class block_ai_assistant_course_modules_ws extends external_api
      * @throws invalid_parameter_exception
      * @throws restricted_context_exception
      */
-    public static function delete($cmid)
+    public static function delete($bacmid)
     {
         global $DB;
 
@@ -176,18 +177,11 @@ class block_ai_assistant_course_modules_ws extends external_api
         $params = self::validate_parameters(
             self::delete_parameters(),
             array(
-                'cmid' => $cmid
+                'bacmid' => $bacmid
             )
         );
 
-        // Get record
-        $record = $DB->get_record('block_aia_course_modules', ['id' => $cmid], '*', MUST_EXIST);
-        // Delete in cria
-        if ($record->cria_fileid != 0) {
-            $status = cria::delete_content_from_bot($record->cria_fileid);
-            $DB->delete_records('block_aia_course_modules', ['id' => $cmid]);
-
-        }
+       course_modules::delete_course_module($params['bacmid']);
 
         return true;
     }
@@ -200,4 +194,46 @@ class block_ai_assistant_course_modules_ws extends external_api
     {
         return new external_value(PARAM_BOOL, 'True or false');
     }
+
+    /**
+     * Trains the module based on its type.
+     * @param int $cmid
+     * @return void
+     * @throws coding_exception
+     * @throws dml_exception
+     * @throws moodle_exception
+     */
+    private static function train_module(int $cmid)
+    {
+        global $CFG;
+
+        $TRAINING = new course_module_training($cmid);
+
+        switch ($TRAINING->get_module_type()) {
+            case 'forum':
+                $trained = $TRAINING->forum();
+                break;
+            case 'resource':
+                $trained =  $TRAINING->resource();
+                break;
+            case 'page':
+                $trained = $TRAINING->page();
+                break;
+            case 'label':
+                $trained = $TRAINING->label();
+                break;
+            case 'folder':
+                $trained = $TRAINING->folder();
+                break;
+            case 'book':
+                $trained = $TRAINING->book();
+                break;
+            case 'glossary':
+                $trained = $TRAINING->glossary();
+                break;
+        }
+
+        return $trained;
+    }
+
 }

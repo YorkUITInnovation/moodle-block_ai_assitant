@@ -225,6 +225,8 @@ class cria
             "filecontent" => $file_content,
             "parsingstrategy" => $parsing_strategy
         ];
+        file_put_contents('/var/www/moodledata/temp/upload_content.log',
+            print_r($data, true) . PHP_EOL, FILE_APPEND);
         $file_id = webservice::exec($method, $data);
         return $file_id;
     }
