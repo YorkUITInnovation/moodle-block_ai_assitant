@@ -132,7 +132,7 @@ $string['supported_modules'] = '<p>Note: The AI Assistant can only be trained on
 $string['supported_modules_title'] = 'Supported Modules';
 $string['supported_formats'] = '<p>Note: Unsupported file formats will not be processed for training and will not be accessible through '
     . 'the AI Assistant. Ensure that your files are in supported formats to enable training and usage.</p>'
-    . '<p>Supported file formats: <ul><li>Word documents (.doc, .docx)</li><li>PDF files (.pdf)</li><li>Text files (.txt)</li>'
+    . '<p>Supported file formats: <ul><li>Word documents (.docx only)</li><li>PDF files (.pdf)</li><li>Text files (.txt)</li>'
     . '<li>HTML files (.html)</li><li>Rich Text Format (.rtf)</li><li>Markdown files (.md)</li><li>OpenDocument Text (.odt)</li><li>'
     . 'PowerPoint presentations (.ppt, .pptx)</li><li>Excel spreadsheets (.xls, .xlsx)</li><li>CSV files (.csv)</li><li>'
     . 'Audio files (.mp3, .wav, .m4a)</li><li>Video files (.mp4)</li></ul></p>';
