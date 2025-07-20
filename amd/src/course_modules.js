@@ -29,7 +29,7 @@ function display_modules() {
             // Pop up notificaiton to confirm delete
             notification.confirm(Str.get_string('train_course_assistant', 'block_ai_assistant'),
                 results,
-                Str.get_string('save', 'block_ai_assistant'),
+                Str.get_string('train_selected_modules', 'block_ai_assistant'),
                 Str.get_string('cancel', 'block_ai_assistant'), function () {
                     // Get all checkboxes with class courseModuleCheckbox and store the attribute data-filename,
                     // data-content, datacourseid for each checked checkbox
