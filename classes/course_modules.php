@@ -6,6 +6,19 @@ use block_ai_assistant\cria;
 
 class course_modules
 {
+    private static function __accepted_modules()
+    {
+        return [
+            'forum',
+            'page',
+            'label',
+            'book',
+            'resource',
+            'folder',
+            'glossary'
+        ];
+    }
+
     /**
      * Get course modules
      * @param $course_id
@@ -17,7 +30,7 @@ class course_modules
         $config = get_config('block_ai_assistant');
         $course_structure = new \stdClass();
         // Get accepted modules
-        $accepted_modules = explode(',', $config->accepted_modules);
+        $accepted_modules = self::__accepted_modules();
         // Get course modules
         $modules = get_fast_modinfo($courseid);
         // Get all sections from $modules and print them.
@@ -59,6 +72,11 @@ class course_modules
                         if ($mod[1]->deletioninprogress) {
                             continue; // Skip deleted modules
                         }
+
+                        // Set name based on type
+                        if ($mod[1]->modname == 'label') {
+                            $mod[0]->name = substr($mod[0]->name, 0, 30) . '...';
+                        }
                         $number_of_modules_in_section++;
                         $course_structure->sections[$i]->modules[$x] = new \stdClass();
                         $course_structure->sections[$i]->modules[$x]->name = $mod[0]->name;
@@ -71,11 +89,8 @@ class course_modules
                         $course_structure->sections[$i]->modules[$x]->modtimemodified = $mod[0]->timemodified;
                         // Is this module trained?
                         if ($ai_assistant_module = $DB->get_record('block_aia_course_modules', ['cmid' => $mod[1]->id])) {
-                            if ($ai_assistant_module->trained != 1) {
-                                $status = self::check_module_status($ai_assistant_module->cria_fileid);
-                                $ai_assistant_module->trained = $status;
-                            }
-                            switch ($ai_assistant_module->trained) {
+                            $status = self::get_training_status($ai_assistant_module->id);
+                            switch ($status) {
                                 case 0:
                                     $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-warning">'
                                         . get_string('pending', 'block_ai_assistant')
@@ -108,110 +123,36 @@ class course_modules
                             case 'forum':
                                 // Only print if it's the news forum
                                 if ($mod[0]->type == 'news') {
-                                    $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/forum/view.php?id=' . $mod[1]->id;
-                                    $content = self::get_forum_content($mod[0]->id, $mod[0]->name, $mod[1]->id, $course_structure->sections[$i]->modules[$x]->modurl);
-                                    $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
-                                        $mod[0]->id,
-                                        $mod[0]->name,
-                                        $mod[0]->intro,
-                                        $content,
-                                        $mod[1]->modname,
-                                        $course_structure->sections[$i]->modules[$x]->modurl
-                                    );
                                     $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'forum');
                                     $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration ';
-
                                 }
                                 break;
                             case 'page':
-                                $mod_context = \context_module::instance($mod[1]->id);
-                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/page/view.php?id=' . $mod[1]->id;
-                                $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
-                                    $mod[0]->id,
-                                    $mod[0]->name,
-                                    $mod[0]->intro,
-                                    file_rewrite_pluginfile_urls($mod[0]->content, 'pluginfile.php', $mod_context->id, 'mod_page', 'content', $mod[0]->revision),
-                                    $mod[1]->modname,
-                                    $course_structure->sections[$i]->modules[$x]->modurl
-                                );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'page');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
 
                                 break;
                             case 'label':
-                                $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
-                                    $mod[0]->id,
-                                    $mod[0]->name,
-                                    $mod[0]->intro,
-                                    '',
-                                    $mod[1]->modname,
-                                    ''
-                                );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'label');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
                                 break;
                             case 'book':
-                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/book/view.php?id=' . $mod[1]->id;
-                                // Must get book content
-                                $content = self::get_book_content($mod[0]->id);
-                                $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
-                                    $mod[0]->id,
-                                    $mod[0]->name,
-                                    $mod[0]->intro,
-                                    $content,
-                                    $mod[1]->modname,
-                                    $course_structure->sections[$i]->modules[$x]->modurl
-                                );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'book');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
 
                                 break;
                             case 'resource': // File
-                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/resource/view.php?id=' . $mod[1]->id;
-                                $course_structure->sections[$i]->modules[$x]->content = self::get_files_from_resource(
-                                    $mod[1]->id,
-                                    $mod[0]->id,
-                                    $course_structure->sections[$i]->modules[$x]->modurl
-                                );
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'resource');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
 
                                 break;
                             case 'folder':
-                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/folder/view.php?id=' . $mod[1]->id;
-                                $folder_files = self::get_folder_files(
-                                    $mod[1]->id,
-                                    $mod[0]->id,
-                                    $mod[0]->name,
-                                    $mod[0]->intro
-                                );
-                                $course_structure->sections[$i]->modules[$x]->content = $folder_files->content;
-                                $course_structure->sections[$i]->modules[$x]->files = $folder_files->files;
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'folder');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'content';
-                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/folder/view.php?id=' . $mod[1]->id;
                                 break;
                             case 'glossary':
-                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/glossary/view.php?id=' . $mod[1]->id;
-                                $content = self::get_glossary_entries(
-                                    $mod[1]->id,
-                                    $mod[0]->id,
-                                    $mod[0]->name,
-                                    $course_structure->sections[$i]->modules[$x]->modurl
-                                );
-                                $course_structure->sections[$i]->modules[$x]->content = self::set_module_content(
-                                    $mod[0]->id,
-                                    $mod[0]->name,
-                                    $mod[0]->intro,
-                                    $content->content,
-                                    $mod[1]->modname,
-                                    $course_structure->sections[$i]->modules[$x]->modurl
-                                );
-                                $course_structure->sections[$i]->modules[$x]->files = $content->files;
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'glossary');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration';
-                                $course_structure->sections[$i]->modules[$x]->modurl = $CFG->wwwroot . '/mod/glossary/view.php?id=' . $mod[1]->id;
-
                                 break;
                         }
                         $x++;
@@ -222,7 +163,6 @@ class course_modules
             $i++;
         }
         // Get section name
-        file_put_contents('/var/www/moodledata/temp/section.log', print_r($course_structure, true), FILE_APPEND);
         return $course_structure;
     }
 
@@ -252,304 +192,44 @@ class course_modules
     }
 
     /**
-     * Set module content
-     * @param $id
-     * @param $name
-     * @param $intro
-     * @param $content
-     * @param $module_type
-     * @param string $mod_url
-     * @return stdClass
+     * Delete course module
+     * @param int $bacmid
+     * @return void
+     * @throws \dml_exception
+     * @throws \moodle_exception
      */
-    public static function set_module_content($id, $name, $intro, $content, $module_type, $mod_url)
-    {
-        //Create object
-        $module = new \stdClass();
-        // Set default variable values
-        $file_name = '';
-        $module_content = '';
-        if (isset($name)) {
-            // Set the file name
-            $file_name = $module_type . ' ' . $id . ' ' . substr($name, 0, 30) . '.html';
-        }
-
-        if (isset($mod_url)) {
-            $module_content .=  get_string('content_found_at', 'block_ai_assistant')
-                . ' <a href="' . $mod_url . '" target="_blank">' .
-                $name. '</a><br><br>';
-        }
-        // Set the content
-        if (isset($intro)) {
-            $module_content .= $intro;
-        }
-        if (isset($content)) {
-            $module_content .= '<br><br>' . $content;
-        }
-
-        $module->file_name = $file_name;
-        // Make sure $module_content is UTF-8 encoded
-        if (!mb_detect_encoding($module_content, 'UTF-8', true)) {
-            $module_content = mb_convert_encoding($module_content, 'UTF-8');
-        }
-        $module->content = base64_encode($module_content);
-
-        return $module;
-    }
-
-    /**
-     * Get book content
-     * @param $cmid
-     * @param $name string Book name
-     * @param $mod_url
-     * @return string
-     */
-    public static function get_book_content($book_id, $name, $mod_url)
-    {
-        global $CFG, $DB;
-
-        $chapters = $DB->get_records('book_chapters', array('bookid' => $book_id));
-        $content = '';
-        foreach ($chapters as $chapter) {
-            $content .= $chapter->content;
-        }
-
-        if (isset($mod_url)) {
-            $content .= '<br><br>' . get_string('content_found_at', 'block_ai_assistant')
-                . ' <a href="' . $mod_url . '" target="_blank">' .
-                $name. '</a>';
-        }
-        return $content;
-    }
-
-    /**
-     * Get glossary entries
-     * @param $cmid
-     * @param $id
-     * @return stdClass
-     */
-    public static function get_glossary_entries($cmid, $id, $name, $mod_url)
-    {
-        global $CFG, $DB;
-
-        $context = \context_module::instance($cmid);
-
-        $glossary_entries = $DB->get_records('glossary_entries', array('glossaryid' => $id));
-        $glossary = new \stdClass();
-        // We will need to get files from the glossary entries
-        $fs = get_file_storage();
-        $html = '';
-        if (isset($mod_url)) {
-            $html .= '<br><br>' . get_string('content_found_at', 'block_ai_assistant')
-                . ' <a href="' . $mod_url . '" target="_blank">' .
-                $name. '</a>';
-        }
-        foreach ($glossary_entries as $entry) {
-            $html .= '<h3>' . $entry->concept . '</h3>';
-            $html .= $entry->definition;
-            // Get files for this entry
-            $files = $fs->get_area_files($context->id, 'mod_glossary', 'attachment', $entry->id);
-            $glossary_files = [];
-            $i = 0;
-            foreach ($files as $file) {
-                if (!$file->is_directory()) {
-                    $path = $CFG->dataroot . '/temp/ai_assistant/';
-                    if (!file_exists($path)) {
-                        mkdir($path, 0777, true);
-                    }
-                    $path .= 'glossary/';
-                    if (!file_exists($path)) {
-                        mkdir($path, 0777, true);
-                    }
-                    $path .= $entry->id . '/';
-                    if (!file_exists($path)) {
-                        mkdir($path, 0777, true);
-                    }
-                    // Set the file name
-                    $file_name = str_replace(' ', '_', $file->get_filename());
-                    // Save a copy of the file
-                    $file->copy_content_to($path . $file_name);
-                    // Get the content of the file
-                    $content = file_get_contents($path . $file_name);
-                    $glossary_files[$i] = new \stdClass();
-                    $glossary_files[$i]->content = base64_encode($content);
-                    $glossary_files[$i]->file_name = $file->get_filename();
-                    $glossary_files[$i]->mime_type = $file->get_mimetype();
-                    // Delete the file
-                    unlink($path . $file_name);
-                    $i++;
-                }
-            }
-        }
-
-
-        $glossary->file_name = 'glossary ' . $id . ' ' . str_replace(' ', '_', $name) . '.html';
-        $glossary->content = $html;
-        $glossary->files = $glossary_files;
-
-        // If the glossary files are empty, set it to null
-        if (empty($glossary_files)) {
-            $glossary->files = new \stdClass();
-        }
-
-        return $glossary;
-    }
-
-    public static function get_forum_content($id, $name, $cmid, $mod_url)
+    public static function delete_course_module(int $bacmid)
     {
         global $DB;
-        // Get forum discussions
-        $forum_discussions = $DB->get_records('forum_discussions', array('forum' => $id));
-        $html = '';
+        self::delete_course_module_files($bacmid);
+        // Delete the record from block_aia_course_modules
+        $DB->delete_records('block_aia_course_modules', ['id' => $bacmid]);
 
-        if (isset($mod_url)) {
-            $html .= get_string('content_found_at', 'block_ai_assistant')
-                . ' <a href="' . $mod_url . '" target="_blank">' .
-                $name. '</a><br><br>';
-        }
-
-        foreach ($forum_discussions as $fd) {
-            // Get forum posts
-            $forum_posts = $DB->get_records('forum_posts', array('discussion' => $fd->id));
-            foreach ($forum_posts as $fp) {
-                $html .= '<h3>' . $fp->subject . '</h3>';
-                $html .= file_rewrite_pluginfile_urls($fp->message, 'pluginfile.php',
-                    $cmid,
-                    'mod_forum', 'post', $id) . "\n";
-            }
-        }
-
-
-
-        return $html;
     }
 
     /**
-     * Get files from resource
-     * @param $cmid
-     * @return \stdClass
+     * Delete course module files from Cria
+     * @param int $bacmid
+     * @return void
+     * @throws \dml_exception
      */
-    public static function get_files_from_resource($cmid, $id, $mod_url)
+    public static function delete_course_module_files(int $bacmid)
     {
-        global $CFG;
-
-        // Fetch the context of the resource
-        $context = \context_module::instance($cmid);
-        $fs = get_file_storage();
-        $files = $fs->get_area_files($context->id, 'mod_resource', 'content');
-        $file_info = new \stdClass();
-
-        // Loop through the files
-        foreach ($files as $file) {
-            if (!$file->is_directory() && $file->get_sortorder() == 1) {
-                // Only accept the following file formats: docx, pdf, txt, html, htm, pptx, ppt, odt, rtf, md, excel,csv, xlsx, mp3, mp4
-                if (!in_array($file->get_mimetype(), self::get_accepted_file_types())) {
-                    continue; // Skip unsupported file types
-                }
-
-                $path = $CFG->dataroot . '/temp/ai_assistant/';
-                if (!file_exists($path)) {
-                    mkdir($path, 0777, true);
-                }
-                $path .= 'resource/';
-                if (!file_exists($path)) {
-                    mkdir($path, 0777, true);
-                }
-                $path .= $id . '/';
-                if (!file_exists($path)) {
-                    mkdir($path, 0777, true);
-                }
-
-                // Set the file name
-                $file_name = $file->get_filename();
-                // Save a copy of the file
-                $file->copy_content_to($path . $file_name);
-                // Get the content of the file
-                $content = file_get_contents($path . $file_name);
-                file_put_contents('/var/www/moodledata/temp/resource.log', print_r($content, true), FILE_APPEND);
-
-                $file_info->content = base64_encode($content);
-                $file_info->file_name = 'resource ' . $id . ' ' . $file_name;
+        global $DB;
+        // Get all file records for bacmid
+        $file_records = $DB->get_records('block_aia_course_mod_files', ['bacmid' => $bacmid]);
+        // Loop through each file record and delete it from Cria
+        foreach ($file_records as $file_record) {
+            // Delete the file from Cria
+            $status = cria::delete_content_from_bot($file_record->cria_fileid);
+            if ($status == 200 || $status == 404) {
+                // Delete existing record from block_aia_course_mod_files
+                $DB->delete_records('block_aia_course_mod_files', ['id' => $file_record->id]);
             }
-        }
-        // If no files are available, set the content to empty
-        if (empty($file_info)) {
-            $file_info->file_name = '';
-            $file_info->content = '';
-        }
 
-        return $file_info;
+        }
     }
 
-    /**
-     * Get folder files
-     * @param $cmid
-     * @param $id
-     * @param $name
-     * @param $intro
-     * @return \stdClass
-     */
-    public static function get_folder_files($cmid, $id, $name, $intro)
-    {
-        global $CFG, $DB;
-
-        $context = \context_module::instance($cmid);
-        $folder_data = new \stdClass();
-        // We will need to get files from the glossary entries
-        $fs = get_file_storage();
-        $html = '<h3>' . $name . '</h3>';
-        $html .= $intro;
-        $folder_data->content = new \stdClass();
-        $folder_data->content->file_name = 'folder ' . $id . ' ' . $name . '.html';
-        $folder_data->content->content = base64_encode($html);
-
-
-        // Get files for this entry
-        $files = $fs->get_area_files($context->id, 'mod_folder', 'content', 0);
-        $folder_files = [];
-        $i = 0;
-        foreach ($files as $file) {
-            if (!$file->is_directory()
-            ) {
-                // Only accept the following file formats: docx, pdf, txt, html, htm, pptx, ppt, odt, rtf, md
-                if (!in_array($file->get_mimetype(), self::get_accepted_file_types())) {
-                    continue; // Skip unsupported file types
-                }
-                    $path = $CFG->dataroot . '/temp/ai_assistant/';
-                if (!file_exists($path)) {
-                    mkdir($path, 0777, true);
-                }
-                $path .= 'folder/';
-                if (!file_exists($path)) {
-                    mkdir($path, 0777, true);
-                }
-                $path .= $id . '/';
-                if (!file_exists($path)) {
-                    mkdir($path, 0777, true);
-                }
-                // Set the file name
-                $file_name = $file->get_filename();
-                // Save a copy of the file
-                $file->copy_content_to($path . $file_name);
-                // Get the content of the file
-                $content = file_get_contents($path . $file_name);
-                $folder_files[$i] = new \stdClass();
-                $folder_files[$i]->content = base64_encode($content);
-                $folder_files[$i]->file_name = $file->get_filename();
-                $folder_files[$i]->mime_type = $file->get_mimetype();
-                // Delete the file
-                unlink($path . $file_name);
-                $i++;
-            }
-        }
-
-        if (empty($folder_files)) {
-            $folder_data->content = new \stdClass();
-        }
-
-        $folder_data->files = $folder_files;
-
-        return $folder_data;
-    }
 
     /**
      * Insert record
@@ -1070,34 +750,66 @@ class course_modules
     }
 
     /**
-     * Check the status of a specific module and update its trained status in the database.
-     * @param int $cria_fileid
-     * @return false
+     * Get the training status of all files in a course module.
+     * @param int $bacmid
+     * @return int|void
      * @throws \dml_exception
      */
-    public static function check_module_status(int $cria_fileid)
+    public static function get_training_status(int $bacmid)
     {
         global $DB;
-
-        // Check if the module has a valid Cria file ID
-        if (empty($cria_fileid) || $cria_fileid == 0) {
-            return false; // No valid Cria file ID
+        // Get all files from block_aia_course_mod_files
+        $files = $DB->get_records('block_aia_course_mod_files', ['bacmid' => $bacmid]);
+        if (empty($files)) {
+            return 0; // No files found
         }
+        $module_status = []; // Default status
+        $count = count($files);
+        $trained_files = 0;
+        foreach ($files as $file) {
+            // Check if the file has a valid Cria file ID
+            if (empty($file->cria_fileid) || $file->cria_fileid == 0) {
+                continue; // Skip files without a valid Cria file ID
+            }
+            // If already trained, skip
+            if ($file->trained != 1) {
+                // If the trained status is 0, check the status on Cria
+                if ($file->trained == 0 || $file->trained == 3) {
+                    // Use cria to check the status of the file
+                    $status = cria::get_content_training_status($file->cria_fileid);
+                    if ($status->training_status_id != 0) {
+                        $DB->set_field(
+                            'block_aia_course_mod_files',
+                            'trained',
+                            $status->training_status_id,
+                            ['id' => $file->id]
+                        );
+                        $module_status[] = $status->training_status_id; // Collect the trained status
+                    }
+                } else {
+                    $module_status[] = $file->trained; // Collect the trained status
+                }
+            } else {
+                $trained_files++;
+            }
 
-        // Use cria to check the status of the module
-        $status = cria::get_content_training_status($cria_fileid);
-        if ($status->training_status_id != 0) {
-            // Update the record with the new Cria file ID
-            $DB->set_field(
-                'block_aia_course_modules',
-                'trained',
-                $status->training_status_id,
-                ['cria_fileid' => $cria_fileid]
-            );
-            return $status->training_status_id; // Status updated successfully
+            if ($trained_files == $count) {
+                return 1; // All files are trained
+            } else {
+                // count how many files are training (2)
+                if (in_array(2, $module_status)) {
+                    return 2; // Some files are training
+                }
+                // count how many files have errors (3)
+                if (in_array(3, $module_status)) {
+                    return 3; // Some files have errors
+                }
+                // If no files are trained, return 0
+                if (in_array(0, $module_status)) {
+                    return 0; // No files are trained
+                }
+            }
         }
-
-        return false; // No update needed
     }
 
     /**
@@ -1107,7 +819,7 @@ class course_modules
     public static function get_accepted_file_types()
     {
         return [
-            'application/msword',
+//            'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             'application/pdf',
             'text/plain',

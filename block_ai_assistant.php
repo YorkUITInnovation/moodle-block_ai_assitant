@@ -400,12 +400,15 @@ class block_ai_assistant extends block_base
         $bot_id = str_replace('"', '', $bot_name[0]);
         // Delete bot from Cria
         $results = cria::delete_bot_instance($bot_id);
+
         // Delete all settings for this course
         $DB->delete_records('block_aia_settings', array('courseid' => $COURSE->id));
         // Delete Autotest questions
         $DB->delete_records('block_aia_autotest', array('courseid' => $COURSE->id));
         // Questions
         $DB->delete_records('block_aia_question_files', array('courseid' => $COURSE->id));
+        // Delete course modules
+        $DB->delete_records('block_aia_course_modules', array('courseid' => $COURSE->id));
         // Delete the files in filearea syllabus
         $fs = get_file_storage();
         $context = \context_course::instance($COURSE->id);

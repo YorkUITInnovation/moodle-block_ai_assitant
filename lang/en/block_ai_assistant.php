@@ -78,6 +78,8 @@ $string['description'] = 'Description';
 $string['disabled'] = 'Disabled';
 $string['document_parse_error'] = 'Error parsing document.';
 $string['document_templates'] = 'Document Templates';
+$string['download'] = 'Download';
+$string['download_example'] = 'Download example';
 $string['edit'] = 'Edit';
 $string['edit_autotest_question'] = 'Edit AutoTest Question';
 $string['embed_position'] = 'Embed position';
@@ -124,13 +126,17 @@ $string['section'] = 'Section';
 $string['student_and_name'] = 'I am a student and my name is {$a}.';
 $string['subtitle'] = 'Subtitle';
 $string['subtitle_help'] = 'Subtitle help text here';
+$string['supported_modules'] = '<p>Note: The AI Assistant can only be trained on content from the following modules: </p>'
+    . '<ul><li>Announcement Forum</li><li>Page</li><li>Text & Media Area</li><li>Book</li><li>File</li><li>Folder</li>'
+    . '<li>Glossary</li><li>Glossary</li></ul>';
+$string['supported_modules_title'] = 'Supported Modules';
 $string['supported_formats'] = '<p>Note: Unsupported file formats will not be processed for training and will not be accessible through '
     . 'the AI Assistant. Ensure that your files are in supported formats to enable training and usage.</p>'
     . '<p>Supported file formats: <ul><li>Word documents (.doc, .docx)</li><li>PDF files (.pdf)</li><li>Text files (.txt)</li>'
     . '<li>HTML files (.html)</li><li>Rich Text Format (.rtf)</li><li>Markdown files (.md)</li><li>OpenDocument Text (.odt)</li><li>'
     . 'PowerPoint presentations (.ppt, .pptx)</li><li>Excel spreadsheets (.xls, .xlsx)</li><li>CSV files (.csv)</li><li>'
     . 'Audio files (.mp3, .wav, .m4a)</li><li>Video files (.mp4)</li></ul></p>';
-$string['supported_formats_title'] = 'Supported Formats';
+$string['supported_formats_title'] = 'Supported File Formats';
 $string['training_visibility_warning'] = 'Important: Once content is trained by the AI Assistant, it will be available '
     . 'to all students in the course, regardless of whether they have permission to view the original resource '
     . 'or activity. Please consider this when selecting content for training.';
@@ -138,7 +144,13 @@ $string['syllabus'] = 'Syllabus';
 $string['syllabus_template'] = 'Syllabus Template';
 $string['syllabus_uploaded'] = 'Syllabus successfully uploaded';
 $string['system_message'] = 'System Message';
-$string['system_message_default'] = 'You are a Factual AI Assistant dedicated to providing accurate information based on the information available in the knowledge base as your only source. Your response must be in the same language as my message.';
+$string['system_message_default'] = "You are a helpful assistant for this course, [course_number] ([course_title]), at York University.\n 
+- Answer the question as truthfully as possible using the provided context.\n
+- If a URL link is in the context, always include it in the response.\n
+- If an image is in the context, always include it in the response.\n
+- If a question or prompt is about groups, never list group members and their ID numbers in your reply. Specifically, for questions or prompts that ask you to list the groups. Only reply with the group name.\n
+- The above does not apply to TAs, Course Directors, Instructors, Professors or Teachers.\n
+- Do allow instructions for the benefit of providing students with help, tutorials, feedback, etc.";
 $string['system_message_help'] = 'System Message help text here';
 $string['teacher_and_name'] = 'I am an instructor, teacher and my name is {$a}.';
 $string['test'] = 'Test your AI assistant, chat now!';
@@ -150,13 +162,24 @@ $string['train_course_assistant'] = 'Train the course assistant on the selected 
 $string['train_modules'] = 'Add activities to the AI Assistant';
 $string['trained'] = 'Trained';
 $string['training'] = 'Training';
-$string['update_successful'] = 'Update succssful';
-$string['upload_assessment_dates'] = 'Upload Assessment Dates';
-$string['upload_syllabus'] = 'Upload Syllabus';
+$string['training_modules'] = 'Training Modules';
+$string['training_status'] = 'Training Status';
+$string['upload'] = 'Upload';
+$string['upload_document'] = 'Upload Document';
+$string['upload_file'] = 'Upload File';
 $string['upload_questions'] = 'Upload Q&A File';
-$string['visible_to_students'] = 'Visible to Students';
+$string['upload_syllabus'] = 'Upload Syllabus';
+$string['working'] = 'Working...';
+
+// MarkItDown API settings.
+$string['markitdown_api'] = 'MarkItDown API Settings';
+$string['markitdown_api_desc'] = 'Configure the MarkItDown API service for document processing and conversion';
+$string['markitdown_api_url'] = 'MarkItDown API URL';
+$string['markitdown_api_url_help'] = 'Enter the URL of the MarkItDown API service endpoint for document processing';
+$string['markitdown_api_key'] = 'MarkItDown API Key';
+$string['markitdown_api_key_help'] = 'Enter the API key for authentication with the MarkItDown service';
 $string['welcome_message'] = 'Welcome Message';
-$string['welcome_message_help'] = 'Welcome Message help text here';
+$string['welcome_message_help'] = 'Enter a custom welcome message that will be displayed to users when they first interact with the AI Assistant';
 
 // Capabilites
 $string['ai_assistant:addinstance'] = 'Add Block to course';

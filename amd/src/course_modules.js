@@ -48,32 +48,30 @@ function display_modules() {
                         if (checkbox.checked) {
                             currentNumberChecked++;
                             selected_modules.push({
-                                'filename': checkbox.getAttribute('data-filename'),
-                                'content': checkbox.getAttribute('data-content'),
                                 'courseid': checkbox.getAttribute('data-courseid'),
                                 'cmid': checkbox.getAttribute('data-cmid'),
                                 'modname': checkbox.getAttribute('data-modname'),
                                 'modtimemodified': checkbox.getAttribute('data-modtimemodified'),
                             });
-                            //make a new ajax call to a new webservice that calls insert from course_module class
-                            //block_ai_assistant_insert_course_modules
-                            var insert_modules = ajax.call([{
-                                methodname: 'block_ai_assistant_insert_course_modules',
-                                args: {
-                                    'courseid': courseid,
-                                    'selected_modules': selected_modules
-                                }
-
-                            }]);
-                            insert_modules[0].done(function (response) {
-                                if (currentNumberChecked === checkedCount) {
-                                    alert("Successfully added content to the course assistant");
-                                }
-                                // You can now use the data variable for further processing
-                            }).fail(function (error) {
-                                alert("error in ajax call of insert modules" + error);
-                            });
                         }
+                    });
+                    //make a new ajax call to a new webservice that calls insert from course_module class
+                    //block_ai_assistant_insert_course_modules
+                    var insert_modules = ajax.call([{
+                        methodname: 'block_ai_assistant_insert_course_modules',
+                        args: {
+                            'courseid': courseid,
+                            'selected_modules': selected_modules
+                        }
+
+                    }]);
+                    insert_modules[0].done(function (response) {
+                        if (currentNumberChecked === checkedCount) {
+                            alert("Successfully added content to the course assistant");
+                        }
+                        // You can now use the data variable for further processing
+                    }).fail(function (error) {
+                        alert("error in ajax call of insert modules" + error);
                     });
                 });
 
@@ -96,7 +94,7 @@ function display_modules() {
                                 var delete_content = ajax.call([{
                                     methodname: 'block_ai_assistant_delete_course_modules',
                                     args: {
-                                        'cmid': dataBlockAiaCmid
+                                        'bacmid': dataBlockAiaCmid
                                     }
                                 }]);
 
@@ -111,7 +109,6 @@ function display_modules() {
                                         // Remove disable form element with id block-aia-uniqueCmid
                                         var blockAiaUniqueCmid = document.getElementById('block-aia-' + uniqueCmid);
                                         blockAiaUniqueCmid.removeAttribute('disabled');
-                                        alert("Successfully deleted");
                                 }).fail(function (error) {
                                     alert("error in ajax call of delete modules" + error);
                                 });
