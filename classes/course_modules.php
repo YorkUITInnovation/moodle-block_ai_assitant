@@ -162,8 +162,6 @@ class course_modules
             $course_structure->sections[$i]->number_of_modules = $number_of_modules_in_section;
             $i++;
         }
-
-        file_put_contents('/var/www/moodledata/temp/course_structure.log', print_r($course_structure, true));
         // Get section name
         return $course_structure;
     }

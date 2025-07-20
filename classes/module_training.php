@@ -57,16 +57,16 @@ abstract class module_training
      */
     public function page()
     {
-        global $DB;
+        global $CFG, $DB;
         // if $this->bacmid is false, it means that the module is not registered in the block_aia_course_modules table
         if ($this->bacmid === false) {
             return false; // If the module is not registered, return false
         }
         // Set the URL to the module
-        $mod_url = new \moodle_url('/mod/page/view.php', ['id' => $this->cmid]);
+        $mod_url = $CFG->wwwroot . '/mod/page/view.php?id=' . $this->cmid;
         // In clude the url to the module
         $content = get_string('content_found_at', 'block_ai_assistant')
-            . ' <a href="' . $mod_url->out() . '" target="_blank">' . $this->mod[0]->name . '</a><br><br>';
+            . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>';
 
         // Set the content
         if (isset($this->mod[0]->intro)) {
@@ -104,18 +104,18 @@ abstract class module_training
 
     public function label()
     {
-        global $DB;
+        global $CFG, $DB;
         // if $this->bacmid is false, it means that the module is not registered in the block_aia_course_modules table
         if ($this->bacmid === false) {
             return false; // If the module is not registered, return false
         }
         // Set the URL to the module
-        $mod_url = new \moodle_url('/course/view.php', ['id' => $this->mod[0]->course]);
+        $mod_url = $CFG->wwwroot . '/course/view.php?id=' . $this->mod[0]->course;
         // Name must not be more than 30 characters
         $name =  substr(str_replace(' ', '_', $this->mod[0]->name), 0, 30);
         // Include the url to the module
         $content = get_string('content_found_at', 'block_ai_assistant')
-            . ' <a href="' . $mod_url->out() . '" target="_blank">' . $name . '</a><br><br>';
+            . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>';
 
         if (isset($this->mod[0]->content)) {
             $content .= $this->mod[0]->content;
@@ -149,15 +149,15 @@ abstract class module_training
      */
     public function book()
     {
-        global $DB;
+        global $CFG, $DB;
         // if $this->bacmid is false, it means that the module is not registered in the block_aia_course_modules table
         if ($this->bacmid === false) {
             return false; // If the module is not registered, return false
         }
         // Set URL to the module
-        $mod_url = new \moodle_url('/mod/book/view.php', ['id' => $this->cmid]);
+        $mod_url = $CFG->wwwroot . '/mod/book/view.php?id=' . $this->cmid;
         $content = get_string('content_found_at', 'block_ai_assistant')
-            . ' <a href="' . $mod_url->out() . '" target="_blank">' . $this->mod[0]->name . '</a><br><br>';
+            . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>';
         // Get book chapters
         $chapters = $DB->get_records('book_chapters', ['bookid' => $this->mod[0]->instance], 'pagenum ASC');
         foreach ($chapters as $chapter) {
@@ -197,15 +197,15 @@ abstract class module_training
      */
     public function glossary()
     {
-        global $DB;
+        global $CFG, $DB;
         // if $this->bacmid is false, it means that the module is not registered in the block_aia_course_modules table
         if ($this->bacmid === false) {
             return false; // If the module is not registered, return false
         }
         // Set URL to the module
-        $mod_url = new \moodle_url('/mod/glossary/view.php', ['id' => $this->cmid]);
+        $mod_url = $CFG->wwwroot . 'mod/glossary/view.php?id=' . $this->cmid;
         $content = get_string('content_found_at', 'block_ai_assistant')
-            . ' <a href="' . $mod_url->out() . '" target="_blank">' . $this->mod[0]->name . '</a><br><br>';
+            . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>';
 
         $glossary_entries = $DB->get_records('glossary_entries', array('glossaryid' => $this->mod[0]->instance , 'approved' => 1));
         foreach ($glossary_entries as $entry) {
@@ -250,7 +250,7 @@ abstract class module_training
      */
     public function forum()
     {
-        global $DB;
+        global $CFG, $DB;
         // if $this->bacmid is false, it means that the module is not registered in the block_aia_course_modules table
         if ($this->bacmid === false) {
             return false; // If the module is not registered, return false
@@ -259,9 +259,9 @@ abstract class module_training
             return false; // Only news forums are supported
         }
         // Set URL to the module
-        $mod_url = new \moodle_url('/mod/forum/view.php', ['id' => $this->cmid]);
+        $mod_url =$CFG->wwwroot . '/mod/forum/view.php?id=' . $this->cmid;
         $content = get_string('content_found_at', 'block_ai_assistant')
-            . ' <a href="' . $mod_url->out() . '" target="_blank">' . $this->mod[0]->name . '</a><br><br>';
+            . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>';
 
         // Get forum discussions
         $forum_discussions = $DB->get_records('forum_discussions', array('forum' => $this->mod[0]->instance));
@@ -314,7 +314,7 @@ abstract class module_training
             return false; // If the module is not registered, return false
         }
         // Set URL to the module
-        $mod_url = new \moodle_url('/mod/forum/view.php', ['id' => $this->cmid]);
+        $mod_url = $CFG->wwwroot . '/mod/forum/view.php?id=' . $this->cmid;
         // Get files from the resource
         $fs = get_file_storage();
         $files = $fs->get_area_files($this->context->id, 'mod_resource', 'content');
@@ -352,7 +352,7 @@ abstract class module_training
                 } else {
                     unlink($path . $file_name);
                     $content = get_string('content_found_at', 'block_ai_assistant')
-                        . ' <a href="' . $mod_url->out() . '" target="_blank">' . $this->mod[0]->name . '</a><br><br>';
+                        . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>';
                     // Set the content to the converted file content
                     $content .= markdown_to_html($converted_file->content);
                     $file_name = 'resource_' . $this->cmid . '_' . str_replace(' ', '_', $converted_file->file_name) . '.html';
@@ -429,7 +429,6 @@ abstract class module_training
                 }
                 // Set the file name
                 $file_name = $file->get_filename();
-                file_put_contents('/var/www/moodledata/temp/folder.txt', $file_name . "\n", FILE_APPEND);
                 // Save a copy of the file
                 $file->copy_content_to($path . $file_name);
                 // Using maritdown to convert the content to HTML

@@ -118,7 +118,6 @@ class block_ai_assistant_course_modules_ws extends external_api
 
         $context = \context_course::instance($courseid);
         self::validate_context($context);
-        file_put_contents('/var/www/moodledata/temp/selected_modules.json', json_encode($selected_modules));
         foreach ($selected_modules as $key => $module) {
             if (isset($module['cmid']) && isset($module['courseid'])) {
                 $file_id = course_modules::insert_record((object)$module); // Ensure the data is cast to an object
