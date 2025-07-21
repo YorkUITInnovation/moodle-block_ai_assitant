@@ -486,7 +486,7 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2024090900, 'ai_assistant');
     }
 
-    if ($oldversion < 2025060101) {
+    if ($oldversion < 2025072400) {
 
         // Define field embed_position to be added to block_aia_settings.
         $table = new xmldb_table('block_aia_settings');
@@ -498,10 +498,10 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         }
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2025060101, 'ai_assistant');
+        upgrade_block_savepoint(true, 2025072400, 'ai_assistant');
     }
 
-    if ($oldversion < 2025062201) {
+    if ($oldversion < 2025072400) {
 
         // Define field modtimemodified to be added to block_aia_course_modules.
         $table = new xmldb_table('block_aia_course_modules');
@@ -513,10 +513,10 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         }
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2025062201, 'ai_assistant');
+        upgrade_block_savepoint(true, 2025072400, 'ai_assistant');
     }
 
-    if ($oldversion < 2025062202) {
+    if ($oldversion < 2025072400) {
 
         // Define field plugin to be added to block_aia_course_modules.
         $table = new xmldb_table('block_aia_course_modules');
@@ -535,10 +535,10 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         $dbman->add_key($table, $key);
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2025062202, 'ai_assistant');
+        upgrade_block_savepoint(true, 2025072400, 'ai_assistant');
     }
 
-    if ($oldversion < 2025071800) {
+    if ($oldversion < 2025072400) {
 
         // Define table block_aia_course_mod_files to be created.
         $table = new xmldb_table('block_aia_course_mod_files');
@@ -560,10 +560,10 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         }
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2025071800, 'ai_assistant');
+        upgrade_block_savepoint(true, 2025072400, 'ai_assistant');
     }
 
-    if ($oldversion < 2025071801) {
+    if ($oldversion < 2025072400) {
 
         // Define field trained to be added to block_aia_course_mod_files.
         $table = new xmldb_table('block_aia_course_mod_files');
@@ -575,7 +575,7 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         }
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2025071801, 'ai_assistant');
+        upgrade_block_savepoint(true, 2025072400, 'ai_assistant');
     }
 
 
