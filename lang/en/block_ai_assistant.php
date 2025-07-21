@@ -81,6 +81,7 @@ $string['document_templates'] = 'Document Templates';
 $string['download'] = 'Download';
 $string['download_english'] = 'Download English Template';
 $string['download_example'] = 'Download example';
+$string['download_syllabus'] = 'Download Syllabus';
 $string['edit'] = 'Edit';
 $string['edit_autotest_question'] = 'Edit AutoTest Question';
 $string['embed_position'] = 'Embed position';

@@ -81,6 +81,7 @@ $string['document_templates'] = 'Modèles de documents';
 $string['download'] = 'Télécharger';
 $string['download_english'] = 'Télécharger le modèle anglais';
 $string['download_example'] = 'Télécharger l\'exemple';
+$string['download_syllabus'] = 'Télécharger le syllabus';
 $string['edit'] = 'Modifier';
 $string['edit_autotest_question'] = 'Modifier la question de test automatique';
 $string['embed_position'] = 'Position d\'intégration';
