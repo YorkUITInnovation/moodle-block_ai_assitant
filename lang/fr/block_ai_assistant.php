@@ -201,3 +201,13 @@ $string['top_p'] = 'Top P';
 $string['top_p_help'] = '0 pour GPT-4o';
 $string['top_k'] = 'Top K';
 $string['top_k_help'] = '50 pour GPT-4o';
+
+// French language strings for the AI Assistant block.
+$string['bot_api_key_not_found'] = 'Une erreur s\'est produite lors de la création de l\'agent IA. '
+    . 'Veuillez supprimer le bloc Assistant IA et le réajouter. Si le problème persiste, veuillez contacter votre administrateur système.';
+$string['invalid_token'] = 'Jeton invalide';
+$string['pluginname'] = 'Assistant IA';
+$string['student_and_name'] = 'Étudiant: {$a}';
+$string['teacher_and_name'] = 'Enseignant: {$a}';
+$string['title'] = 'Assistant IA';
+

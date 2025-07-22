@@ -90,6 +90,8 @@ class block_ai_assistant extends block_base
                     $DB->set_field('block_aia_settings', 'bot_api_key', $course_record->bot_api_key, ['courseid' => $this->page->course->id]);
                     $bot_api_key_exists = true;
                 }
+            } else {
+                $bot_api_key_exists = true;
             }
         }
 
@@ -288,6 +290,11 @@ class block_ai_assistant extends block_base
         if ($availability->exception != 'success') {
             $error_code = $availability->errorcode;
             $error_message = $availability->message;
+        }
+
+        if ($bot_api_key_exists == false) {
+            $error_code = get_string('invalid_token', 'block_ai_assistant');
+            $error_message = get_string('bot_api_key_not_found', 'block_ai_assistant');
         }
 
         // Set question file id

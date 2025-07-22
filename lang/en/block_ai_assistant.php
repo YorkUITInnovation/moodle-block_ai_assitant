@@ -38,6 +38,8 @@ $string['autotest'] = 'AutoTest';
 $string['Autotest'] = 'AutoTest';
 $string['autotest_questions'] = 'AutoTest questions';
 $string['autotest_template'] = 'AutoTest Template';
+$string['bot_api_key_not_found'] = 'An error occurred while trying to create the backend AI Agent. '
+. 'Please delete the AI Assistant block and add it again. If the problem persists, please contact your system administrator.';
 $string['bot_contact'] = 'Contact';
 $string['bot_contact_help'] = 'Enter an email and/or phone number for users to contact for support';
 $string['bot_help_text'] = 'Hover text';
@@ -111,6 +113,7 @@ $string['help'] = 'Help';
 $string['import'] = 'Import';
 $string['import_questions'] = 'Import Questions';
 $string['import_successful'] = 'Import successful.';
+$string['invalid_token'] = '498 Invalid Token';
 $string['keywords'] = "Keywords";
 $string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
 $string['manage_tutorials'] = "Manage Tutorials";
