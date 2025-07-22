@@ -81,12 +81,15 @@ class block_ai_assistant extends block_base
             $course_record->published = 0;
         }
 
+        $bot_api_key_exists = false;
         if ($availability->exception == 'success') {
             // Update $course_record->bot_api_key if empty
             if (empty($course_record->bot_api_key)) {
                 $course_record->bot_api_key = cria::get_api_key(cria::get_bot_id($this->page->course->id));
-
-                $DB->set_field('block_aia_settings', 'bot_api_key', $course_record->bot_api_key, ['courseid' => $this->page->course->id]);
+                if (!empty($course_record->bot_api_key)) {
+                    $DB->set_field('block_aia_settings', 'bot_api_key', $course_record->bot_api_key, ['courseid' => $this->page->course->id]);
+                    $bot_api_key_exists = true;
+                }
             }
         }
 
