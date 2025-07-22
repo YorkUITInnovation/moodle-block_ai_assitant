@@ -48,18 +48,18 @@ class course_modules
             } else {
                 if (isset($section->name)) {
                     // Remove all characters that are not letters, numbers, or spaces
-                    $course_structure->sections[$i]->sectionname = preg_replace(
-                        '/[^a-zA-Z0-9\s]/',
-                        '',
-                        $section->name
-                    );
+                    $course_structure->sections[$i]->sectionname = $section->name;
                 } else {
                     $course_structure->sections[$i]->sectionname = 'Topic ' . $sectionnum;
                 }
             }
 
             if (isset($section->name)) {
-                $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(str_replace(' ', '-', $course_structure->sections[$i]->sectionname));
+                $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(preg_replace(
+                        '/[^a-zA-Z0-9\s]/',
+                        '',
+                        str_replace(' ', '-', $course_structure->sections[$i]->sectionname))
+                    );
             } else {
                 $course_structure->sections[$i]->idname = $sectionnum . '-topic-' . $sectionnum;
             }
