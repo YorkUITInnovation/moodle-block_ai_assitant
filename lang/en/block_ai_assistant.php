@@ -28,11 +28,14 @@ defined('MOODLE_INTERNAL') || die();
 $string['accepted_modules'] = 'Accepted Modules';
 $string['accepted_modules_help'] = 'Comma seperated list of modules that can have their content trained by the AI Assistant';
 $string['access'] = 'Student Access';
+$string['actions'] = 'Actions';
 $string['add'] = 'Add';
 $string['ai_assistant_instructions'] = 'To get the best results from the AI Assistant, please use the syllabus template provided in the Help section. '
     . 'To make the AI Assistant available to students, click to Enable AI Assistant button below.';
+$string['ai_learning_assistant'] = 'AI Learning Assistant';
 $string['answer'] = 'Answer';
 $string['autotest'] = 'AutoTest';
+$string['Autotest'] = 'AutoTest';
 $string['autotest_questions'] = 'AutoTest questions';
 $string['autotest_template'] = 'AutoTest Template';
 $string['bot_contact'] = 'Contact';
@@ -75,6 +78,8 @@ $string['delete_question'] = 'Delete Question';
 $string['delete_questions'] = 'Delete Questions';
 $string['delete_question_help'] = 'Are you sure you want to delete the question?';
 $string['description'] = 'Description';
+$string['disable_ai_assistant'] = 'Disable AI Assistant';
+$string['disable_tutorials'] = 'Disable Tutorials';
 $string['disabled'] = 'Disabled';
 $string['document_parse_error'] = 'Error parsing document.';
 $string['document_templates'] = 'Document Templates';
@@ -84,13 +89,15 @@ $string['download_example'] = 'Download example';
 $string['download_syllabus'] = 'Download Syllabus';
 $string['edit'] = 'Edit';
 $string['edit_autotest_question'] = 'Edit AutoTest Question';
+$string['edit_tutorial'] = 'Edit Tutorial';
 $string['embed_position'] = 'Embed position';
 $string['embed_position_teacher'] = 'Position for Teachers';
 $string['embed_position_teacher_help'] = 'Set the position for the chatbot for teachers: 0 = disabled, 1 = bottom left, 2 = bottom right, 3 = top right, 4 = top left';
 $string['enabled'] = 'Enabled';
+$string['enabled_help'] = 'Enable or disable the Tutorial option for this course. When enabled, the Tutorial will be available to students.';
 $string['enable_assistant'] = 'Enable AI Assistant';
 $string['enable_ai_assistant'] = 'Enable AI Assistant';
-$string['disable_ai_assistant'] = 'Disable AI Assistant';
+$string['enable_tutorials'] = 'Enable Tutorials';
 $string['error'] = 'Error';
 $string['error_required_field'] = 'This field is required.';
 $string['error_required_file'] = 'You must upload a file.';
@@ -106,6 +113,7 @@ $string['import_questions'] = 'Import Questions';
 $string['import_successful'] = 'Import successful.';
 $string['keywords'] = "Keywords";
 $string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
+$string['manage_tutorials'] = "Manage Tutorials";
 $string['modules'] = "Modules";
 $string['name'] = "Name";
 $string['no_context_message'] = 'No Context Message';
@@ -114,6 +122,7 @@ $string['no_context_message_help'] = 'No Context Message help text here';
 $string['pending'] = 'Pending';
 $string['pluginname'] = 'Al Course Assistant';
 $string['pluginname_help'] = 'This may take up to a minute. Thanks for your patience.';
+$string['prompt'] = 'Prompt';
 $string['question'] = 'Question';
 $string['question_template'] = 'Question Template';
 $string['question_updated_successfully'] = 'Question updated successfully';
@@ -143,10 +152,12 @@ $string['training_visibility_warning'] = 'Important: Once content is trained by 
     . 'to all students in the course, regardless of whether they have permission to view the original resource '
     . 'or activity. Please consider this when selecting content for training.';
 $string['syllabus'] = 'Syllabus';
+$string['tutorial'] = 'Tutorial';
+$string['tutorials'] = 'Tutorials';
 $string['syllabus_template'] = 'Syllabus Template';
 $string['syllabus_uploaded'] = 'Syllabus successfully uploaded';
 $string['system_message'] = 'System Message';
-$string['system_message_default'] = "You are a helpful assistant for this course, [course_number] ([course_title]), at York University.\n 
+$string['system_message_default'] = "You are a helpful assistant for this course, [course_number] ([course_title]), at York University.\n
 - Answer the question as truthfully as possible using the provided context.\n
 - If a URL link is in the context, always include it in the response.\n
 - If an image is in the context, always include it in the response.\n

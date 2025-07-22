@@ -33,6 +33,7 @@ $string['ai_assistant_instructions'] = 'Pour obtenir les meilleurs résultats de
     . 'Pour rendre l\'Assistant IA disponible aux étudiants, cliquez sur le bouton Activer l\'Assistant IA ci-dessous.';
 $string['answer'] = 'Réponse';
 $string['autotest'] = 'Test automatique';
+$string['Autotest'] = 'Test automatique';
 $string['autotest_questions'] = 'Questions de test automatique';
 $string['autotest_template'] = 'Modèle de test automatique';
 $string['bot_contact'] = 'Contact';

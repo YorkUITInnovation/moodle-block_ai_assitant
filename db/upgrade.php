@@ -578,6 +578,85 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2025072400, 'ai_assistant');
     }
 
+    if ($oldversion < 2025072401) {
+
+        // Define table block_aia_tutorials to be created.
+        $table = new xmldb_table('block_aia_tutorials');
+
+        // Adding fields to table block_aia_tutorials.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '1');
+        $table->add_field('blockid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('prompt', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('enabled', XMLDB_TYPE_INTEGER, '1', null, null, null, '0');
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_tutorials.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+        // Adding indexes to table block_aia_tutorials.
+        $table->add_index('courseid_x', XMLDB_INDEX_NOTUNIQUE, ['courseid']);
+        $table->add_index('blockid_x', XMLDB_INDEX_NOTUNIQUE, ['blockid']);
+        $table->add_index('enabled_x', XMLDB_INDEX_NOTUNIQUE, ['enabled']);
+
+        // Conditionally launch create table for block_aia_tutorials.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table block_aia_tutorial_chats to be created.
+        $table = new xmldb_table('block_aia_tutorial_chats');
+
+        // Adding fields to table block_aia_tutorial_chats.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('blockid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('tutorialid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('chatid', XMLDB_TYPE_CHAR, '1333', null, null, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('name', XMLDB_TYPE_CHAR, '1000', null, null, null, null);
+        $table->add_field('history', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_tutorial_chats.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Adding indexes to table block_aia_tutorial_chats.
+        $table->add_index('course_user_x', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'userid']);
+        $table->add_index('courseid_x', XMLDB_INDEX_NOTUNIQUE, ['courseid']);
+        $table->add_index('blockid_x', XMLDB_INDEX_NOTUNIQUE, ['blockid']);
+        $table->add_index('tutorialid_x', XMLDB_INDEX_NOTUNIQUE, ['tutorialid']);
+        $table->add_index('userid_x', XMLDB_INDEX_NOTUNIQUE, ['userid']);
+
+        // Conditionally launch create table for block_aia_tutorial_chats.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072401, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072402) {
+
+        // Define field publish_tutorials to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('publish_tutorials', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'published');
+
+        // Conditionally launch add field publish_tutorials.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072402, 'ai_assistant');
+    }
 
     return true;
 

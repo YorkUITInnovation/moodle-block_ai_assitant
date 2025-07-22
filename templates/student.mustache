@@ -24,3 +24,22 @@
         </div>
     </div>
 {{/error_code}}
+
+{{#publish_tutorials}}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h5>{{#str}}ai_learning_assistant, block_ai_assistant{{/str}}</h5>
+            <ul class="list-group mt-2">
+                {{#tutorials}}
+                    <li class="list-group-item">
+                        <button type="button"
+                                class="btn btn-link btn-sm block-ai-assistant-tutorial-button"
+                                data-tutorialid="{{id}}"
+                                data-courseid="{{courseid}}"
+                        >{{name}}</button>
+                    </li>
+                {{/tutorials}}
+            </ul>
+        </div>
+    </div>
+{{/publish_tutorials}}

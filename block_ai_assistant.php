@@ -23,6 +23,7 @@
  */
 
 use block_ai_assistant\cria;
+use block_ai_assistant\tutorials;
 
 class block_ai_assistant extends block_base
 {
@@ -292,11 +293,19 @@ class block_ai_assistant extends block_base
            $question_file_id = $question_file->id;
         }
 
+        // Check if tutorials are enabled
+        if ($course_record->publish_tutorials) {
+            $tutorials = tutorials::get_tutorials($this->page->course->id);
+        } else {
+            $tutorials = '';
+        }
+
         $params = array(
             'blockid' => $this->instance->id,
             'courseid' => $this->page->course->id,
             'cria_file_id' => $course_record->cria_file_id,
             'published' => $course_record->published,
+            'publish_tutorials' => $course_record->publish_tutorials,
             'is_published' => ($course_record->published == 1),
             'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
@@ -317,8 +326,8 @@ class block_ai_assistant extends block_base
             'error_code' => $error_code,
             'error_message' => $error_message,
             'is_admin' => has_capability('block/ai_assistant:view_autotest', $course_context),
+            'tutorials' => $tutorials,
         );
-
         if (!empty($this->config->text)) {
             $this->content->text = $this->config->text;
         } else {
