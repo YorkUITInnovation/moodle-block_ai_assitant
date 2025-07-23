@@ -789,15 +789,65 @@ class cria
     }
 
     /**
-     * Get chat id from CRIA
      * @return mixed
      */
-    public static function get_chat_id()
+    public static function chat_start()
     {
-        $method = 'cria_get_chat_id';
+        $method = 'cria_chat_start';
         $data = array();
         $chat_id = webservice::exec($method, $data);
-        return $chat_id;
+        return json_decode($chat_id);
+    }
+
+    /**
+     * Send a message to the chat
+     * @param string $chat_id
+     * @param string $prompt
+     * @param string $bot_name
+     * @return mixed
+     */
+    public static function chat_send(string $chat_id, string $prompt, string $bot_name)
+    {
+        $method = 'cria_chat_send';
+        $data = array(
+            'bot_name' => $bot_name,
+            'chat_id' => trim($chat_id),
+            'prompt' => $prompt
+        );
+        $response = webservice::exec($method, $data);
+        $response = (object)json_decode($response, true);
+        return $response->content ?? ''; // Return content or empty string if not set
+    }
+
+    /**
+     * Get chat history
+     * @param string $chat_id
+     * @return mixed
+     */
+    public static function chat_history(string $chat_id)
+    {
+        $method = 'cria_chat_history';
+        $data = array(
+            'chat_id' => trim($chat_id)
+        );
+        $response = webservice::exec($method, $data);
+        $response = (object)json_decode($response, true);
+        return $response;
+    }
+
+    /**
+     * End chat session
+     * @param string $chat_id
+     * @return mixed
+     */
+    public static function chat_end(string $chat_id)
+    {
+        $method = 'cria_chat_end';
+        $data = array(
+            'chat_id' => trim($chat_id)
+        );
+        $response = webservice::exec($method, $data);
+        return $response;
     }
 
     /**

@@ -1,0 +1,107 @@
+<style>
+
+
+    #region-main {
+        /* Ensure region-main has a height, e.g., via layout or: */
+        height: 450px; /* or 100vh, as needed */
+        position: relative;
+    }
+
+    .chat-container {
+        height: 400px; /* or 100% if parent has a fixed height */
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-card {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    #chat-messages {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        min-height: 0; /* Important for flex children */
+    }
+
+    #chat-messages {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        /* Remove max-height */
+    }
+
+    #chat-form {
+        display: flex;
+        justify-content: flex-end;
+        width: 100%;
+    }
+
+    #block-ai-assistant-chat-input {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .chat-message {
+        display: flex;
+        margin-bottom: 8px;
+    }
+
+    .bot-message {
+        justify-content: flex-start;
+    }
+
+    .human-message {
+        justify-content: flex-end;
+    }
+
+    .message-content {
+        max-width: 70%;
+        padding: 8px 12px;
+        border-radius: 12px;
+        background: #f1f1f1;
+    }
+
+    .bot-message .message-content {
+        background: #e3f0ff;
+        color: #1a237e;
+        align-self: flex-start;
+    }
+
+    .human-message .message-content {
+        background: #d1ffd6;
+        color: #1b5e20;
+        align-self: flex-end;
+    }
+</style>
+
+<input type="hidden" id="block-ai-assistant-botname" value="{{botname}}">
+<input type="hidden" id="block-ai-assistant-chatid" value="{{chatid}}">
+<input type="hidden" id="block-ai-assistant-courseid" value="{{courseid}}">
+<div class="row">
+    <div class="col-12">
+        <div class="chat-container">
+            <div class="card chat-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">{{chatheader}}</h5>
+                </div>
+                <div id="chat-messages" class="card-body">
+                    <!-- Chat messages will be dynamically inserted here -->
+                    {{#messages}}
+                        <div class="chat-message {{#is_human}}human-message{{/is_human}}{{^is_human}}bot-message{{/is_human}}">
+                            <div class="message-content">{{{message}}}</div>
+                        </div>
+                    {{/messages}}
+                </div>
+                <div class="card-footer p-2">
+                    <form id="chat-form" class="d-flex">
+                        <input type="text" class="form-control me-2" id="block-ai-assistant-chat-input" placeholder="Type your message..." autocomplete="off">
+                        <button type="button"  id="block-ai-assistant-chat-send-btn" data-courseid="{{courseid}}" class="btn btn-primary">Send</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

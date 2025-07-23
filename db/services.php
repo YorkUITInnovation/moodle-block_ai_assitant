@@ -90,4 +90,13 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_chat' => array(
+        'classname' => 'block_ai_assistant_chat_ws',
+        'methodname' => 'chat',
+        'classpath' => 'blocks/ai_assistant/classes/external/chat.php',
+        'description' => 'Send chat request to Cria. Returns AI reply.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
 );
