@@ -7,8 +7,8 @@ use block_ai_assistant\cria;
 global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 
 $course_id = required_param('courseid', PARAM_INT);
-$cmid = required_param('cmid', PARAM_INT);
-$tutorial_id = required_param('tutorialid', PARAM_TEXT);
+$cmid = optional_param('cmid', PARAM_INT);
+$tutorial_id = optional_param('tutorialid', PARAM_TEXT);
 $chat_id = optional_param('chatid', '', PARAM_TEXT);
 
 require_login($course_id, false);
@@ -33,6 +33,7 @@ if (empty($chat_id)) {
         'tutorialid' => $tutorial_id,
         'chatid' => $chat_id,
         'userid' => $USER->id,
+        'name' => $chat_header,
         'timecreated' => time(),
     ]);
     $initial_prompt = str_replace('[topic]', $mod[0]->name, $tutorial->prompt);
