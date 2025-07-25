@@ -113,6 +113,7 @@ class block_ai_assistant extends block_base
         $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/training_status', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_question', 'init');
+        $PAGE->requires->js_call_amd('block_ai_assistant/learning_assistant', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/disabled_assistant', 'init', [$course_record->published == 1]);
         $PAGE->requires->css(new moodle_url('/blocks/ai_assistant/css/styles.css'));
 

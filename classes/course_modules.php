@@ -782,8 +782,8 @@ class course_modules
                 if ($file->trained == 0 || $file->trained == 3) {
                     // Use cria to check the status of the file
                     $status = cria::get_content_training_status($file->cria_fileid);
-                    if ($status->training_status_id != 0) {
-                        $DB->set_field(
+                        if ($status->training_status_id != 0) {
+                            $DB->set_field(
                             'block_aia_course_mod_files',
                             'trained',
                             $status->training_status_id,
@@ -847,5 +847,25 @@ class course_modules
             'audio/m4a',
             'video/mp4',
         ];
+    }
+
+    public static function get_course_modules_available_to_students(int $courseid): array
+    {
+        global $DB;
+
+        // Get all courses modules for the given course ID
+        $sql = "Select
+                    bacmf.id,
+                    bacm.courseid,
+                    bacm.cmid,
+                    bacmf.name
+                From
+                    {block_aia_course_modules} bacm Inner Join
+                    {block_aia_course_mod_files} bacmf On bacmf.bacmid = bacm.id
+                Where
+                    bacmf.trained = 1 And courseid = ?";
+        $modules = $DB->get_records_sql($sql, [$courseid]);
+
+        return $modules ?: [];
     }
 }

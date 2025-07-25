@@ -76,9 +76,9 @@ class block_ai_assistant_chat_ws extends external_api
             array(
                 'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
                 'tutorialid' => new external_value(PARAM_RAW, 'The Tutorial ID', VALUE_REQUIRED),
-                'cmid' => new external_value(PARAM_INT, 'Course Module ID', VALUE_REQUIRED),
+                'name' => new external_value(PARAM_RAW, 'Name of selected course moduel file', VALUE_REQUIRED),
                 'userid' => new external_value(PARAM_INT, 'User ID', VALUE_REQUIRED),
-                'chatid' => new external_value(PARAM_RAW, 'Chat ID', VALUE_OPTIONAL, ''),
+                'chatid' => new external_value(PARAM_RAW, 'Chat ID', VALUE_OPTIONAL),
             )
         );
     }
@@ -98,7 +98,7 @@ class block_ai_assistant_chat_ws extends external_api
     public static function start(
         int    $course_id,
         string $tutorial_id,
-        int    $cmid,
+        string $name,
         int    $userid,
         string $chatid = ''
     ): array
@@ -109,7 +109,7 @@ class block_ai_assistant_chat_ws extends external_api
             [
                 'courseid' => $course_id,
                 'tutorialid' => $tutorial_id,
-                'cmid' => $cmid,
+                'name' => $name,
                 'userid' => $userid,
                 'chatid' => $chatid
             ]
@@ -127,19 +127,25 @@ class block_ai_assistant_chat_ws extends external_api
             // Start a new chat session
             $params = self::start_cria_session(
                 $course_id,
-                $cmid,
+                $name,
                 $tutorial_id,
                 $userid,
                 $bot_name
             );
 
             $chatid = $params->chat_id;
+            $tutorial_name = $params->tutorial_name;
             $messages = $params->messages;
         } else {
             // Get chat history.
             $chat_history = cria::chat_history($chatid);
             $messages = [];
             if (isset($chat_history->history)) {
+                $tutorial_name = $DB->get_field(
+                    'block_aia_tutorials',
+                    'name',
+                    ['id' => $tutorial_id]
+                );
                 $history = $chat_history->history;
                 for ($i = 0; $i < count($history); $i++) {
                     if ($i > 1) {
@@ -158,19 +164,23 @@ class block_ai_assistant_chat_ws extends external_api
                 // If no history, start a new session.
                 $params = self::start_cria_session(
                     $course_id,
-                    $cmid,
+                    $name,
                     $tutorial_id,
                     $userid,
                     $bot_name
                 );
                 $chatid = $params->chat_id;
+                $tutorial_name = $params->tutorial_name;
                 $messages = $params->messages;
             }
         }
 
         // Prepare data to return.
         $data[] = [
-            'chat_id' =>$chatid,
+            'chat_id' => $chatid,
+            'tutorial_name'=> $tutorial_name,
+            'name' => $name,
+            'bot_name' => $bot_name,
             'messages' => json_encode($messages)
         ];
 
@@ -209,7 +219,7 @@ class block_ai_assistant_chat_ws extends external_api
      */
     private static function start_cria_session(
         int    $course_id,
-        int    $cmid,
+        string $name,
         int    $tutorial_id,
         int    $user_id,
         string $bot_name
@@ -218,18 +228,24 @@ class block_ai_assistant_chat_ws extends external_api
         global $DB, $USER;
         // Get tutorial type.
         $tutorial = $DB->get_record('block_aia_tutorials', ['id' => $tutorial_id], '*', MUST_EXIST);
-        $mod = course_modules::get_module_from_cmid($cmid);
-        // Set initial prompt
-        $initial_prompt = str_replace('[topic]', $mod[0]->name, $tutorial->prompt);
 
         $chat_id = cria::chat_start();
+
+        $curent_lang = current_language();
+        $topic_prompt = 'Give me oly a topic title for ' . $name . ' in ' . $curent_lang . ' language. Nothing else!';
+        $topic_title = cria::chat_send($chat_id, $topic_prompt, $bot_name);
+        $initial_prompt = str_replace(
+            '[topic]',
+            $topic_title,
+            $tutorial->prompt
+        );
         // Add the chat ID to the database.
         $DB->insert_record('block_aia_tutorial_chats', [
             'courseid' => $course_id,
             'tutorialid' => $tutorial_id,
             'chatid' => $chat_id,
             'userid' => $user_id,
-            'name' => $tutorial->name . ': ' . $mod[0]->name,
+            'name' => $tutorial->name . ': ' . $name,
             'timecreated' => time(),
         ]);
 
@@ -242,9 +258,12 @@ class block_ai_assistant_chat_ws extends external_api
 
         $params = new \stdClass();
         $params->chat_id = $chat_id;
+        $params->tutorial_name = $tutorial->name;
         $params->messages = json_encode($messages);
 
         return $params;
 
     }
+
+
 }

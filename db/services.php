@@ -72,6 +72,15 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_display_student_course_modules' => array(
+        'classname' => 'block_ai_assistant_course_modules_ws',
+        'methodname' => 'display_student_modules',
+        'classpath' => 'blocks/ai_assistant/classes/external/course_modules_ws.php',
+        'description' => 'Display all trained course modules for students',
+        'type' => 'read',
+        'capabilities' => '',
+        'ajax' => true
+    ),
     'block_ai_assistant_insert_course_modules' => array(
         'classname' => 'block_ai_assistant_course_modules_ws',
         'methodname' => 'insert',

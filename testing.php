@@ -18,17 +18,19 @@ $PAGE->set_heading('Test');
 $PAGE->set_pagelayout('standard');
 $PAGE->set_context($context);
 
-//$courseid = required_param('courseid', PARAM_INT);
+$courseid = required_param('courseid', PARAM_INT);
 
 echo $OUTPUT->header();
 
-$history = cria::chat_history('965a7170-5612-4d32-9e87-29cdba344c37');
-
-print_object($history);
-
-$response = cria::chat_send('965a7170-5612-4d32-9e87-29cdba344c37', 'I am a first year student.', '418-391');
-
-print_object($response);
+//$history = cria::chat_history('965a7170-5612-4d32-9e87-29cdba344c37');
+//
+//print_object($history);
+//
+//$response = cria::chat_send('965a7170-5612-4d32-9e87-29cdba344c37', 'I am a first year student.', '418-391');
+//
+//print_object($response);
+print_object(current_language());
+print_object(course_modules::get_course_modules_available_to_students($courseid));
 
 echo $OUTPUT->footer();
 
