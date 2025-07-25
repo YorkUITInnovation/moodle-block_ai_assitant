@@ -21,5 +21,14 @@ $tasks = [
         'day' => '*',
         'month' => '*',
         'dayofweek' => '*',
+    ],
+    [
+        'classname' => 'block_ai_assistant\task\course_module_training_status',
+        'blocking' => 0,
+        'minute' => '*',
+        'hour' => '*',
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*',
     ]
 ];

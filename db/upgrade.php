@@ -658,6 +658,21 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2025072402, 'ai_assistant');
     }
 
+    if ($oldversion < 2025072407) {
+
+        // Define field name to be added to block_aia_course_mod_files.
+        $table = new xmldb_table('block_aia_course_mod_files');
+        $field = new xmldb_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'trained');
+
+        // Conditionally launch add field name.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072407, 'ai_assistant');
+    }
+
     return true;
 
 }
