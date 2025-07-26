@@ -49,7 +49,9 @@ $string['bot_type_id'] = 'Bot Type ID';
 $string['bot_type_id_help'] = 'Bot Type ID from Cria';
 $string['bottom_left'] = 'Bottom left';
 $string['bottom_right'] = 'Bottom right';
-$string['close'] = '  Close';
+$string['chat_help'] = 'For best results, please ask clear and specific questions.'
+    . 'It is important that you use complete sentences with proper punctuation. ';
+$string['close'] = 'Close';
 $string['column_name_must_exist'] = 'Column {$a} must exist';
 $string['confirm_delete_trained_module'] = 'Are you sure you want to delete the trained module?';
 $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';

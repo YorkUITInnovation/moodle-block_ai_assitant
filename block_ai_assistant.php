@@ -24,6 +24,7 @@
 
 use block_ai_assistant\cria;
 use block_ai_assistant\tutorials;
+use block_ai_assistant\chat;
 
 class block_ai_assistant extends block_base
 {

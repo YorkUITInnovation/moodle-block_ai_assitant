@@ -1,16 +1,22 @@
 <style>
-
-
     #region-main {
-        /* Ensure region-main has a height, e.g., via layout or: */
-        height: 450px; /* or 100vh, as needed */
+        /* Use available height within the page layout */
+        height: auto;
+        min-height: calc(100vh - 300px); /* Adjust based on header/nav height */
+        max-height: calc(100vh - 300px);
         position: relative;
+        overflow: hidden;
     }
 
     .chat-container {
-        height: 400px; /* or 100% if parent has a fixed height */
+        height: calc(100vh - 300px); /* Account for Moodle header/footer space */
+        max-height: calc(100vh - 300px);
         display: flex;
         flex-direction: column;
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
     }
 
     .chat-card {
@@ -18,34 +24,75 @@
         display: flex;
         flex-direction: column;
         height: 100%;
+        border: none;
+        border-radius: 8px;
     }
 
     #chat-messages {
         flex: 1 1 auto;
         overflow-y: auto;
         min-height: 0; /* Important for flex children */
+        padding: 20px;
+        background: #f8f9fa;
+        scrollbar-width: thin;
+        scrollbar-color: #c1c1c1 transparent;
     }
 
-    #chat-messages {
-        flex: 1 1 auto;
-        overflow-y: auto;
-        /* Remove max-height */
+    #chat-messages::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #chat-messages::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #chat-messages::-webkit-scrollbar-thumb {
+        background-color: #c1c1c1;
+        border-radius: 3px;
     }
 
     #chat-form {
         display: flex;
         justify-content: flex-end;
         width: 100%;
+        gap: 10px;
     }
 
     #block-ai-assistant-chat-input {
         flex: 1 1 auto;
         min-width: 0;
+        border: 1px solid #d1d5db;
+        border-radius: 24px;
+        padding: 12px 16px;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s ease;
+    }
+
+    #block-ai-assistant-chat-input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    #block-ai-assistant-chat-send-btn {
+        border-radius: 24px;
+        padding: 12px 20px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        background: #2563eb;
+        border: none;
+    }
+
+    #block-ai-assistant-chat-send-btn:hover {
+        background: #1d4ed8;
+        transform: translateY(-1px);
     }
 
     .chat-message {
         display: flex;
-        margin-bottom: 8px;
+        margin-bottom: 20px;
+        align-items: flex-start;
+        gap: 12px;
     }
 
     .bot-message {
@@ -57,34 +104,318 @@
     }
 
     .message-content {
-        max-width: 70%;
-        padding: 8px 12px;
-        border-radius: 12px;
-        background: #f1f1f1;
+        max-width: 75%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        font-size: 14px;
+        line-height: 1.5;
+        word-wrap: break-word;
+        position: relative;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
 
     .bot-message .message-content {
-        background: #e3f0ff;
-        color: #1a237e;
-        align-self: flex-start;
+        background: #ffffff;
+        color: #374151;
+        border: 1px solid #e5e7eb;
+        border-bottom-left-radius: 4px;
+    }
+
+    .bot-message .message-content::before {
+        content: '';
+        position: absolute;
+        left: -8px;
+        bottom: 0;
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 0 0 8px 8px;
+        border-color: transparent transparent #ffffff transparent;
     }
 
     .human-message .message-content {
-        background: #d1ffd6;
-        color: #1b5e20;
-        align-self: flex-end;
+        background: #2563eb;
+        color: #ffffff;
+        border-bottom-right-radius: 4px;
+        margin-left: auto;
+    }
+
+    .human-message .message-content::after {
+        content: '';
+        position: absolute;
+        right: -8px;
+        bottom: 0;
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 0 8px 8px 0;
+        border-color: transparent #2563eb transparent transparent;
+    }
+
+    /* Avatar placeholders */
+    .bot-message::before {
+        content: '';
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #f3f4f6 url('pix/ai_assistant.png') center center no-repeat;
+        background-size: cover;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .human-message::after {
+        content: '👤';
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #dbeafe;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        flex-shrink: 0;
+        margin-top: 2px;
+        order: 2;
+    }
+
+    .card-footer {
+        background: #ffffff;
+        border-top: 1px solid #e5e7eb;
+        border-radius: 0 0 8px 8px;
+        padding: 16px 20px;
+    }
+
+    .alert-info {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1e40af;
+        border-radius: 8px 8px 0 0;
+        margin: 0;
+        padding: 12px 20px;
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* Hamburger menu styles */
+    .chat-menu-toggle {
+        background: none;
+        border: none;
+        color: #1e40af;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+    }
+
+    .chat-menu-toggle:hover {
+        background-color: rgba(30, 64, 175, 0.1);
+    }
+
+    .chat-menu-toggle:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(30, 64, 175, 0.3);
+    }
+
+    /* Hamburger icon */
+    .hamburger-icon {
+        display: flex;
+        flex-direction: column;
+        width: 18px;
+        height: 14px;
+        justify-content: space-between;
+    }
+
+    .hamburger-icon span {
+        display: block;
+        height: 2px;
+        width: 100%;
+        background-color: #1e40af;
+        border-radius: 1px;
+        transition: all 0.3s ease;
+    }
+
+    /* Saved chats dropdown */
+    .saved-chats-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 20px;
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        min-width: 250px;
+        max-width: 350px;
+        max-height: 300px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+
+    .saved-chats-dropdown.show {
+        display: block;
+    }
+
+    .saved-chats-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        font-weight: 600;
+        color: #374151;
+        background: #f9fafb;
+        border-radius: 8px 8px 0 0;
+    }
+
+    .saved-chat-item {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f3f4f6;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .saved-chat-item:hover {
+        background-color: #f9fafb;
+    }
+
+    .saved-chat-item:last-child {
+        border-bottom: none;
+    }
+
+    .chat-title {
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 180px;
+    }
+
+    .chat-date {
+        font-size: 12px;
+        color: #6b7280;
+    }
+
+    .chat-actions {
+        display: flex;
+        gap: 8px;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .saved-chat-item:hover .chat-actions {
+        opacity: 1;
+    }
+
+    .chat-action-btn {
+        background: none;
+        border: none;
+        color: #6b7280;
+        cursor: pointer;
+        padding: 2px 4px;
+        border-radius: 3px;
+        font-size: 12px;
+        transition: color 0.2s ease;
+    }
+
+    .chat-action-btn:hover {
+        color: #374151;
+    }
+
+    .chat-action-btn.delete:hover {
+        color: #dc2626;
+    }
+
+    .no-saved-chats {
+        padding: 20px 16px;
+        text-align: center;
+        color: #6b7280;
+        font-style: italic;
+    }
+
+    /* Typing indicator animation (for future use) */
+    .typing-indicator {
+        display: none;
+        padding: 8px 12px;
+        background: #f1f1f1;
+        border-radius: 18px;
+        margin-bottom: 10px;
+    }
+
+    .typing-indicator span {
+        height: 8px;
+        width: 8px;
+        float: left;
+        margin: 0 1px;
+        background-color: #9E9EA1;
+        display: block;
+        border-radius: 50%;
+        opacity: 0.4;
+        animation: typing 1.0s infinite ease-in-out;
+    }
+
+    .typing-indicator span:nth-child(1) {
+        animation-delay: -0.32s;
+    }
+
+    .typing-indicator span:nth-child(2) {
+        animation-delay: -0.16s;
+    }
+
+    @keyframes typing {
+        0%, 80%, 100% {
+            transform: scale(0);
+        }
+        40% {
+            transform: scale(1);
+        }
     }
 </style>
 
 <input type="hidden" id="block-ai-assistant-botname" value="{{botname}}">
 <input type="hidden" id="block-ai-assistant-chatid" value="{{chatid}}">
 <input type="hidden" id="block-ai-assistant-courseid" value="{{courseid}}">
+<input type="hidden" id="block-ai-assistant-userid" value="{{userid}}">
 <div class="row">
     <div class="col-12">
         <div class="chat-container">
             <div class="card chat-card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">{{chatheader}}</h5>
+                <div class="alert alert-info mb-0">
+                    <span>{{#str}}chat_help, block_ai_assistant{{/str}}</span>
+                    <div class="position-relative">
+                        <button type="button" class="chat-menu-toggle" id="chat-menu-toggle"
+                                aria-label="Open saved chats menu">
+                            <div class="hamburger-icon">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </button>
+                        <div class="saved-chats-dropdown" id="saved-chats-dropdown">
+                            <div class="saved-chats-header">
+                                Saved Chats
+                            </div>
+                            <div id="saved-chats-list">
+                                <!-- Saved chats will be loaded here dynamically -->
+                                {{^saved_chats}}
+                                    <div class="no-saved-chats">
+                                        No saved chats yet
+                                    </div>
+                                {{/saved_chats}}
+                                {{#saved_chats}}
+                                    {{> block_ai_assistant/saved_chats}}
+                                {{/saved_chats}}
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div id="chat-messages" class="card-body">
                     <!-- Chat messages will be dynamically inserted here -->
@@ -96,12 +427,14 @@
                 </div>
                 <div class="card-footer p-2">
                     <form id="chat-form" class="d-flex">
-                        <input type="text" class="form-control me-2" id="block-ai-assistant-chat-input" placeholder="Type your message..." autocomplete="off">
-                        <button type="button"  id="block-ai-assistant-chat-send-btn" data-courseid="{{courseid}}" class="btn btn-primary">Send</button>
+                        <input type="text" class="form-control me-2" id="block-ai-assistant-chat-input"
+                               placeholder="Type your message..." autocomplete="off">
+                        <button type="button" id="block-ai-assistant-chat-send-btn" data-courseid="{{courseid}}"
+                                class="btn btn-primary">Send
+                        </button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
-

@@ -1,0 +1,21 @@
+<div class="saved-chat-item" data-chat-id="{{chatid}}">
+    <div>
+        <div class="chat-title" title="{{name}}">
+            <a href="{{config.wwwroot}}/blocks/ai_assistant/chat.php?chatid={{chatid}}&courseid={{courseid}}&tutorialid={{tutorialid}}&cmid={{cmid}}">
+            {{name}}
+            </a>
+        </div>
+        <div class="chat-date">
+            {{#userdate}}
+                {{timecreated}},
+                {{#str}}strftimedate, core_langconfig{{/str}}
+            {{/userdate}}
+        </div>
+    </div>
+    <div class="chat-actions">
+        <button class="chat-action-btn delete" data-action="delete"
+                title="Delete chat">
+            <i class="fa fa-trash"></i>
+        </button>
+    </div>
+</div>

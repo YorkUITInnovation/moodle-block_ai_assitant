@@ -8,6 +8,7 @@ use block_ai_assistant\webservice;
 use block_ai_assistant\course_module_training;
 use block_ai_assistant\course_modules;
 use block_ai_assistant\cria;
+use block_ai_assistant\chat;
 
 $context = context_system::instance();
 
@@ -29,8 +30,13 @@ echo $OUTPUT->header();
 //$response = cria::chat_send('965a7170-5612-4d32-9e87-29cdba344c37', 'I am a first year student.', '418-391');
 //
 //print_object($response);
-print_object(current_language());
-print_object(course_modules::get_course_modules_available_to_students($courseid));
+$chat_history = cria::chat_history('217e0c3e-5402-4ff0-bccd-d4220cf818a1');
+
+print_object($chat_history);
+
+$history = json_decode($chat_history->history);
+
+print_object($history->history);
 
 echo $OUTPUT->footer();
 

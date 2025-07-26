@@ -816,7 +816,10 @@ class cria
         );
         $response = webservice::exec($method, $data);
         $response = (object)json_decode($response, true);
-        return $response->content ?? ''; // Return content or empty string if not set
+        if ($response->status == 200) {
+            return $response->content ?? ''; // Return content or empty string if not set
+        }
+        return $response->status . ' ' . $response->code ?? ''; // Return content or empty string if not set
     }
 
     /**

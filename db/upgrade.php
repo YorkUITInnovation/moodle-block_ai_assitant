@@ -673,6 +673,40 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2025072407, 'ai_assistant');
     }
 
+    if ($oldversion < 2025072411) {
+
+        // Define field cmid to be added to block_aia_tutorial_chats.
+        $table = new xmldb_table('block_aia_tutorial_chats');
+        $field = new xmldb_field('cmid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0', 'userid');
+
+        // Conditionally launch add field cmid.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define index cmid_x (not unique) to be added to block_aia_tutorial_chats.
+        $table = new xmldb_table('block_aia_tutorial_chats');
+        $index = new xmldb_index('cmid_x', XMLDB_INDEX_NOTUNIQUE, ['cmid']);
+
+        // Conditionally launch add index cmid_x.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Define index changemecourse_tut_cm_x (not unique) to be added to block_aia_tutorial_chats.
+        $table = new xmldb_table('block_aia_tutorial_chats');
+        $index = new xmldb_index('changemecourse_tut_cm_x', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'tutorialid', 'cmid', 'userid']);
+
+        // Conditionally launch add index changemecourse_tut_cm_x.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072411, 'ai_assistant');
+    }
+
+
     return true;
 
 }
