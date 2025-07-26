@@ -238,6 +238,57 @@ class block_ai_assistant_chat_ws extends external_api
         return new external_value(PARAM_RAW, 'JSON Formated data');
     }
 
+    /**
+     * @return external_function_parameters
+     */
+    public static function delete_parameters(): external_function_parameters
+    {
+        return new external_function_parameters(
+            array(
+                'chatid' => new external_value(PARAM_TEXT, 'Chat id', VALUE_REQUIRED),
+            )
+        );
+    }
+
+    /**
+     * @param string $chatid
+     * @return bool
+     * @throws dml_exception
+     * @throws invalid_parameter_exception
+     * @throws restricted_context_exception
+     */
+    public static function delete(string $chatid): bool
+    {
+        global $DB;
+
+        self::validate_parameters(
+            self::delete_parameters(),
+            [
+                'chatid' => $chatid,
+            ]
+        );
+
+        // Validate context
+        $context = \context_system::instance();
+        self::validate_context($context);
+
+        // Delete chat session.
+        cria::chat_end($chatid);
+        if ($DB->delete_records('block_aia_tutorial_chats', ['chatid' => $chatid])) {
+            // If the chat session was deleted, return true.
+            return true;
+        }
+
+        return false;
+    }
+    /**
+     * Returns method result value
+     * @return external_value
+     */
+    public static function delete_returns(): external_value
+    {
+        return new external_value(PARAM_BOOL, 'True if deleted');
+    }
 
     /**
      * @param int $courseid

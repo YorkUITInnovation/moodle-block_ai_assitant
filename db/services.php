@@ -117,4 +117,13 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_chat_delete' => array(
+        'classname' => 'block_ai_assistant_chat_ws',
+        'methodname' => 'delete',
+        'classpath' => 'blocks/ai_assistant/classes/external/chat.php',
+        'description' => 'Delete a chat session with Cria.',
+        'type' => 'read',
+        'capabilities' => '',
+        'ajax' => true
+    ),
 );

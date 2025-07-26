@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="blocks/ai_assistant/db" VERSION="20250724" COMMENT="XMLDB file for Moodle blocks/ai_assistant"
+<XMLDB PATH="blocks/ai_assistant/db" VERSION="20250726" COMMENT="XMLDB file for Moodle blocks/ai_assistant"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -130,6 +130,7 @@
         <FIELD NAME="tutorialid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="chatid" TYPE="char" LENGTH="1333" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="name" TYPE="char" LENGTH="1000" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="history" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
@@ -145,6 +146,8 @@
         <INDEX NAME="tutorialid_x" UNIQUE="false" FIELDS="tutorialid"/>
         <INDEX NAME="chatid_x" UNIQUE="false" FIELDS="chatid"/>
         <INDEX NAME="userid_x" UNIQUE="false" FIELDS="userid"/>
+        <INDEX NAME="cmid_x" UNIQUE="false" FIELDS="cmid"/>
+        <INDEX NAME="changemecourse_tut_cm_x" UNIQUE="false" FIELDS="courseid, tutorialid, cmid, userid"/>
       </INDEXES>
     </TABLE>
   </TABLES>
