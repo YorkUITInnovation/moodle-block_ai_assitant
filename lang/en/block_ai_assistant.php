@@ -62,6 +62,7 @@ $string['content_found_at'] = 'Content can be found at this link: ';
 $string['content_language'] = 'Content language';
 $string['content_language_help'] = 'Chosing the proper content language for your documents will result in better training of the AI Assistant. In return, the AI Assistant will be able to provide more accurate answers.';
 $string['course_module_training_status'] = 'Course Module Training Status';
+$string['course_modules'] = 'Course Modules';
 $string['cria_token'] = 'Cria Token';
 $string['cria_url'] = 'Cria URL';
 $string['cria_embed_url'] = 'Cria embed URL';
@@ -118,6 +119,8 @@ $string['import_questions'] = 'Import Questions';
 $string['import_successful'] = 'Import successful.';
 $string['invalid_token'] = '498 Invalid Token';
 $string['keywords'] = "Keywords";
+$string['learning_assistant_help'] = "Select the content you would like to get learning assistance on. ";
+
 $string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
 $string['manage_tutorials'] = "Manage Tutorials";
 $string['modules'] = "Modules";

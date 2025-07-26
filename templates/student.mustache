@@ -1,8 +1,9 @@
 {{^error_code}}
-    <div class="row">
-        {{{embed_code}}}
-        <div class="col-md-12">
-            {{#syllabus_url}}
+    {{{embed_code}}}
+    {{#syllabus_url}}
+        <div class="row">
+            <div class="col-md-12">
+
                 <label for="syllabus">{{#str}}syllabus, block_ai_assistant{{/str}}</label>
                 <a href="{{syllabus_url}}"
                    class="btn btn-link btn-sm"
@@ -10,9 +11,10 @@
                 >
                     <i class="fa fa-download"></i>
                 </a>
-            {{/syllabus_url}}
+
+            </div>
         </div>
-    </div>
+    {{/syllabus_url}}
 {{/error_code}}
 {{#error_code}}
     <div class="row">
@@ -28,7 +30,6 @@
 {{#publish_tutorials}}
     <div class="row mt-4">
         <div class="col-md-12">
-            <h5>{{#str}}ai_learning_assistant, block_ai_assistant{{/str}}</h5>
             <ul class="list-group mt-2">
                 {{#tutorials}}
                     <li class="list-group-item">
