@@ -140,10 +140,12 @@ $string['questions_instructions'] = 'Note: The time required for the upload may 
 $string['required'] = 'This field is required';
 $string['related_question'] = "Related Questions";
 $string['save'] = 'Save changes ';
+$string['save_chat'] = 'Save Chat';
 $string['section'] = 'Section';
 $string['student_and_name'] = 'I am a student and my name is {$a}.';
 $string['subtitle'] = 'Subtitle';
 $string['subtitle_help'] = 'Subtitle help text here';
+$string['summarize_chat'] = 'Summarize Chat';
 $string['supported_modules'] = '<p>Note: The AI Assistant can only be trained on content from the following modules: </p>'
     . '<ul><li>Announcement Forum</li><li>Page</li><li>Text & Media Area</li><li>Book</li><li>File</li><li>Folder</li>'
     . '<li>Glossary</li><li>Glossary</li></ul>';

@@ -51,6 +51,7 @@ $PAGE->set_pagelayout('standard');
 $PAGE->set_context($context);
 $PAGE->requires->js_call_amd('block_ai_assistant/chat', 'sendMessage');
 $PAGE->requires->js_call_amd('block_ai_assistant/chat', 'initChatMenu');
+$PAGE->requires->js_call_amd('block_ai_assistant/learning_assistant', 'init');
 echo $OUTPUT->header();
 echo $OUTPUT->render_from_template('block_ai_assistant/chat_interface', $data);
 

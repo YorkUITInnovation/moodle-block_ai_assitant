@@ -7,6 +7,7 @@ import config from 'core/config';
 
 export const init = () => {
     initTutorialButtons();
+    initSaveChatButton();
 };
 
 /**
@@ -150,4 +151,62 @@ function showLoadingModal() {
             return modal;
         });
     });
+}
+
+/**
+ * Initialize save chat button click handler
+ */
+function initSaveChatButton() {
+    // Find the save chat button
+    const saveChatButton = document.getElementById('btn-block-ai-assistant-save-chat');
+
+    if (saveChatButton) {
+        saveChatButton.addEventListener('click', function(e) {
+            e.preventDefault();
+alert('Save chat button clicked');
+            // Get chatid from data attribute
+            const chatid = this.getAttribute('data-chatid');
+
+            if (!chatid) {
+                notification.exception(new Error('Chat ID not found'));
+                return;
+            }
+
+            // Call save_chat.php to download PDF
+            downloadChatHistory(chatid);
+        });
+    }
+}
+
+/**
+ * Download chat history as PDF
+ * @param {string} chatid - Chat ID for the conversation
+ */
+function downloadChatHistory(chatid) {
+    try {
+        // Create URL for save_chat.php
+        const saveUrl = config.wwwroot + '/blocks/ai_assistant/save_chat.php';
+        const params = new URLSearchParams();
+        params.append('chatid', chatid);
+
+        // Create full URL
+        const fullUrl = saveUrl + '?' + params.toString();
+
+        // Create a temporary link and trigger download
+        const link = document.createElement('a');
+        link.href = fullUrl;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Show success notification
+        notification.addNotification({
+            message: 'Chat history download started',
+            type: 'success'
+        });
+
+    } catch (error) {
+        notification.exception(error);
+    }
 }
