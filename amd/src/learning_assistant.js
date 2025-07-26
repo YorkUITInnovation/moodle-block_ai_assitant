@@ -8,6 +8,7 @@ import config from 'core/config';
 export const init = () => {
     initTutorialButtons();
     initSaveChatButton();
+    initSummarizeChatButton();
 };
 
 /**
@@ -163,7 +164,6 @@ function initSaveChatButton() {
     if (saveChatButton) {
         saveChatButton.addEventListener('click', function(e) {
             e.preventDefault();
-alert('Save chat button clicked');
             // Get chatid from data attribute
             const chatid = this.getAttribute('data-chatid');
 
@@ -203,6 +203,64 @@ function downloadChatHistory(chatid) {
         // Show success notification
         notification.addNotification({
             message: 'Chat history download started',
+            type: 'success'
+        });
+
+    } catch (error) {
+        notification.exception(error);
+    }
+}
+
+/**
+ * Initialize summarize chat button click handler
+ */
+function initSummarizeChatButton() {
+    // Find the summarize chat button
+    const summarizeChatButton = document.getElementById('btn-block-ai-assistant-summarize-chat');
+
+    if (summarizeChatButton) {
+        summarizeChatButton.addEventListener('click', function(e) {
+            e.preventDefault();
+
+            // Get chatid from data attribute
+            const chatid = this.getAttribute('data-chatid');
+
+            if (!chatid) {
+                notification.exception(new Error('Chat ID not found'));
+                return;
+            }
+
+            // Call summarize_chat.php to download summary
+            downloadChatSummary(chatid);
+        });
+    }
+}
+
+/**
+ * Download chat summary from summarize_chat.php
+ * @param {string} chatid - Chat ID for the conversation
+ */
+function downloadChatSummary(chatid) {
+    try {
+        // Create URL for summarize_chat.php
+        const summarizeUrl = config.wwwroot + '/blocks/ai_assistant/summarize_chat.php';
+        const params = new URLSearchParams();
+        params.append('chatid', chatid);
+
+        // Create full URL
+        const fullUrl = summarizeUrl + '?' + params.toString();
+
+        // Create a temporary link and trigger download
+        const link = document.createElement('a');
+        link.href = fullUrl;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Show success notification
+        notification.addNotification({
+            message: 'Chat summary download started',
             type: 'success'
         });
 
