@@ -128,6 +128,7 @@ $string['no_context_message_help'] = 'No Context Message help text here';
 $string['pending'] = 'Pending';
 $string['pluginname'] = 'Al Course Assistant';
 $string['pluginname_help'] = 'This may take up to a minute. Thanks for your patience.';
+$string['preparing_tutorial'] = 'Preparing your tutorial. One moment please...';
 $string['prompt'] = 'Prompt';
 $string['question'] = 'Question';
 $string['question_template'] = 'Question Template';
