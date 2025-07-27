@@ -39,17 +39,17 @@ $user = $DB->get_record('user', ['id' => $USER->id]);
 $full_name = fullname($user);
 
 // Build Markdown content for the PDF
-$content = 'Summarize the chat history below in as much detail as possible:' . "\n\n";
-$content .= '**Tutorial:** ' . ($tutorial_name ?? 'AI Assistant Chat') . "\n\n";
-$content .= '**User:** ' . $full_name . "\n\n";
-$content .= '**Date:** ' . date('Y-m-d H:i:s') . "\n\n";
+$content = get_string('summary_prompt', 'block_ai_assistant') . "\n\n";
+$content .= '**' . get_string('tutorial', 'block_ai_assistant') . ':** ' . ($tutorial_name ?? 'AI Assistant Chat') . "\n\n";
+$content .= '**' . get_string('student', 'block_ai_assistant') . ':** ' . $full_name . "\n\n";
+$content .= '**' . get_string('date', 'block_ai_assistant') . ':** ' . date('Y-m-d H:i:s') . "\n\n";
 $content .= '---' . "\n\n";
 
 foreach ($messages as $message) {
     if ($message['is_human']) {
         $content .= '**' . $full_name . ':**' . "\n\n";
     } else {
-        $content .= '**AI Assistant:**' . "\n\n";
+        $content .= '**' . get_string('ai_assistant', 'block_ai_assistant') . ':**' . "\n\n";
     }
     $content .= $message['message'] . "\n\n";
 }
@@ -66,13 +66,17 @@ cria::chat_end($chat_session);
 $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 
 // Set document information
-$pdf->SetCreator('AI Assistant');
+$pdf->SetCreator( get_string('ai_assistant', 'block_ai_assistant'));
 $pdf->SetAuthor($full_name);
-$pdf->SetTitle('Chat Summary - ' . ($tutorial_name ?? 'AI Assistant Chat'));
-$pdf->SetSubject('AI Assistant Chat Summary');
+$pdf->SetTitle(get_string('chat_summary', 'block_ai_assistant') . ' - '
+    . ($tutorial_name ?? 'AI Assistant Chat'));
+$pdf->SetSubject(get_string('ai_assistant', 'block_ai_assistant') . ' '
+    . get_string('chat_summary', 'block_ai_assistant'));
 
 // Set default header data
-$pdf->SetHeaderData('', 0, 'AI Assistant Chat Summary', ($tutorial_name ?? 'Chat Session') . ' - ' . date('Y-m-d H:i:s'));
+$pdf->SetHeaderData('', 0, get_string('ai_assistant', 'block_ai_assistant') . ' '
+    . get_string('chat_summary', 'block_ai_assistant'),
+    ($tutorial_name ?? 'Chat Session') . ' - ' . date('Y-m-d H:i:s'));
 
 // Set header and footer fonts
 $pdf->setHeaderFont(array(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN));
@@ -99,10 +103,10 @@ $pdf->AddPage();
 $pdf->SetFont('helvetica', '', 11);
 
 // Build HTML content for the PDF
-$html = '<h2>Chat Summary</h2>';
-$html .= '<p><strong>Tutorial:</strong> ' . htmlspecialchars($tutorial_name ?? 'AI Assistant Chat') . '</p>';
-$html .= '<p><strong>User:</strong> ' . htmlspecialchars($full_name) . '</p>';
-$html .= '<p><strong>Date:</strong> ' . date('Y-m-d H:i:s') . '</p>';
+$html = '<h2>' . get_string('chat_summary', 'block_ai_assistant') . '</h2>';
+$html .= '<p><strong>' . get_string('tutorial', 'block_ai_assistant') . ':</strong> ' . htmlspecialchars($tutorial_name ?? 'AI Assistant Chat') . '</p>';
+$html .= '<p><strong>' . get_string('student', 'block_ai_assistant') . ':</strong> ' . htmlspecialchars($full_name) . '</p>';
+$html .= '<p><strong>' . get_string('date', 'block_ai_assistant') . ':</strong> ' . date('Y-m-d H:i:s') . '</p>';
 $html .= '<hr>';
 $html .= '<br>' . $summary;
 

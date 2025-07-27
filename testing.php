@@ -2,7 +2,7 @@
 
 require_once(__DIR__ . '/../../config.php');
 require_once('classes/external/course_modules_ws.php');
-global $CFG, $OUTPUT, $USER, $PAGE;
+global $CFG, $DB, $OUTPUT, $USER, $PAGE;
 
 use block_ai_assistant\webservice;
 use block_ai_assistant\course_module_training;
@@ -30,13 +30,9 @@ echo $OUTPUT->header();
 //$response = cria::chat_send('965a7170-5612-4d32-9e87-29cdba344c37', 'I am a first year student.', '418-391');
 //
 //print_object($response);
-$chat_history = cria::chat_history('217e0c3e-5402-4ff0-bccd-d4220cf818a1');
+$asset = $DB->get_record('block_aia_tutor_chat_assets', ['assetid' => '9aec2b9e93459f9aa97b9beae8b33519']);
 
-print_object($chat_history);
-
-$history = json_decode($chat_history->history);
-
-print_object($history->history);
+echo '<img id=' . $asset->assetid . ' src="data:' . $asset->mimetype . ';base64,' . $asset->data . '" alt="Asset Image" style="max-width: 100%; height: auto;">';
 
 echo $OUTPUT->footer();
 

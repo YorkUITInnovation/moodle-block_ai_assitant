@@ -37,6 +37,7 @@ class block_ai_assistant_chat_ws extends external_api
      */
     public static function chat(int $courseid, $bot_name, $prompt, $chatid): string
     {
+        global $DB;
         self::validate_parameters(
             self::chat_parameters(),
             [
@@ -54,6 +55,45 @@ class block_ai_assistant_chat_ws extends external_api
         // Get chat response
         $response = cria::chat_send($chatid, $prompt, $bot_name);
 
+        // The response is in HTML format. Get all images into an array. You must capture the id attribute and teh src attribute.
+        $dom = new DOMDocument();
+        @$dom->loadHTML($response);
+        $images = $dom->getElementsByTagName('img');
+        $image_data = [];
+        foreach ($images as $image) {
+            $src = $image->getAttribute('src');
+            $id = str_replace('-', '', $image->getAttribute('id'));
+
+            if (!empty($src) && !empty($id)) {
+                // If the src is a data URI, we can use it directly.
+                if (strpos($src, 'data:') === 0) {
+                    // Split the data URI into mimetype and base64 content
+                    if (preg_match('#^data:([^;]+);base64,(.+)$#', $src, $m)) {
+                        // Save the data to the database.
+                        $asset = new \stdClass();
+                        $asset->assetid = $id;
+                        $asset->courseid = $courseid;
+                        $asset->chatid = $chatid;
+                        $asset->mimetype = $m[1];
+                        $asset->data = $m[2];
+
+                        if (!$DB->record_exists('block_aia_tutor_chat_assets', ['assetid' => $id, 'chatid' => $chatid])) {
+                            // Insert the asset into the database.
+                            $DB->insert_record('block_aia_tutor_chat_assets', $asset);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Get the full history of the chat session. and update the block_aia_tutorial_chats for this chatid.
+        $full_chat_history = cria::chat_history($chatid);
+        $DB->set_field(
+            'block_aia_tutorial_chats',
+            'history',
+            $full_chat_history->history,
+            ['chatid' => $chatid]
+        );
 
         return $response;
     }
@@ -155,9 +195,19 @@ class block_ai_assistant_chat_ws extends external_api
             $tutorial_name = $params->tutorial_name;
             $messages = json_decode($params->messages)[0];
         } else {
-            // Get chat history.
-            $full_chat_history = cria::chat_history($chatid);
-            $chat_history = json_decode($full_chat_history->history);
+            // Get chat history from table block_aia_tutorial_chats.
+            $chat_exists = $DB->get_record(
+                'block_aia_tutorial_chats',
+                [
+                    'chatid' => $chatid,
+                    'courseid' => $courseid,
+                    'userid' => $userid,
+                ]
+            );
+
+            $full_chat_history = $chat_exists->history ?? cria::chat_history($chatid);
+
+            $chat_history = json_decode($full_chat_history);
             $messages = [];
             if (isset($chat_history->history)) {
                 $tutorial_name = $DB->get_field(
@@ -173,9 +223,35 @@ class block_ai_assistant_chat_ws extends external_api
                         } else {
                             $is_human = false;
                         }
+                        // Process markdown HTML and convert any base64 links to <img> tags with proper data URI prefix
+                        $message = markdown_to_html($history[$i]->blocks[0]->text);
+
+                        // Process images in the message
+                        $dommsg = new \DOMDocument();
+                        @$dommsg->loadHTML(mb_convert_encoding($message, 'HTML-ENTITIES', 'UTF-8'));
+                        $imgs = $dommsg->getElementsByTagName('img');
+                        foreach ($imgs as $img) {
+                            $src = $img->getAttribute('src');
+                            if (!empty($src)) {
+                                $asset = $DB->get_record('block_aia_tutor_chat_assets', ['assetid' => $src, 'chatid' => $chatid], '*', IGNORE_MISSING);
+                                if ($asset) {
+                                    $img->setAttribute('id', $asset->assetid);
+                                    $img->setAttribute('src', 'data:' . $asset->mimetype . ';base64,' . $asset->data);
+                                    $img->setAttribute('alt', 'Asset Image');
+                                    $img->setAttribute('style', 'max-width: 100%; height: auto;');
+                                }
+                            }
+                        }
+                        // Regenerate HTML without html/body wrapper
+                        $body = $dommsg->getElementsByTagName('body')->item(0);
+                        $message = '';
+                        foreach ($body->childNodes as $child) {
+                            $message .= $dommsg->saveHTML($child);
+                        }
+
                         $messages[] = [
                             'is_human' => $is_human,
-                            'message' => $history[$i]->blocks[0]->text,
+                            'message' => $message,
                         ];
                     }
                 }
@@ -275,6 +351,8 @@ class block_ai_assistant_chat_ws extends external_api
         // Delete chat session.
         cria::chat_end($chatid);
         if ($DB->delete_records('block_aia_tutorial_chats', ['chatid' => $chatid])) {
+            // Delete assets related to this chat session.
+            $DB->delete_records('block_aia_tutor_chat_assets', ['chatid' => $chatid]);
             // If the chat session was deleted, return true.
             return true;
         }

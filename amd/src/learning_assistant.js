@@ -241,12 +241,13 @@ function initSummarizeChatButton() {
  * Download chat summary from summarize_chat.php
  * @param {string} chatid - Chat ID for the conversation
  */
-function downloadChatSummary(chatid) {
+function downloadChatSummary(chatid, botName) {
     try {
         // Create URL for summarize_chat.php
         const summarizeUrl = config.wwwroot + '/blocks/ai_assistant/summarize_chat.php';
         const params = new URLSearchParams();
         params.append('chatid', chatid);
+        params.append('botname', botName);
 
         // Create full URL
         const fullUrl = summarizeUrl + '?' + params.toString();

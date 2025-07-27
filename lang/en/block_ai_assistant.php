@@ -30,6 +30,7 @@ $string['accepted_modules_help'] = 'Comma seperated list of modules that can hav
 $string['access'] = 'Student Access';
 $string['actions'] = 'Actions';
 $string['add'] = 'Add';
+$string['ai_assistant'] = 'AI Assistant';
 $string['ai_assistant_instructions'] = 'To get the best results from the AI Assistant, please use the syllabus template provided in the Help section. '
     . 'To make the AI Assistant available to students, click to Enable AI Assistant button below.';
 $string['ai_learning_assistant'] = 'AI Learning Assistant';
@@ -51,6 +52,7 @@ $string['bottom_left'] = 'Bottom left';
 $string['bottom_right'] = 'Bottom right';
 $string['chat_help'] = 'For best results, please ask clear and specific questions.'
     . 'It is important that you use complete sentences with proper punctuation. ';
+$string['chat_summary'] = 'Chat Summary';
 $string['close'] = 'Close';
 $string['column_name_must_exist'] = 'Column {$a} must exist';
 $string['confirm_delete_trained_module'] = 'Are you sure you want to delete the trained module?';
@@ -76,6 +78,7 @@ $string['criadex_model_id_help'] = 'Enter the criadex model id to your Cria serv
 $string['criadex_rerank_id'] = 'Criadex Rerank ID';
 $string['criadex_rerank_id_help'] = 'Enter the criadex rerank id to your Cria server. You might have to ask your system administrator.';
 $string['custom_questions'] = 'Q&A File';
+$string['date'] = 'Date';
 $string['default_content_language'] = 'Default content language';
 $string['delete'] = 'Delete';
 $string['delete_syllabus'] = 'Delete Syllabus';
@@ -146,10 +149,29 @@ $string['related_question'] = "Related Questions";
 $string['save'] = 'Save changes ';
 $string['save_chat'] = 'Save Chat';
 $string['section'] = 'Section';
-$string['student_and_name'] = 'I am a student and my name is {$a}.';
+$string['section'] = 'Section';
+$string['student'] = 'Student';
 $string['subtitle'] = 'Subtitle';
 $string['subtitle_help'] = 'Subtitle help text here';
 $string['summarize_chat'] = 'Summarize Chat';
+$string['summary_prompt'] = "Summarize the following HTML-formatted chat conversation between a student and an AI tutor. 
+The conversation is structured with each speaker’s name followed by their message on a new line. Therefore, always use the students' in your responses.
+The summary should be appropriate for sharing with a university instructor and must include:
+1. Objectives of the Session
+[List the goals set at the beginning of the session, e.g., \"Review homework problems on factoring quadratics.\"]
+2. Key Discussion Points
+[Summarize main concepts covered, e.g., \"Explained the difference between perfect square trinomials and general quadratics.\"]
+[Mention any examples or problems solved.]
+3. Student Questions & Clarifications
+[List any specific questions the student asked and how they were addressed.]
+4. Progress & Understanding
+[Briefly assess the student’s grasp of the material, e.g., \"Student showed improved confidence in identifying factoring patterns.\"]
+5. Action Items / Homework
+[List any assignments or tasks given, e.g., \"Complete problems 5–10 from the worksheet.\"]
+6. Next Steps
+[Mention what will be covered in the next session or any follow-up needed.]
+
+Focus on clarity, relevance, and educational value.";
 $string['supported_modules'] = '<p>Note: The AI Assistant can only be trained on content from the following modules: </p>'
     . '<ul><li>Announcement Forum</li><li>Page</li><li>Text & Media Area</li><li>Book</li><li>File</li><li>Folder</li>'
     . '<li>Glossary</li></ul>';

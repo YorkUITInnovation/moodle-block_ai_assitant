@@ -706,6 +706,45 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2025072411, 'ai_assistant');
     }
 
+    if ($oldversion < 2025072416) {
+
+        // Define table block_aia_tutor_chat_assets to be created.
+        $table = new xmldb_table('block_aia_tutor_chat_assets');
+
+        // Adding fields to table block_aia_tutor_chat_assets.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('tutorchatid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('assetid', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('mimetype', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('data', XMLDB_TYPE_TEXT, null, null, null, null, null);
+
+        // Adding keys to table block_aia_tutor_chat_assets.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Conditionally launch create table for block_aia_tutor_chat_assets.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072416, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072417) {
+
+        // Define field chatid to be added to block_aia_tutor_chat_assets.
+        $table = new xmldb_table('block_aia_tutor_chat_assets');
+        $field = new xmldb_field('chatid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'tutorchatid');
+
+        // Conditionally launch add field chatid.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072417, 'ai_assistant');
+    }
 
     return true;
 
