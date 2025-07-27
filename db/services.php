@@ -99,6 +99,15 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_delete_tutorial' => array(
+        'classname' => 'block_ai_assistant_tutorial_ws',
+        'methodname' => 'delete',
+        'classpath' => 'blocks/ai_assistant/classes/external/tutorials.php',
+        'description' => 'Deletes a tutorial record from the tutorials table.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
     'block_ai_assistant_chat' => array(
         'classname' => 'block_ai_assistant_chat_ws',
         'methodname' => 'chat',
