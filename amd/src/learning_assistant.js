@@ -224,14 +224,15 @@ function initSummarizeChatButton() {
 
             // Get chatid from data attribute
             const chatid = this.getAttribute('data-chatid');
+            const botName = this.getAttribute('data-botname');
 
-            if (!chatid) {
-                notification.exception(new Error('Chat ID not found'));
+            if (!chatid || !botName) {
+                notification.exception(new Error('Chat ID or Bot name not found'));
                 return;
             }
 
             // Call summarize_chat.php to download summary
-            downloadChatSummary(chatid);
+            downloadChatSummary(chatid, botName);
         });
     }
 }
