@@ -83,6 +83,7 @@ $string['delete_syllabus_help'] = 'Are you sure you want to delete the syllabus?
 $string['delete_question'] = 'Delete Question';
 $string['delete_questions'] = 'Delete Questions';
 $string['delete_question_help'] = 'Are you sure you want to delete the question?';
+$string['delete_tutorial_help'] = 'Are you sure you want to delete the tutorial?';
 $string['description'] = 'Description';
 $string['disable_ai_assistant'] = 'Disable AI Assistant';
 $string['disable_tutorials'] = 'Disable Tutorials';

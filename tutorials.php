@@ -32,7 +32,7 @@ $download = optional_param('download', '', PARAM_ALPHA);
 $table = new tutorials_table('id');
 $table->is_downloading($download, 'tutorials_download', 'tutorials');
 
-$PAGE->requires->js_call_amd('block_ai_assistant/delete_tutorial', 'init',[]);
+$PAGE->requires->js_call_amd('block_ai_assistant/tutorials', 'init',[]);
 
 if (!$table->is_downloading()) {
     // Only print headers if not asked to download data

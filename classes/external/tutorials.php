@@ -14,7 +14,8 @@ class block_ai_assistant_tutorial_ws extends external_api
     public static function delete_parameters() {
         return new external_function_parameters(
             array(
-                'id' => new external_value(PARAM_INT, 'Tutorial id', VALUE_REQUIRED)
+                'id' => new external_value(PARAM_INT, 'Tutorial id', VALUE_REQUIRED),
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED)
             )
         );
     }
@@ -22,17 +23,18 @@ class block_ai_assistant_tutorial_ws extends external_api
     /**
      * Deletes a tutorial record
      * @param int $id
+     * @param int $courseid
      * @return bool
      * @throws dml_exception
      * @throws invalid_parameter_exception
      * @throws restricted_context_exception
      */
-    public static function delete($id) {
+    public static function delete($id, $courseid) {
         global $CFG, $USER, $DB, $PAGE;
 
         $params = self::validate_parameters(
             self::delete_parameters(),
-            array('id' => $id)
+            array('id' => $id, 'courseid' => $courseid)
         );
 
         $context = CONTEXT_COURSE::instance($params['courseid']);
