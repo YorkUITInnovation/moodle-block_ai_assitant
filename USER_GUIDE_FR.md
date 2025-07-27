@@ -21,6 +21,7 @@ L'Assistant de cours IA est un plugin Moodle puissant qui améliore l'expérienc
 - **Tests automatisés** : Testez les réponses de l'IA avec la fonctionnalité de test automatique
 - **Support multilingue** : Disponible en plusieurs langues
 - **Chat en temps réel** : Réponses instantanées aux demandes des étudiants
+- **Assistant d'apprentissage** : Créez des tutoriels IA personnalisés et des invites pour des expériences d'apprentissage personnalisées pour les étudiants
 
 ---
 
@@ -99,6 +100,64 @@ L'IA peut traiter ces types de fichiers :
 
 **💡 Conseil** : Utilisez le modèle de questions fourni pour un formatage cohérent.
 
+### Assistant d'apprentissage (Création de tutoriels)
+
+La fonctionnalité Assistant d'apprentissage permet aux instructeurs de créer des tutoriels IA personnalisés qui offrent des expériences d'apprentissage personnalisées aux étudiants. Ces tutoriels peuvent être conçus pour divers objectifs éducatifs tels que les quiz, l'explication de concepts, la pratique de résolution de problèmes, ou les sessions d'apprentissage guidé.
+
+#### Créer des invites de tutoriel
+
+1. Cliquez sur **"Assistant d'apprentissage"** ou **"Tutoriels"** dans le bloc Assistant IA
+2. Cliquez sur **"Créer un nouveau tutoriel"** ou **"Ajouter un tutoriel"**
+3. Configurez les paramètres de votre tutoriel :
+   - **Nom du tutoriel** : Donnez à votre tutoriel un nom descriptif que les étudiants verront
+   - **Description du tutoriel** : Brève explication de ce que couvre le tutoriel
+   - **Type de tutoriel** : Choisissez le type d'expérience de tutorat (quiz, explication, pratique, etc.)
+   - **Invite du tutoriel** : Rédigez l'invite IA qui définit comment le tutoriel doit se comporter
+   - **Sujet/Thème** : Spécifiez le domaine ou les sujets que ce tutoriel couvre
+
+#### Rédiger des invites de tutoriel efficaces
+
+L'invite du tutoriel est l'instruction qui dit à l'IA comment interagir avec les étudiants. Voici quelques exemples :
+
+**Invite de tutoriel quiz :**
+```
+Vous êtes un tuteur de quiz pour [matière du cours]. Quand un étudiant sélectionne un sujet, créez 5-10 questions sur ce sujet. Posez une question à la fois, attendez la réponse de l'étudiant, fournissez des commentaires, puis passez à la question suivante. Gardez le score et fournissez des encouragements.
+```
+
+**Invite de tutoriel d'explication :**
+```
+Vous êtes un tuteur patient qui explique les concepts en termes simples. Quand un étudiant demande à propos d'un sujet, décomposez-le en parties faciles à comprendre avec des exemples. Demandez s'ils ont besoin de clarification et ajustez vos explications selon leurs réponses.
+```
+
+**Invite de tutoriel de résolution de problèmes :**
+```
+Vous êtes un tuteur de résolution de problèmes étape par étape. Guidez les étudiants à travers les problèmes en posant des questions directrices plutôt qu'en donnant des réponses directes. Aidez-les à réfléchir à chaque étape du processus de solution.
+```
+
+#### Tester vos tutoriels
+
+1. Après avoir créé un tutoriel, vous pouvez le tester en cliquant sur **"Tester le tutoriel"**
+2. Cela ouvre la même interface que les étudiants verront
+3. Sélectionnez un sujet et interagissez avec l'IA pour vous assurer qu'elle se comporte comme prévu
+4. Apportez des ajustements à votre invite si nécessaire et testez à nouveau
+
+#### Gérer les tutoriels
+
+- **Modifier** : Modifiez les invites, noms ou descriptions de tutoriels existants
+- **Activer/Désactiver** : Contrôlez quels tutoriels sont visibles aux étudiants
+- **Supprimer** : Retirez les tutoriels qui ne sont plus nécessaires
+- **Dupliquer** : Copiez les tutoriels existants pour créer des variations
+
+#### Meilleures pratiques pour les tutoriels
+
+1. **Soyez spécifique** : Rédigez des invites claires et détaillées qui définissent exactement comment l'IA doit se comporter
+2. **Définissez le rôle** : Dites à l'IA quel type de tuteur elle doit être (patient, encourageant, exigeant, etc.)
+3. **Établissez des limites** : Spécifiez ce que l'IA doit et ne doit pas faire (ex. "ne donnez pas de réponses directes aux devoirs")
+4. **Incluez des exemples** : Fournissez des exemples dans votre invite du type de réponses que vous voulez
+5. **Testez minutieusement** : Testez toujours vos tutoriels avant de les rendre disponibles aux étudiants
+
+**💡 Conseil** : Commencez avec des invites de tutoriel simples et créez progressivement des plus complexes à mesure que vous vous familiarisez avec la fonctionnalité.
+
 ### Publication aux étudiants
 
 #### Activer l'Assistant IA
@@ -166,6 +225,76 @@ Chaque modèle inclut des exemples pour guider votre création de contenu.
 - Questions générales de cours couvertes dans le contenu téléchargé
 - Aide à la navigation pour les ressources de cours
 - Bien sûr, cela dépend toujours des informations sur lesquelles l'instructeur a entraîné l'IA.
+
+### Utiliser les tutoriels de l'Assistant d'apprentissage
+
+Si votre instructeur a créé des tutoriels Assistant d'apprentissage, vous verrez des options de tutoriel supplémentaires dans le bloc Assistant IA qui offrent des expériences d'apprentissage spécialisées.
+
+#### Accéder aux tutoriels
+
+1. Dans le bloc Assistant IA, cherchez les options de tutoriel créées par votre instructeur
+2. Les noms de tutoriels apparaîtront comme options cliquables (ex. "Tuteur de quiz mathématiques", "Explicateur de concepts", "Solutionnaire de problèmes")
+3. Cliquez sur n'importe quel tutoriel qui vous intéresse
+
+#### Commencer une session de tutoriel
+
+1. Quand vous cliquez sur un tutoriel, une fenêtre modale s'ouvrira
+2. Sélectionnez le **sujet** sur lequel vous voulez être tutoré parmi les options disponibles
+3. Cliquez sur **"Commencer le tutoriel"** ou **"Débuter la session"**
+4. Vous serez dirigé vers une page de chat dédiée pour ce tutoriel
+
+#### Types de tutoriels que vous pourriez rencontrer
+
+**Tutoriels de quiz**
+- Quiz interactifs sur les sujets de cours
+- L'IA posera des questions une à la fois
+- Fournit des commentaires immédiats sur vos réponses
+- Suit votre progrès et score
+
+**Tutoriels d'explication**
+- Explications détaillées des concepts de cours
+- Décompose les sujets complexes en parties plus simples
+- Demandez des clarifications quand vous en avez besoin
+- Fournit des exemples et applications du monde réel
+
+**Tutoriels de résolution de problèmes**
+- Guidage étape par étape à travers les problèmes
+- Pose des questions directrices pour vous aider à réfléchir aux solutions
+- Ne donne pas de réponses directes mais guide votre réflexion
+- Aide à développer les compétences de résolution de problèmes
+
+**Tutoriels de support d'étude**
+- Aide avec les stratégies et techniques d'étude
+- Révision des concepts clés avant les examens
+- Création de plans et horaires d'étude
+- Conseils d'apprentissage spécifiques à votre cours
+
+#### Tirer le meilleur parti des tutoriels
+
+**Soyez engagé**
+- Participez activement à la conversation
+- Répondez aux questions de manière réfléchie
+- Demandez des clarifications quand nécessaire
+- Prenez votre temps pour réfléchir aux réponses
+
+**Utilisez la sélection de sujets judicieusement**
+- Choisissez des sujets qui s'alignent avec ce que vous étudiez actuellement
+- Sélectionnez les domaines où vous avez le plus besoin d'aide
+- Essayez différents sujets pour explorer divers aspects du cours
+
+**Sauvegardez les informations importantes**
+- Prenez des notes pendant les sessions de tutoriel
+- Sauvegardez les explications utiles pour révision ultérieure
+- Appliquez ce que vous apprenez dans les tutoriels à vos travaux de cours
+
+#### Fonctionnalités du chat de tutoriel
+
+- **Historique de conversation** : Vos conversations de tutoriel sont sauvegardées pour que vous puissiez y retourner plus tard
+- **Changement de sujet** : Vous pouvez commencer de nouvelles sessions de tutoriel sur différents sujets
+- **Tentatives multiples** : Vous pouvez répéter les tutoriels autant de fois que nécessaire
+- **Types de tutoriels différents** : Essayez divers tutoriels créés par votre instructeur pour différentes expériences d'apprentissage
+
+**💡 Conseil** : Utilisez les tutoriels régulièrement dans le cadre de votre routine d'étude, pas seulement avant les examens. Ils sont conçus pour renforcer l'apprentissage tout au long du cours.
 
 ### Ce que l'IA ne peut pas faire
 - Accéder à vos notes ou dossiers académiques personnels
