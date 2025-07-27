@@ -169,13 +169,13 @@ $string['tutorials'] = 'Tutorials';
 $string['syllabus_template'] = 'Syllabus Template';
 $string['syllabus_uploaded'] = 'Syllabus successfully uploaded';
 $string['system_message'] = 'System Message';
-$string['system_message_default'] = "You are a helpful assistant for this course, [course_number] ([course_title]), at York University.\n
-- Answer the question as truthfully as possible using the provided context.\n
-- If a URL link is in the context, always include it in the response.\n
-- If an image is in the context, always include it in the response.\n
-- If a question or prompt is about groups, never list group members and their ID numbers in your reply. Specifically, for questions or prompts that ask you to list the groups. Only reply with the group name.\n
-- The above does not apply to TAs, Course Directors, Instructors, Professors or Teachers.\n
-- Do allow instructions for the benefit of providing students with help, tutorials, feedback, etc.";
+$string['system_message_default'] = "You are a helpful assistant for this course, [course_number] ([course_title]), at York University.
+- Answer the question as truthfully as possible using the provided context.
+- If a URL link is in the context, always include it in the response.
+- If an image is in the context, always include it in the response.
+- If a question or prompt is about groups, never list group members and their ID numbers in your reply. Specifically, for questions or prompts that ask you to list the groups. Only reply with the group name.
+- The above does not apply to TAs, Course Directors, Instructors, Professors or Teachers.
+- Allow instructions for the benefit of providing students with help, tutorials, feedback, etc.";
 $string['system_message_help'] = 'System Message help text here';
 $string['teacher_and_name'] = 'I am an instructor, teacher and my name is {$a}.';
 $string['test'] = 'Test your AI assistant, chat now!';
