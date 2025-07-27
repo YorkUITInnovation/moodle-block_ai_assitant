@@ -151,13 +151,13 @@ $string['subtitle_help'] = 'Subtitle help text here';
 $string['summarize_chat'] = 'Summarize Chat';
 $string['supported_modules'] = '<p>Note: The AI Assistant can only be trained on content from the following modules: </p>'
     . '<ul><li>Announcement Forum</li><li>Page</li><li>Text & Media Area</li><li>Book</li><li>File</li><li>Folder</li>'
-    . '<li>Glossary</li><li>Glossary</li></ul>';
+    . '<li>Glossary</li></ul>';
 $string['supported_modules_title'] = 'Supported Modules';
 $string['supported_formats'] = '<p>Note: Unsupported file formats will not be processed for training and will not be accessible through '
     . 'the AI Assistant. Ensure that your files are in supported formats to enable training and usage.</p>'
     . '<p>Supported file formats: <ul><li>Word documents (.docx only)</li><li>PDF files (.pdf)</li><li>Text files (.txt)</li>'
     . '<li>HTML files (.html)</li><li>Rich Text Format (.rtf)</li><li>Markdown files (.md)</li><li>OpenDocument Text (.odt)</li><li>'
-    . 'PowerPoint presentations (.ppt, .pptx)</li><li>Excel spreadsheets (.xls, .xlsx)</li><li>CSV files (.csv)</li><li>'
+    . 'PowerPoint presentations (.pptx only)</li><li>Excel spreadsheets (.xlsx only)</li><li>CSV files (.csv)</li><li>'
     . 'Audio files (.mp3, .wav, .m4a)</li><li>Video files (.mp4)</li></ul></p>';
 $string['supported_formats_title'] = 'Supported File Formats';
 $string['training_visibility_warning'] = 'Important: Once content is trained by the AI Assistant, it will be available '
