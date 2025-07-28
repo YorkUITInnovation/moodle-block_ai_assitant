@@ -38,63 +38,16 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
     $dbman = $DB->get_manager();
 
 
-    if ($oldversion < 2025072800) {
+    if ($oldversion < 2025072801) {
 
-        // Define table block_aia_course_mod_files to be created.
-        $table = new xmldb_table('block_aia_course_mod_files');
+       $existing_blocks = $DB->get_records('block_aia_settings', []);
 
-        // Adding fields to table block_aia_course_mod_files.
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('bacmid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
-        $table->add_field('cria_fileid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
-        $table->add_field('trained', XMLDB_TYPE_INTEGER, '1', null, null, null, '0');
-        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null);
-
-        // Adding keys to table block_aia_course_mod_files.
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-
-        // Adding indexes to table block_aia_course_mod_files.
-        $table->add_index('xbacmid', XMLDB_INDEX_NOTUNIQUE, ['bacmid']);
-
-        // Conditionally launch create table for block_aia_course_mod_files.
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
+       foreach ($existing_blocks as $block) {
+            \block_ai_assistant\tutorials::create_default_tutorials($block->courseid);// Create default tutorials\bloc
         }
-
-        // Define field cmid to be added to block_aia_tutorial_chats.
-        $table = new xmldb_table('block_aia_tutorial_chats');
-        $field = new xmldb_field('cmid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0', 'userid');
-
-        // Conditionally launch add field cmid.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        // Define table block_aia_chat_history to be created.
-        $table = new xmldb_table('block_aia_chat_history');
-
-        // Adding fields to table block_aia_chat_history.
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('tutorialchatid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
-        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
-        $table->add_field('is_human', XMLDB_TYPE_INTEGER, '1', null, null, null, '0');
-        $table->add_field('message', XMLDB_TYPE_TEXT, null, null, null, null, null);
-        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '16', null, null, null, '0');
-
-        // Adding keys to table block_aia_chat_history.
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-
-        // Adding indexes to table block_aia_chat_history.
-        $table->add_index('tutorialchatid_x', XMLDB_INDEX_NOTUNIQUE, ['tutorialchatid']);
-
-        // Conditionally launch create table for block_aia_chat_history.
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
 
         // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2025072800, 'ai_assistant');
+        upgrade_block_savepoint(true, 2025072801, 'ai_assistant');
     }
 
 

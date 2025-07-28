@@ -313,9 +313,15 @@ class block_ai_assistant_chat_ws extends external_api
 
         // Delete chat session.
         cria::chat_end($chatid);
-        if ($DB->delete_records('block_aia_tutorial_chats', ['chatid' => $chatid])) {
+        // Get tutorial chat ID from the database.
+        $id = $DB->get_field(
+            'block_aia_tutorial_chats',
+            'id',
+            ['chatid' => $chatid]
+        );
+        if ($DB->delete_records('block_aia_tutorial_chats', ['id' => $id])) {
             // Delete assets related to this chat session.
-            $DB->delete_records('block_aia_tutor_chat_assets', ['chatid' => $chatid]);
+            $DB->delete_records('block_aia_chat_history', ['tutorialchatid' => $id]);
             // If the chat session was deleted, return true.
             return true;
         }

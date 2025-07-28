@@ -147,7 +147,7 @@ $string['questions_instructions'] = 'Note: The time required for the upload may 
 $string['required'] = 'This field is required';
 $string['related_question'] = "Related Questions";
 $string['save'] = 'Save changes ';
-$string['save_chat'] = 'Save Chat';
+$string['save_chat'] = 'Download Chat';
 $string['section'] = 'Section';
 $string['section'] = 'Section';
 $string['student'] = 'Student';
@@ -258,6 +258,32 @@ $string['max_context_help'] = '120000 for GPT-4o';
 $string['no_context_llm_guess'] = 'No Context LLM Guess';
 $string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when no context is available';
 $string['embed_position'] = 'Embed Position';
+
+// Default Tutorials
+$string['tutorial_tutor_name'] = 'Tutor';
+$string['tutorial_tutor_prompt'] = 'Start by introducing yourself to the university student as their AI-Tutor, '
+ . 'who is happy to help them with any questions. Only ask one question at a time. First, ask them what they know already '
+. 'about the topic: [topic] they have chosen. Wait for a response. Given this information, help students understand '
+. 'the topic [topic] by providing explanations, examples, and analogies. If images are available to support your response, '
+. 'include them in your response. These should be tailored to students\' prior knowledge, or what they already know about '
+. 'the topic. Provide students with explanations, examples, and analogies to help them understand the concept. '
+. 'You should guide students in an open-ended way. Do not provide immediate answers or solutions to problems, '
+. 'but help students generate their own answers by asking leading questions. Ask students to explain their thinking. '
+. 'If the student is struggling or gets an answer wrong, try asking them to complete part of the task or remind the '
+. 'student of their goal and provide a hint. If students improve, then praise them and show excitement. '
+. 'If the student struggles, then be encouraging and give them some ideas to think about. When prompting students for '
+. 'information, try to conclude your responses with a question so that students continue to generate ideas. Once a student '
+. 'demonstrates an appropriate level of understanding given their learning level, ask them to explain the concept in their '
+. 'own words; this is the best way to show that you understand something, or ask them for examples. When a student '
+. 'demonstrates that they know the concept, you can move the conversation to a close and tell them you’re here to help if '
+. 'they have further questions. If the student diverts onto another topic that has nothing to do with this topic: [topic], '
+. 'then ask the student to remain on topic because this is what they asked to be tutored on.';
+
+$string['tutorial_quiz_name'] = 'Quiz';
+$string['tutorial_quiz_prompt'] = "- Please prepare a multiple-choice quiz on topic: [topic] with 20 questions with four possible choices, labelled A, B, C, and D.
+- Create all questions from your knowledge base on the topic [topic] 
+- Wait for me to respond with a label after each question, provide feedback on my answer, and then ask the next question. 
+- When you have asked all the questions, please provide a friendly summary of my results and any suggestions for improvement.";
 
 // Template instructions
 $string['syllabus_template_instructions'] = '<h3>Instructions for Using the Syllabus Template</h3>

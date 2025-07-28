@@ -24,7 +24,6 @@
 
 use block_ai_assistant\cria;
 use block_ai_assistant\tutorials;
-use block_ai_assistant\chat;
 
 class block_ai_assistant extends block_base
 {
@@ -68,6 +67,9 @@ class block_ai_assistant extends block_base
                 $DB->insert_record('block_aia_settings', $record);
                 $small_talk = cria::create_small_talk_questions($this->page->course->id);
                 $course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id));
+
+                // Now add the default tutorials.
+                tutorials::create_default_tutorials($this->page->course->id);
             }
         } else {
             $course_record = new stdClass();
@@ -430,6 +432,17 @@ class block_ai_assistant extends block_base
         $DB->delete_records('block_aia_question_files', array('courseid' => $COURSE->id));
         // Delete course modules
         $DB->delete_records('block_aia_course_modules', array('courseid' => $COURSE->id));
+        // Delete tutorials
+        $DB->delete_records('block_aia_tutorials', array('courseid' => $COURSE->id));
+        // Get all chats for this course
+        $chats = $DB->get_records('block_aia_tutorial_chats', array('courseid' => $COURSE->id));
+        foreach ($chats as $chat) {
+            // Delete the chat
+            $DB->delete_records('block_aia_chat_history', array('tutorialchatid' => $chat->id));
+            // Delete the chat messages
+            $DB->delete_records('block_aia_tutorial_chats', array('id' => $chat->id));
+        }
+        // Delete all chats for this course
         // Delete the files in filearea syllabus
         $fs = get_file_storage();
         $context = \context_course::instance($COURSE->id);
