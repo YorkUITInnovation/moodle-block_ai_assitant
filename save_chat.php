@@ -52,7 +52,7 @@ $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
 $pdf->AddPage();
 $pdf->SetFont('helvetica', '', 11);
 
-// Build HTML content for the PDF
+// Build full HTML content with embedded images
 $html = '<h2>Chat History</h2>';
 $html .= '<p><strong>Tutorial:</strong> ' . htmlspecialchars($tutorial_name ?? 'AI Assistant Chat') . '</p>';
 $html .= '<p><strong>User:</strong> ' . htmlspecialchars($full_name) . '</p>';
@@ -69,46 +69,50 @@ foreach ($messages as $message) {
 
     // Convert base64 images to file references for TCPDF
     if (preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"\s]+)"[^>]*>/i', $text, $matches)) {
+
         for ($i = 0; $i < count($matches[0]); $i++) {
             $base64 = urldecode($matches[2][$i]);
             $data = base64_decode($base64);
 
             if ($data !== false && strlen($data) > 0) {
+                // Convert WEBP data to actual PNG format
                 $tempDir = $CFG->dataroot . '/temp';
                 if (!is_dir($tempDir)) {
                     mkdir($tempDir, 0755, true);
                 }
 
-                // Check if we have WEBP support
-                if (function_exists('imagecreatefromwebp')) {
-                    $image = @imagecreatefromstring($data);
-                    if ($image !== false) {
-                        // Convert to JPEG format (most reliable for TCPDF)
-                        $jpgFile = $tempDir . '/img_' . uniqid() . '.jpg';
-                        imagejpeg($image, $jpgFile, 90);
-                        imagedestroy($image);
-                        $tempFiles[] = $jpgFile;
-
-                        // Replace the base64 img tag with a file reference
-                        $text = str_replace($matches[0][$i], '<img src="' . $jpgFile . '" style="width:80mm;" />', $text);
-                    } else {
-                        $text = str_replace($matches[0][$i], '', $text);
-                    }
+                // Create image resource from WEBP data and convert to PNG
+                $image = @imagecreatefromstring($data);
+                if ($image !== false) {
+                    // Convert to JPEG format (most reliable for TCPDF)
+                    $jpgFile = $tempDir . '/img_' . uniqid() . '.jpg';
+                    imagejpeg($image, $jpgFile, 90); // 90% quality
+                    imagedestroy($image);
+                    $tempFiles[] = $jpgFile;
+                    $pngFile = $jpgFile; // Use this variable name to avoid changing other code
+                    // Replace the base64 img tag with a file reference
+                    $text = str_replace($matches[0][$i], '<img src="' . $pngFile . '" style="width:80mm;" />', $text);
                 } else {
-                    // No WEBP support - add a placeholder message
-                    $text = str_replace($matches[0][$i], '<p><em>[Image not supported - WEBP format requires additional PHP configuration]</em></p>', $text);
+                    // Fallback: remove the image tag entirely since we can't convert it
+                    $text = str_replace($matches[0][$i], '', $text);
                 }
             }
         }
     }
 
-    // Allow basic formatting
+     // allow basic formatting
     $allowed = '<b><strong><i><em><u><ul><ol><li><p><br><img>';
     $text = strip_tags($text, $allowed);
     $html .= $text;
 }
 
-// Process HTML and insert images
+// Write text content only (images already added above)
+// Debug: log the final HTML being sent to TCPDF
+if (strpos($html, '<img') !== false) {
+    preg_match('/<img[^>]*>/', $html, $imgMatch);
+}
+
+// Try a different approach - write HTML in chunks with images inserted separately
 $htmlParts = preg_split('/(<img[^>]*>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
 
 foreach ($htmlParts as $part) {
@@ -116,9 +120,15 @@ foreach ($htmlParts as $part) {
         // This is an image tag - insert it directly
         $imagePath = $matches[1];
         if (file_exists($imagePath)) {
+            error_log("File size: " . filesize($imagePath) . " bytes");
+        }
+        if (file_exists($imagePath)) {
             try {
+                // Try with explicit image type detection
                 $imageInfo = getimagesize($imagePath);
+
                 if ($imageInfo !== false) {
+                    // Use the detected image type
                     $imageType = '';
                     if ($imageInfo[2] == IMAGETYPE_PNG) {
                         $imageType = 'PNG';
@@ -127,21 +137,28 @@ foreach ($htmlParts as $part) {
                     } elseif ($imageInfo[2] == IMAGETYPE_WEBP) {
                         $imageType = 'WEBP';
                     } else {
+                        // Fallback: try to determine from file extension
                         $ext = strtolower(pathinfo($imagePath, PATHINFO_EXTENSION));
                         if ($ext === 'png') $imageType = 'PNG';
                         elseif ($ext === 'jpg' || $ext === 'jpeg') $imageType = 'JPG';
                         elseif ($ext === 'webp') $imageType = 'WEBP';
-                        else $imageType = 'PNG';
+                        else $imageType = 'PNG'; // default fallback
                     }
 
-                    if ($imageType && $imageType !== 'WEBP') {
-                        $pdf->Image($imagePath, '', '', 80, '', $imageType, '', 'T', false, 300);
-                        $pdf->Ln(5);
+                    if ($imageType) {
+                        // Skip WEBP images if TCPDF doesn't support them
+                        if ($imageType === 'WEBP') {
+                        } else {
+                            $pdf->Image($imagePath, '', '', 80, '', $imageType, '', 'T', false, 300);
+                            $pdf->Ln(5);
+                        }
                     }
                 }
             } catch (Exception $e) {
-                // Silently skip problematic images
+                error_log("TCPDF Image() threw exception: " . $e->getMessage());
             }
+        } else {
+            error_log("Image file not found: $imagePath");
         }
     } else {
         // This is regular HTML content
@@ -152,9 +169,9 @@ foreach ($htmlParts as $part) {
 }
 
 // Clean up temp files
-foreach ($tempFiles as $file) {
-    @unlink($file);
-}
+//foreach ($tempFiles as $file) {
+//    @unlink($file);
+//}
 
 // Generate filename
 $filename = 'chat_history_' . str_replace(' ', '_', $tutorial_name) .  '_' . date('Y-m-d_H-i-s') . '.pdf';

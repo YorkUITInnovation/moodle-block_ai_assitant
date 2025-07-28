@@ -30,7 +30,7 @@ class chat
      * @return array An array containing the messages and the tutorial name.
      * @throws \dml_exception
      * **/
-    public static function get_messages(int $tutorial_chat_id): array
+    public static function get_messages(int $tutorial_chat_id, $continue_chat = false): array
     {
         global $DB;
 
@@ -58,6 +58,30 @@ class chat
                 ];
             }
             $i++;
+        }
+        // If continue_chat is true, add a message to indicate that the chat can be continued.
+        if ($continue_chat) {
+            // Get chat chat id and bot name.
+            $chat_id = $DB->get_field(
+                'block_aia_tutorial_chats',
+                'chatid',
+                ['id' => $tutorial_chat_id]
+            );
+            $course_id = $DB->get_field(
+                'block_aia_tutorial_chats',
+                'courseid',
+                ['id' => $tutorial_chat_id]
+            );
+            $bot_name = $DB->get_field(
+                'block_aia_settings',
+                'bot_name',
+                ['courseid' => $course_id]
+            );
+            $message = chat::continue_chat($tutorial_chat_id, $chat_id, $bot_name);
+            $messages[] = [
+                'is_human' => false,
+                'message' => $message,
+            ];
         }
 
         return [

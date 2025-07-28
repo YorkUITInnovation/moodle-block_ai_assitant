@@ -130,7 +130,7 @@ class block_ai_assistant_chat_ws extends external_api
                 'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
                 'tutorialid' => new external_value(PARAM_INT, 'The Tutorial ID', VALUE_REQUIRED),
                 'cmid' => new external_value(PARAM_INT, 'Moodle Course Module ID', VALUE_REQUIRED),
-                'name' => new external_value(PARAM_RAW, 'Name of selected course moduel file', VALUE_REQUIRED),
+                'name' => new external_value(PARAM_RAW, 'Name of selected course module file', VALUE_REQUIRED),
                 'userid' => new external_value(PARAM_INT, 'User ID', VALUE_REQUIRED),
                 'chatid' => new external_value(PARAM_TEXT, 'Chat ID', VALUE_OPTIONAL, ''),
             )
@@ -159,17 +159,18 @@ class block_ai_assistant_chat_ws extends external_api
     ): array
     {
         global $CFG, $DB;
-        self::validate_parameters(
-            self::start_parameters(),
-            [
-                'courseid' => $courseid,
-                'tutorialid' => $tutorialid,
-                'cmid' => $cmid,
-                'name' => $name,
-                'userid' => $userid,
-                'chatid' => $chatid
-            ]
-        );
+        // Curretnly not using as a webservice or ajax call, so we can skip the webservice validation.
+//        self::validate_parameters(
+//            self::start_parameters(),
+//            [
+//                'courseid' => $courseid,
+//                'tutorialid' => $tutorialid,
+//                'cmid' => $cmid,
+//                'name' => $name,
+//                'userid' => $userid,
+//                'chatid' => $chatid
+//            ]
+//        );
 
         // Validate context
         $context = \context_course::instance($courseid);
@@ -236,7 +237,7 @@ class block_ai_assistant_chat_ws extends external_api
 
             // Get messages and tutorial name
             $data = chat::get_messages(
-                $chat_exists->id
+                $chat_exists->id, true
             );
 
             $tutorial_name = $data['tutorial_name'];
