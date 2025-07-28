@@ -23,16 +23,60 @@ $courseid = required_param('courseid', PARAM_INT);
 
 echo $OUTPUT->header();
 
-//$history = cria::chat_history('965a7170-5612-4d32-9e87-29cdba344c37');
-//
-//print_object($history);
-//
-//$response = cria::chat_send('965a7170-5612-4d32-9e87-29cdba344c37', 'I am a first year student.', '418-391');
-//
-//print_object($response);
-$asset = $DB->get_record('block_aia_tutor_chat_assets', ['assetid' => '9aec2b9e93459f9aa97b9beae8b33519']);
+// Check WEBP support
+echo "<h3>WEBP Support Check:</h3>";
+echo "function_exists('imagecreatefromwebp'): " . (function_exists('imagecreatefromwebp') ? 'YES' : 'NO') . "<br>";
+echo "function_exists('imagewebp'): " . (function_exists('imagewebp') ? 'YES' : 'NO') . "<br>";
 
-echo '<img id=' . $asset->assetid . ' src="data:' . $asset->mimetype . ';base64,' . $asset->data . '" alt="Asset Image" style="max-width: 100%; height: auto;">';
+// Check GD info
+echo "<h3>GD Info:</h3>";
+if (function_exists('gd_info')) {
+    $gd_info = gd_info();
+    echo "<pre>";
+    print_r($gd_info);
+    echo "</pre>";
+}
+
+// Check if WEBP is supported in imagetypes
+echo "<h3>Image Types Support:</h3>";
+$types = imagetypes();
+echo "IMG_WEBP supported: " . (($types & IMG_WEBP) ? 'YES' : 'NO') . "<br>";
+
+$webpFilePath  = '/var/www/moodledata/temp/img_68870537c938e.webp';
+
+$jpegFilePath = '/var/www/moodledata/temp/output.jpeg';
+
+// JPEG quality (0-100, 100 is best quality)
+$quality = 90;
+
+// Check if the WebP file exists
+if (!file_exists($webpFilePath)) {
+    die("Error: WebP file not found at $webpFilePath");
+}
+
+// Load the WebP image (only if function exists)
+if (function_exists('imagecreatefromwebp')) {
+    $image = imagecreatefromwebp($webpFilePath);
+} else {
+    echo "<p style='color: red;'>Error: imagecreatefromwebp() function not available. WEBP support not enabled.</p>";
+    echo $OUTPUT->footer();
+    exit;
+}
+
+// Check if image creation was successful
+if ($image === false) {
+    die("Error: Could not create image from WebP file.");
+}
+
+// Convert to JPEG and save
+if (imagejpeg($image, $jpegFilePath, $quality)) {
+    echo "WebP image successfully converted to JPEG and saved at $jpegFilePath";
+} else {
+    echo "Error: Failed to convert WebP to JPEG.";
+}
+
+// Destroy the image resource to free up memory
+imagedestroy($image);
+
 
 echo $OUTPUT->footer();
-

@@ -384,6 +384,7 @@
 <input type="hidden" id="block-ai-assistant-chatid" value="{{chatid}}">
 <input type="hidden" id="block-ai-assistant-courseid" value="{{courseid}}">
 <input type="hidden" id="block-ai-assistant-userid" value="{{userid}}">
+<input type="hidden" id="block-ai-assistant-tutorialchatid" value="{{tutorialchatid}}">
 <div class="row">
     <div class="col-12">
         <div class="chat-container">
@@ -436,12 +437,12 @@
                     <div class="d-flex justify-content-end mt-2">
                         <button type="button" class="btn btn-secondary btn-block-ai-assistant-save-chat"
                                 id="btn-block-ai-assistant-save-chat"
-                                data-chatid="{{chatid}}">
+                                data-tutorialchatid="{{tutorialchatid}}">
                             {{#str}}save_chat, block_ai_assistant{{/str}}
                         </button>
                         <button type="button" class="btn btn-secondary ml-2 btn-block-ai-assistant-summarize-chat"
                                 id="btn-block-ai-assistant-summarize-chat"
-                                data-chatid="{{chatid}}"
+                                data-tutorialchatid="{{tutorialchatid}}"
                                 data-botname="{{botname}}">
                             {{#str}}summarize_chat, block_ai_assistant{{/str}}
                         </button>

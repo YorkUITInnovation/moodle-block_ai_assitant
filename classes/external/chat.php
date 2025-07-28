@@ -4,6 +4,7 @@ require_once($CFG->libdir . "/externallib.php");
 require_once("$CFG->dirroot/config.php");
 
 use block_ai_assistant\cria;
+use block_ai_assistant\chat;
 use block_ai_assistant\course_modules;
 
 class block_ai_assistant_chat_ws extends external_api
@@ -17,6 +18,7 @@ class block_ai_assistant_chat_ws extends external_api
         return new external_function_parameters(
             array(
                 'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'tutorialchatid' => new external_value(PARAM_INT, 'Tutorial chat id', VALUE_REQUIRED),
                 'botname' => new external_value(PARAM_RAW, 'Cria bot name', VALUE_REQUIRED),
                 'prompt' => new external_value(PARAM_TEXT, 'User prompt', VALUE_REQUIRED),
                 'chatid' => new external_value(PARAM_RAW, 'Chat ID', VALUE_REQUIRED),
@@ -35,13 +37,14 @@ class block_ai_assistant_chat_ws extends external_api
      * @throws invalid_parameter_exception
      * @throws Exception
      */
-    public static function chat(int $courseid, $bot_name, $prompt, $chatid): string
+    public static function chat(int $courseid, $tutorialchatid, $bot_name, $prompt, $chatid): string
     {
-        global $DB;
+        global $DB, $USER;
         self::validate_parameters(
             self::chat_parameters(),
             [
                 'courseid' => $courseid,
+                'tutorialchatid' => $tutorialchatid,
                 'botname' => $bot_name,
                 'prompt' => $prompt,
                 'chatid' => $chatid
@@ -52,6 +55,15 @@ class block_ai_assistant_chat_ws extends external_api
         $context = \context_course::instance($courseid);
         self::validate_context($context);
 
+        // Insert the new prompt into the chat history.
+        $params = [
+            'tutorialchatid' => $tutorialchatid,
+            'userid' => $USER->id,
+            'is_human' => true,
+            'message' => $prompt,
+            'timecreated' => time(),
+        ];
+        $DB->insert_record('block_aia_chat_history', $params);
         // Get chat response
         $response = cria::chat_send($chatid, $prompt, $bot_name);
 
@@ -77,24 +89,24 @@ class block_ai_assistant_chat_ws extends external_api
                         $asset->mimetype = $m[1];
                         $asset->data = $m[2];
 
-                        if (!$DB->record_exists('block_aia_tutor_chat_assets', ['assetid' => $id, 'chatid' => $chatid])) {
-                            // Insert the asset into the database.
-                            $DB->insert_record('block_aia_tutor_chat_assets', $asset);
-                        }
+//                        if (!$DB->record_exists('block_aia_tutor_chat_assets', ['assetid' => $id, 'chatid' => $chatid])) {
+//                            // Insert the asset into the database.
+//                            $DB->insert_record('block_aia_tutor_chat_assets', $asset);
+//                        }
                     }
                 }
             }
         }
 
-        // Get the full history of the chat session. and update the block_aia_tutorial_chats for this chatid.
-        $full_chat_history = cria::chat_history($chatid);
-        $DB->set_field(
-            'block_aia_tutorial_chats',
-            'history',
-            $full_chat_history->history,
-            ['chatid' => $chatid]
-        );
-
+        // now insert response into the chat history.
+        $params = [
+            'tutorialchatid' => $tutorialchatid,
+            'userid' => $USER->id,
+            'is_human' => false,
+            'message' => $response,
+            'timecreated' => time(),
+        ];
+        $DB->insert_record('block_aia_chat_history', $params);
         return $response;
     }
 
@@ -167,20 +179,16 @@ class block_ai_assistant_chat_ws extends external_api
         $bot_name = $DB->get_field('block_aia_settings', 'bot_name', ['courseid' => $courseid]);
         if (empty($chatid)) {
             // Lets find out if a chat session already exists.
-            $chatid = $DB->get_field(
-                'block_aia_tutorial_chats',
-                'chatid',
-                [
-                    'courseid' => $courseid,
-                    'tutorialid' => $tutorialid,
-                    'userid' => $userid,
-                    'cmid' => $cmid
-                ]
+            $chatid = chat::get_chat_id(
+                $courseid,
+                $tutorialid,
+                $userid,
+                $cmid
             );
         }
 
         // Start chat session
-        if (empty($chatid)) {
+        if (!$chatid) {
             // Start a new chat session
             $params = self::start_cria_session(
                 $courseid,
@@ -205,81 +213,64 @@ class block_ai_assistant_chat_ws extends external_api
                 ]
             );
 
-            $full_chat_history = $chat_exists->history ?? cria::chat_history($chatid);
 
-            $chat_history = json_decode($full_chat_history);
-            $messages = [];
-            if (isset($chat_history->history)) {
-                $tutorial_name = $DB->get_field(
-                    'block_aia_tutorial_chats',
-                    'name',
-                    ['chatid' => $chatid]
-                );
-                $history = $chat_history->history;
-                for ($i = 0; $i < count($history); $i++) {
-                    if ($i > 3) {
-                        if ($history[$i]->role == 'user') {
-                            $is_human = true;
-                        } else {
-                            $is_human = false;
-                        }
-                        // Process markdown HTML and convert any base64 links to <img> tags with proper data URI prefix
-                        $message = markdown_to_html($history[$i]->blocks[0]->text);
-
-                        // Process images in the message
-                        $dommsg = new \DOMDocument();
-                        @$dommsg->loadHTML(mb_convert_encoding($message, 'HTML-ENTITIES', 'UTF-8'));
-                        $imgs = $dommsg->getElementsByTagName('img');
-                        foreach ($imgs as $img) {
-                            $src = $img->getAttribute('src');
-                            if (!empty($src)) {
-                                $asset = $DB->get_record('block_aia_tutor_chat_assets', ['assetid' => $src, 'chatid' => $chatid], '*', IGNORE_MISSING);
-                                if ($asset) {
-                                    $img->setAttribute('id', $asset->assetid);
-                                    $img->setAttribute('src', 'data:' . $asset->mimetype . ';base64,' . $asset->data);
-                                    $img->setAttribute('alt', 'Asset Image');
-                                    $img->setAttribute('style', 'max-width: 100%; height: auto;');
-                                }
-                            }
-                        }
-                        // Regenerate HTML without html/body wrapper
-                        $body = $dommsg->getElementsByTagName('body')->item(0);
-                        $message = '';
-                        foreach ($body->childNodes as $child) {
-                            $message .= $dommsg->saveHTML($child);
-                        }
-
-                        $messages[] = [
-                            'is_human' => $is_human,
-                            'message' => $message,
-                        ];
-                    }
-                }
-            } else {
-                // There is a chat id but an error was thrown. So delete the chat id and start a new session.
-                cria::chat_end($chatid);
-                $DB->delete_records(
+            // Store the original chatid to update the assets table later.
+            $original_chatid = $chatid;
+            // Now let's check if the chat_id still exists on cria
+            $cria_chat_exists = cria::chat_exists($original_chatid);
+            if (!$cria_chat_exists->exists) {
+                // Start a new chat session.
+                $chatid = cria::chat_start();
+                // Now update the chatid in the database.
+                $DB->update_record(
                     'block_aia_tutorial_chats',
                     [
-                        'courseid' => $courseid,
-                        'tutorialid' => $tutorialid,
-                        'userid' => $userid,
-                        'cmid' => $cmid
+                        'id' => $chat_exists->id,
+                        'chatid' => $chatid,
+                        'timemodified' => time()
                     ]
                 );
-                // If no history, start a new session.
-                $params = self::start_cria_session(
-                    $courseid,
-                    $cmid,
-                    $name,
-                    $tutorialid,
-                    $userid,
-                    $bot_name
-                );
-                $chatid = $params->chat_id;
-                $tutorial_name = $params->tutorial_name;
-                $messages = json_decode($params->messages)[0];
+                // Also update the assets table with the new chatid.
+//                $DB->set_field(
+//                    'block_aia_tutor_chat_assets',
+//                    'chatid',
+//                    $chatid,
+//                    ['chatid' => $original_chatid]
+//                );
             }
+//            if (isset($chat_history->history)) {
+            // Get messages and tutorial name
+            $data = chat::get_messages(
+                $chat_exists->id
+            );
+
+            $tutorial_name = $data['tutorial_name'];
+            $messages = $data['messages'];
+//            } else {
+//                // There is a chat id but an error was thrown. So delete the chat id and start a new session.
+//                cria::chat_end($chatid);
+//                $DB->delete_records(
+//                    'block_aia_tutorial_chats',
+//                    [
+//                        'courseid' => $courseid,
+//                        'tutorialid' => $tutorialid,
+//                        'userid' => $userid,
+//                        'cmid' => $cmid
+//                    ]
+//                );
+//                // If no history, start a new session.
+//                $params = self::start_cria_session(
+//                    $courseid,
+//                    $cmid,
+//                    $name,
+//                    $tutorialid,
+//                    $userid,
+//                    $bot_name
+//                );
+//                $chatid = $params->chat_id;
+//                $tutorial_name = $params->tutorial_name;
+//                $messages = json_decode($params->messages)[0];
+//            }
         }
 
         // Prepare data to return.
@@ -359,6 +350,7 @@ class block_ai_assistant_chat_ws extends external_api
 
         return false;
     }
+
     /**
      * Returns method result value
      * @return external_value
@@ -402,7 +394,7 @@ class block_ai_assistant_chat_ws extends external_api
             $tutorial->prompt
         );
         // Add the chat ID to the database.
-        $DB->insert_record('block_aia_tutorial_chats', [
+        $tutorialchatid = $DB->insert_record('block_aia_tutorial_chats', [
             'courseid' => $courseid,
             'tutorialid' => $tutorialid,
             'chatid' => $chat_id,
@@ -412,10 +404,31 @@ class block_ai_assistant_chat_ws extends external_api
             'timecreated' => time(),
         ]);
 
+        // Add the message (prompt) to the chat_history table.
+        $params = [
+            'tutorialchatid' => $tutorialchatid,
+            'userid' => $userid,
+            'is_human' => false,
+            'message' => $initial_prompt,
+            'timecreated' => time(),
+        ];
+
+        $DB->insert_record('block_aia_chat_history', $params);
+        // Get message from Cria
+        $message = cria::chat_send($chat_id, $initial_prompt, $bot_name);
+        // INsert new message to chat history.
+        $new_message_params = [
+            'tutorialchatid' => $tutorialchatid,
+            'userid' => $USER->id,
+            'is_human' => false,
+            'message' => $message,
+            'timecreated' => time(),
+        ];
+        $DB->insert_record('block_aia_chat_history', $new_message_params);
         $messages = [
             [
                 'is_human' => false,
-                'message' => cria::chat_send($chat_id, $initial_prompt, $bot_name),
+                'message' => $message,
             ]
         ];
 

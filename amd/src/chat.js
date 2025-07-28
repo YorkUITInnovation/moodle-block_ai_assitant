@@ -25,12 +25,14 @@ export const sendMessage = async () => {
         const courseId = document.getElementById('block-ai-assistant-courseid').value;
         const chatId = document.getElementById('block-ai-assistant-chatid').value;
         const botName = document.getElementById('block-ai-assistant-botname').value;
+        const tutorialChatId = document.getElementById('block-ai-assistant-tutorialchatid').value;
 
         if (prompt) {
             const response = await ajax.call([{
                 methodname: 'block_ai_assistant_chat',
                 args: {
                     courseid: courseId,
+                    tutorialchatid: tutorialChatId,
                     botname: botName,
                     prompt: prompt,
                     chatid: chatId

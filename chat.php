@@ -27,16 +27,21 @@ $chat_session = (object)block_ai_assistant_chat_ws::start(
     $chatid
 )[0];
 
+// Get tutorialchatid
+$tutorialchatid = $DB->get_field(
+    'block_aia_tutorial_chats',
+    'id',
+    ['userid' => $USER->id, 'courseid' => $courseid, 'tutorialid' => $tutorialid, 'cmid' => $cmid]
+);
 
 $chat_header = $chat_session->tutorial_name . ': ' . $chat_session->name;
-
-
 
 $messages = json_decode($chat_session->messages, true);
 $data = [
     'courseid' => $courseid,
     'botname' => $chat_session->bot_name,
     'tutorialid' => $tutorialid,
+    'tutorialchatid' => $tutorialchatid,
     'chatheader' => $chat_header,
     'chatid' => $chat_session->chat_id,
     'messages' => $messages,

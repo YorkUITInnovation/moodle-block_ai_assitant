@@ -165,15 +165,15 @@ function initSaveChatButton() {
         saveChatButton.addEventListener('click', function(e) {
             e.preventDefault();
             // Get chatid from data attribute
-            const chatid = this.getAttribute('data-chatid');
+            const tutorialChatId = this.getAttribute('data-tutorialchatid');
 
-            if (!chatid) {
+            if (!tutorialChatId) {
                 notification.exception(new Error('Chat ID not found'));
                 return;
             }
 
             // Call save_chat.php to download PDF
-            downloadChatHistory(chatid);
+            downloadChatHistory(tutorialChatId);
         });
     }
 }
@@ -182,12 +182,12 @@ function initSaveChatButton() {
  * Download chat history as PDF
  * @param {string} chatid - Chat ID for the conversation
  */
-function downloadChatHistory(chatid) {
+function downloadChatHistory(tutorialChatId) {
     try {
         // Create URL for save_chat.php
         const saveUrl = config.wwwroot + '/blocks/ai_assistant/save_chat.php';
         const params = new URLSearchParams();
-        params.append('chatid', chatid);
+        params.append('tutorialchatid', tutorialChatId);
 
         // Create full URL
         const fullUrl = saveUrl + '?' + params.toString();
@@ -223,16 +223,16 @@ function initSummarizeChatButton() {
             e.preventDefault();
 
             // Get chatid from data attribute
-            const chatid = this.getAttribute('data-chatid');
+            const tutorialChatId = this.getAttribute('data-tutorialchatid');
             const botName = this.getAttribute('data-botname');
 
-            if (!chatid || !botName) {
-                notification.exception(new Error('Chat ID or Bot name not found'));
+            if (!tutorialChatId || !botName) {
+                notification.exception(new Error('Tutorial Chat ID or Bot name not found'));
                 return;
             }
 
             // Call summarize_chat.php to download summary
-            downloadChatSummary(chatid, botName);
+            downloadChatSummary(tutorialChatId, botName);
         });
     }
 }
@@ -241,12 +241,12 @@ function initSummarizeChatButton() {
  * Download chat summary from summarize_chat.php
  * @param {string} chatid - Chat ID for the conversation
  */
-function downloadChatSummary(chatid, botName) {
+function downloadChatSummary(tutorialChatId, botName) {
     try {
         // Create URL for summarize_chat.php
         const summarizeUrl = config.wwwroot + '/blocks/ai_assistant/summarize_chat.php';
         const params = new URLSearchParams();
-        params.append('chatid', chatid);
+        params.append('tutorialchatid', tutorialChatId);
         params.append('botname', botName);
 
         // Create full URL

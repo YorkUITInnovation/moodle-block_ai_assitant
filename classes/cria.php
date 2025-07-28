@@ -4,6 +4,7 @@ namespace block_ai_assistant;
 
 
 use block_ai_assistant\webservice;
+
 use Exception;
 
 require_once($CFG->libdir . '/phpspreadsheet/vendor/autoload.php');
@@ -789,6 +790,21 @@ class cria
     }
 
     /**
+     * Check if chat exists
+     * @param $chat_id
+     * @return object
+     */
+    public static function chat_exists($chat_id)
+    {
+        $method = 'cria_chat_exists';
+        $data = array(
+            'chat_id' => trim($chat_id)
+        );
+        $chat_exists = webservice::exec($method, $data);
+        return (object)json_decode($chat_exists, true);
+    }
+
+    /**
      * @return mixed
      */
     public static function chat_start()
@@ -819,6 +835,7 @@ class cria
         if ($response->status == 200) {
             return $response->content ?? ''; // Return content or empty string if not set
         }
+        print_object($response);
         return $response->status . ' ' . $response->code ?? ''; // Return content or empty string if not set
     }
 

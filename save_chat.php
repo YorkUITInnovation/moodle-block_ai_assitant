@@ -3,37 +3,17 @@
 require_once(__DIR__ . '/../../config.php');
 
 use block_ai_assistant\cria;
+use block_ai_assistant\chat;
 
 global $CFG, $DB, $USER;
 require_once($CFG->libdir . '/tcpdf/tcpdf.php');
 
-
-$chatid = required_param('chatid', PARAM_TEXT);
+$tutorialchatid = required_param('tutorialchatid', PARAM_TEXT);
+$bot_name = optional_param('botname', '', PARAM_TEXT);
 // Get Chat history form Cria
-$full_chat_history = cria::chat_history($chatid);
-$chat_history = json_decode($full_chat_history->history);
-$messages = [];
-if (isset($chat_history->history)) {
-    $tutorial_name = $DB->get_field(
-        'block_aia_tutorial_chats',
-        'name',
-        ['chatid' => $chatid]
-    );
-    $history = $chat_history->history;
-    for ($i = 0; $i < count($history); $i++) {
-        if ($i > 3) {
-            if ($history[$i]->role == 'user') {
-                $is_human = true;
-            } else {
-                $is_human = false;
-            }
-            $messages[] = [
-                'is_human' => $is_human,
-                'message' => $history[$i]->blocks[0]->text,
-            ];
-        }
-    }
-}
+$data = chat::get_messages($tutorialchatid);
+$messages = $data['messages'];
+$tutorial_name = $data['tutorial_name'] ?? null;
 
 $user = $DB->get_record('user', ['id' => $USER->id]);
 $full_name = fullname($user);
@@ -70,8 +50,6 @@ $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
 
 // Add a page
 $pdf->AddPage();
-
-// Set font
 $pdf->SetFont('helvetica', '', 11);
 
 // Build HTML content for the PDF
@@ -80,18 +58,103 @@ $html .= '<p><strong>Tutorial:</strong> ' . htmlspecialchars($tutorial_name ?? '
 $html .= '<p><strong>User:</strong> ' . htmlspecialchars($full_name) . '</p>';
 $html .= '<p><strong>Date:</strong> ' . date('Y-m-d H:i:s') . '</p>';
 $html .= '<hr>';
+$tempFiles = [];
 
 foreach ($messages as $message) {
-    if ($message['is_human']) {
-        $html .= '<p><strong>' . htmlspecialchars($full_name) . ':</strong></p>';
-    } else {
-        $html .= '<p><strong>AI Assistant:</strong></p>';
+    // Author
+    $author = $message['is_human'] ? htmlspecialchars($full_name) : 'AI Assistant';
+    $html .= '<p><strong>' . $author . ':</strong></p>';
+
+    $text = $message['message'];
+
+    // Convert base64 images to file references for TCPDF
+    if (preg_match_all('/<img[^>]+src="data:image\/([^;]+);base64,([^"\s]+)"[^>]*>/i', $text, $matches)) {
+        for ($i = 0; $i < count($matches[0]); $i++) {
+            $base64 = urldecode($matches[2][$i]);
+            $data = base64_decode($base64);
+
+            if ($data !== false && strlen($data) > 0) {
+                $tempDir = $CFG->dataroot . '/temp';
+                if (!is_dir($tempDir)) {
+                    mkdir($tempDir, 0755, true);
+                }
+
+                // Check if we have WEBP support
+                if (function_exists('imagecreatefromwebp')) {
+                    $image = @imagecreatefromstring($data);
+                    if ($image !== false) {
+                        // Convert to JPEG format (most reliable for TCPDF)
+                        $jpgFile = $tempDir . '/img_' . uniqid() . '.jpg';
+                        imagejpeg($image, $jpgFile, 90);
+                        imagedestroy($image);
+                        $tempFiles[] = $jpgFile;
+
+                        // Replace the base64 img tag with a file reference
+                        $text = str_replace($matches[0][$i], '<img src="' . $jpgFile . '" style="width:80mm;" />', $text);
+                    } else {
+                        $text = str_replace($matches[0][$i], '', $text);
+                    }
+                } else {
+                    // No WEBP support - add a placeholder message
+                    $text = str_replace($matches[0][$i], '<p><em>[Image not supported - WEBP format requires additional PHP configuration]</em></p>', $text);
+                }
+            }
+        }
     }
-    $html .= '<p style="margin-left: 20px; margin-bottom: 15px;">' . nl2br(htmlspecialchars($message['message'])) . '</p>';
+
+    // Allow basic formatting
+    $allowed = '<b><strong><i><em><u><ul><ol><li><p><br><img>';
+    $text = strip_tags($text, $allowed);
+    $html .= $text;
 }
 
-// Output the HTML content
-$pdf->writeHTML($html, true, false, true, false, '');
+// Process HTML and insert images
+$htmlParts = preg_split('/(<img[^>]*>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+foreach ($htmlParts as $part) {
+    if (preg_match('/^<img[^>]*src="([^"]+)"[^>]*>/', $part, $matches)) {
+        // This is an image tag - insert it directly
+        $imagePath = $matches[1];
+        if (file_exists($imagePath)) {
+            try {
+                $imageInfo = getimagesize($imagePath);
+                if ($imageInfo !== false) {
+                    $imageType = '';
+                    if ($imageInfo[2] == IMAGETYPE_PNG) {
+                        $imageType = 'PNG';
+                    } elseif ($imageInfo[2] == IMAGETYPE_JPEG) {
+                        $imageType = 'JPG';
+                    } elseif ($imageInfo[2] == IMAGETYPE_WEBP) {
+                        $imageType = 'WEBP';
+                    } else {
+                        $ext = strtolower(pathinfo($imagePath, PATHINFO_EXTENSION));
+                        if ($ext === 'png') $imageType = 'PNG';
+                        elseif ($ext === 'jpg' || $ext === 'jpeg') $imageType = 'JPG';
+                        elseif ($ext === 'webp') $imageType = 'WEBP';
+                        else $imageType = 'PNG';
+                    }
+
+                    if ($imageType && $imageType !== 'WEBP') {
+                        $pdf->Image($imagePath, '', '', 80, '', $imageType, '', 'T', false, 300);
+                        $pdf->Ln(5);
+                    }
+                }
+            } catch (Exception $e) {
+                // Silently skip problematic images
+            }
+        }
+    } else {
+        // This is regular HTML content
+        if (trim($part)) {
+            $pdf->writeHTML($part, true, false, true, false, '');
+        }
+    }
+}
+
+// Clean up temp files
+foreach ($tempFiles as $file) {
+    @unlink($file);
+}
 
 // Generate filename
 $filename = 'chat_history_' . str_replace(' ', '_', $tutorial_name) .  '_' . date('Y-m-d_H-i-s') . '.pdf';

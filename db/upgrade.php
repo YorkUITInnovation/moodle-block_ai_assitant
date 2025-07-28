@@ -746,6 +746,56 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2025072417, 'ai_assistant');
     }
 
+    if ($oldversion < 2025072418) {
+
+        // Define table block_aia_chat_history to be created.
+        $table = new xmldb_table('block_aia_chat_history');
+
+        // Adding fields to table block_aia_chat_history.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('tutorialchatid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('message', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '16', null, null, null, '0');
+
+        // Adding keys to table block_aia_chat_history.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Adding indexes to table block_aia_chat_history.
+        $table->add_index('tutorialchatid_x', XMLDB_INDEX_NOTUNIQUE, ['tutorialchatid']);
+
+        // Conditionally launch create table for block_aia_chat_history.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072418, 'ai_assistant');
+    }
+
+
+    if ($oldversion < 2025072419) {
+
+        // Define field userid to be added to block_aia_chat_history.
+        $table = new xmldb_table('block_aia_chat_history');
+        $field = new xmldb_field('userid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0', 'tutorialchatid');
+
+        // Conditionally launch add field userid.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field is_human to be added to block_aia_chat_history.
+        $table = new xmldb_table('block_aia_chat_history');
+        $field = new xmldb_field('is_human', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'userid');
+
+        // Conditionally launch add field is_human.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072419, 'ai_assistant');
+    }
     return true;
 
 }

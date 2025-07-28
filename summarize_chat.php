@@ -3,104 +3,90 @@
 require_once(__DIR__ . '/../../config.php');
 
 use block_ai_assistant\cria;
+use block_ai_assistant\chat;
 
 global $CFG, $DB, $USER;
 require_once($CFG->libdir . '/tcpdf/tcpdf.php');
 
-$chatid = required_param('chatid', PARAM_TEXT);
+$tutorialchatid = required_param('tutorialchatid', PARAM_TEXT);
 $bot_name = optional_param('botname', '', PARAM_TEXT);
 // Get Chat history form Cria
-$full_chat_history = cria::chat_history($chatid);
-$chat_history = json_decode($full_chat_history->history);
-$messages = [];
-if (isset($chat_history->history)) {
-    $tutorial_name = $DB->get_field(
-        'block_aia_tutorial_chats',
-        'name',
-        ['chatid' => $chatid]
-    );
-    $history = $chat_history->history;
-    for ($i = 0; $i < count($history); $i++) {
-        if ($i > 3) {
-            if ($history[$i]->role == 'user') {
-                $is_human = true;
-            } else {
-                $is_human = false;
-            }
-            $messages[] = [
-                'is_human' => $is_human,
-                'message' => $history[$i]->blocks[0]->text,
-            ];
-        }
-    }
-}
+$data = chat::get_messages($tutorialchatid);
+$messages = $data['messages'];
+$tutorial_name = $data['tutorial_name'] ?? null;
 
 $user = $DB->get_record('user', ['id' => $USER->id]);
 $full_name = fullname($user);
 
-// Build Markdown content for the PDF
-$content = get_string('summary_prompt', 'block_ai_assistant') . "\n\n";
-$content .= '**' . get_string('tutorial', 'block_ai_assistant') . ':** ' . ($tutorial_name ?? 'AI Assistant Chat') . "\n\n";
-$content .= '**' . get_string('student', 'block_ai_assistant') . ':** ' . $full_name . "\n\n";
-$content .= '**' . get_string('date', 'block_ai_assistant') . ':** ' . date('Y-m-d H:i:s') . "\n\n";
-$content .= '---' . "\n\n";
+// Build HTML content for the summary
+$content = '<p>' . htmlspecialchars(get_string('summary_prompt', 'block_ai_assistant')) . '</p>';
+$content .= '<p><strong>' . get_string('tutorial', 'block_ai_assistant') . ':</strong> '
+    . htmlspecialchars($tutorial_name ?? 'AI Assistant Chat') . '</p>';
+$content .= '<p><strong>' . get_string('student', 'block_ai_assistant') . ':</strong> '
+    . htmlspecialchars($full_name) . '</p>';
+$content .= '<p><strong>' . get_string('date', 'block_ai_assistant') . ':</strong> '
+    . date('Y-m-d H:i:s') . '</p>';
+$content .= '<hr>';
 
 foreach ($messages as $message) {
-    if ($message['is_human']) {
-        $content .= '**' . $full_name . ':**' . "\n\n";
-    } else {
-        $content .= '**' . get_string('ai_assistant', 'block_ai_assistant') . ':**' . "\n\n";
+    // If the html message has an image, remove it.
+    if (preg_match('/<img[^>]+src="data:image\/[^;]+;base64,[^"]+"[^>]*>/i', $message['message'])) {
+        $message['message'] = preg_replace('/<img[^>]+src="data:image\/[^;]+;base64,[^"]+"[^>]*>/i', '', $message['message']);
     }
-    $content .= $message['message'] . "\n\n";
+
+    $label = $message['is_human']
+        ? htmlspecialchars($full_name)
+        : htmlspecialchars(get_string('ai_assistant', 'block_ai_assistant'));
+    $content .= '<p><strong>' . $label . ':</strong></p>';
+    $content .= '<p>' . nl2br(htmlspecialchars($message['message'])) . '</p>';
 }
 
 //get a new chat session
-$chat_session = cria::chat_start();
-
-$summary = cria::chat_send($chat_session, $content, $bot_name);
+    $chat_session = cria::chat_start();
+    $summary = cria::chat_send($chat_session, $content, $bot_name);
 
 // Delete the chat session after summarization
-cria::chat_end($chat_session);
+    cria::chat_end($chat_session);
 
 // Create PDF
-$pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+    $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 
 // Set document information
-$pdf->SetCreator( get_string('ai_assistant', 'block_ai_assistant'));
-$pdf->SetAuthor($full_name);
-$pdf->SetTitle(get_string('chat_summary', 'block_ai_assistant') . ' - '
-    . ($tutorial_name ?? 'AI Assistant Chat'));
-$pdf->SetSubject(get_string('ai_assistant', 'block_ai_assistant') . ' '
-    . get_string('chat_summary', 'block_ai_assistant'));
+    $pdf->SetCreator(get_string('ai_assistant', 'block_ai_assistant'));
+    $pdf->SetAuthor($full_name);
+    $pdf->SetTitle(get_string('chat_summary', 'block_ai_assistant') . ' - '
+        . ($tutorial_name ?? 'AI Assistant Chat'));
+    $pdf->SetSubject(get_string('ai_assistant', 'block_ai_assistant') . ' '
+        . get_string('chat_summary', 'block_ai_assistant'));
 
 // Set default header data
-$pdf->SetHeaderData('', 0, get_string('ai_assistant', 'block_ai_assistant') . ' '
-    . get_string('chat_summary', 'block_ai_assistant'),
-    ($tutorial_name ?? 'Chat Session') . ' - ' . date('Y-m-d H:i:s'));
+    $pdf->SetHeaderData('', 0, get_string('ai_assistant', 'block_ai_assistant') . ' '
+        . get_string('chat_summary', 'block_ai_assistant'),
+        ($tutorial_name ?? 'Chat Session') . ' - ' . date('Y-m-d H:i:s'));
 
 // Set header and footer fonts
-$pdf->setHeaderFont(array(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN));
-$pdf->setFooterFont(array(PDF_FONT_NAME_DATA, '', PDF_FONT_SIZE_DATA));
+    $pdf->setHeaderFont(array(PDF_FONT_NAME_MAIN, '', PDF_FONT_SIZE_MAIN));
+    $pdf->setFooterFont(array(PDF_FONT_NAME_DATA, '', PDF_FONT_SIZE_DATA));
 
 // Set default monospaced font
-$pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
+    $pdf->SetDefaultMonospacedFont(PDF_FONT_MONOSPACED);
 
 // Set margins
-$pdf->SetMargins(PDF_MARGIN_LEFT, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
-$pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
-$pdf->SetFooterMargin(PDF_MARGIN_FOOTER);
+    $pdf->SetMargins(PDF_MARGIN_LEFT, PDF_MARGIN_TOP, PDF_MARGIN_RIGHT);
+    $pdf->SetHeaderMargin(PDF_MARGIN_HEADER);
+    $pdf->SetFooterMargin(PDF_MARGIN_FOOTER);
 
 // Set auto page breaks
-$pdf->SetAutoPageBreak(TRUE, PDF_MARGIN_BOTTOM);
+    $pdf->SetAutoPageBreak(TRUE, PDF_MARGIN_BOTTOM);
 
 // Set image scale factor
-$pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
+    $pdf->setImageScale(PDF_IMAGE_SCALE_RATIO);
 
 // Add a page
-$pdf->AddPage();
+    $pdf->AddPage();
 
 // Set font
-$pdf->SetFont('helvetica', '', 11);
+    $pdf->SetFont('helvetica', '', 11);
 
 // Build HTML content for the PDF
 $html = '<h2>' . get_string('chat_summary', 'block_ai_assistant') . '</h2>';
@@ -110,18 +96,17 @@ $html .= '<p><strong>' . get_string('date', 'block_ai_assistant') . ':</strong> 
 $html .= '<hr>';
 $html .= '<br>' . $summary;
 
-
 // Output the HTML content
-$pdf->writeHTML($html, true, false, true, false, '');
+    $pdf->writeHTML($html, true, false, true, false, '');
 
 // Generate filename
-$filename = 'chat_summary_' . str_replace(' ', '_', $tutorial_name) . '_' . date('Y-m-d_H-i-s') . '.pdf';
+    $filename = 'chat_summary_' . str_replace(' ', '_', $tutorial_name) . '_' . date('Y-m-d_H-i-s') . '.pdf';
 
 // Clean output buffer
-if (ob_get_length()) {
-    ob_end_clean();
-}
+    if (ob_get_length()) {
+        ob_end_clean();
+    }
 
 // Output PDF for download
-$pdf->Output($filename, 'D');
-exit;
+    $pdf->Output($filename, 'D');
+    exit;
