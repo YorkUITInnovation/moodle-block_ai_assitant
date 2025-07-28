@@ -230,15 +230,10 @@ class block_ai_assistant_chat_ws extends external_api
                         'timemodified' => time()
                     ]
                 );
-                // Also update the assets table with the new chatid.
-//                $DB->set_field(
-//                    'block_aia_tutor_chat_assets',
-//                    'chatid',
-//                    $chatid,
-//                    ['chatid' => $original_chatid]
-//                );
+                // Train the bot to continue the chat session.
+                chat::continue_chat($tutorialid, $chatid, $bot_name);
             }
-//            if (isset($chat_history->history)) {
+
             // Get messages and tutorial name
             $data = chat::get_messages(
                 $chat_exists->id
@@ -246,31 +241,7 @@ class block_ai_assistant_chat_ws extends external_api
 
             $tutorial_name = $data['tutorial_name'];
             $messages = $data['messages'];
-//            } else {
-//                // There is a chat id but an error was thrown. So delete the chat id and start a new session.
-//                cria::chat_end($chatid);
-//                $DB->delete_records(
-//                    'block_aia_tutorial_chats',
-//                    [
-//                        'courseid' => $courseid,
-//                        'tutorialid' => $tutorialid,
-//                        'userid' => $userid,
-//                        'cmid' => $cmid
-//                    ]
-//                );
-//                // If no history, start a new session.
-//                $params = self::start_cria_session(
-//                    $courseid,
-//                    $cmid,
-//                    $name,
-//                    $tutorialid,
-//                    $userid,
-//                    $bot_name
-//                );
-//                $chatid = $params->chat_id;
-//                $tutorial_name = $params->tutorial_name;
-//                $messages = json_decode($params->messages)[0];
-//            }
+
         }
 
         // Prepare data to return.
