@@ -106,14 +106,6 @@
                     >{{#str}}configure_bot_settings, block_ai_assistant{{/str}}
                     </a>
                 </li>
-                <!--Manage Tutorial -->
-                <li class="list-group-item">
-                    <a href="{{config.wwwroot}}/blocks/ai_assistant/tutorials.php?courseid={{courseid}}"
-                    class="btn btn-link btn-sm edit-button"
-                    title="{{#str}}manage_tutorials, block_ai_assistant{{/str}}"
-                    >{{#str}}manage_tutorials, block_ai_assistant{{/str}}
-                    </a>
-                </li>
                 {{#is_admin}}
                     <li class="list-group-item">
                         <!--upload autotest -->
@@ -158,18 +150,15 @@
     <div class="row mt-4">
         <div class="col-md-12">
             <h5>{{#str}}ai_learning_assistant, block_ai_assistant{{/str}}</h5>
-            {{^publish_tutorials}}
-                <button type="button" class="btn btn-primary btn-sm" id="btn-enable-tutorials"
-                        data-courseid="{{courseid}}">{{#str}}enable_tutorials, block_ai_assistant{{/str}}
-                </button>
-            {{/publish_tutorials}}
-
-            {{#publish_tutorials}}
-                <button type="button" class="btn btn-primary btn-sm" id="btn-enable-tutorials"
-                        data-courseid="{{courseid}}">{{#str}}disable_tutorials, block_ai_assistant{{/str}}
-                </button>
-            {{/publish_tutorials}}
             <ul class="list-group mt-2">
+                <!--Manage Tutorial -->
+                <li class="list-group-item">
+                    <a href="{{config.wwwroot}}/blocks/ai_assistant/tutorials.php?courseid={{courseid}}"
+                    class="btn btn-link btn-sm edit-button"
+                    title="{{#str}}manage_tutorials, block_ai_assistant{{/str}}"
+                    >{{#str}}manage_tutorials, block_ai_assistant{{/str}}
+                    </a>
+                </li>
                 {{#tutorials}}
                     <li class="list-group-item">
                         <button type="button"
@@ -180,6 +169,17 @@
                     </li>
                 {{/tutorials}}
             </ul>
+            {{^publish_tutorials}}
+                <button type="button" class="btn btn-primary btn-sm mt-2" id="btn-enable-tutorials"
+                        data-courseid="{{courseid}}">{{#str}}enable_tutorials, block_ai_assistant{{/str}}
+                </button>
+            {{/publish_tutorials}}
+
+            {{#publish_tutorials}}
+                <button type="button" class="btn btn-primary btn-sm  mt-2" id="btn-enable-tutorials"
+                        data-courseid="{{courseid}}">{{#str}}disable_tutorials, block_ai_assistant{{/str}}
+                </button>
+            {{/publish_tutorials}}
         </div>
     </div>
 
