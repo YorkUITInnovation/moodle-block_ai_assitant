@@ -18,6 +18,10 @@ require_login($courseid, false);
 
 $context = context_course::instance($courseid);
 
+// Get the use picture for the current user.
+$user_picture = new \user_picture($USER);
+//print_object($user_picture->get_url($PAGE));
+
 $chat_session = (object)block_ai_assistant_chat_ws::start(
     $courseid,
     $tutorialid,
@@ -47,6 +51,7 @@ $data = [
     'messages' => $messages,
     'userid' => $USER->id,
     'saved_chats' => chat::get_saved_chats($courseid, $USER->id),
+    'profileimageurl' => $user_picture->get_url($PAGE)->out(),
 ];
 
 $PAGE->set_url(new moodle_url('/blocks/learningassist/chat.php', []));

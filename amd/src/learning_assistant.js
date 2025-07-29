@@ -60,12 +60,10 @@ function displayModalWithContent(content, courseid, tutorialid) {
     // Get strings for modal title and close button
     const stringRequests = [
         {key: 'course_modules', component: 'block_ai_assistant'},
-        {key: 'close', component: 'core'}
     ];
 
     Str.get_strings(stringRequests).then(function (strings) {
         const modalTitle = strings[0] || 'Course Modules';
-        const closeLabel = strings[1] || 'Close';
 
         // Create modal factory
         return ModalFactory.create({
@@ -179,8 +177,8 @@ function initSaveChatButton() {
 }
 
 /**
- * Download chat history as PDF
- * @param {string} chatid - Chat ID for the conversation
+ * Download chat history from save_chat.php
+ * @param {int} tutorialChatId
  */
 function downloadChatHistory(tutorialChatId) {
     try {
@@ -239,7 +237,8 @@ function initSummarizeChatButton() {
 
 /**
  * Download chat summary from summarize_chat.php
- * @param {string} chatid - Chat ID for the conversation
+ * @param {int} tutorialChatId - Chat ID for the conversation
+ * @param {string} botName - Name of the AI bot
  */
 function downloadChatSummary(tutorialChatId, botName) {
     try {

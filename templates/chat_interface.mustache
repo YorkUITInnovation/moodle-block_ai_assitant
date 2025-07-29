@@ -169,11 +169,12 @@
     }
 
     .human-message::after {
-        content: '👤';
+        content: '';
         width: 32px;
         height: 32px;
         border-radius: 50%;
-        background: #dbeafe;
+        background: #dbeafe url('{{profileimageurl}}') center center no-repeat;
+        background-size: cover;
         display: flex;
         align-items: center;
         justify-content: center;

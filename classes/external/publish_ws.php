@@ -73,4 +73,64 @@ class block_ai_assistant_publish_ws extends external_api
     {
         return new external_value(PARAM_BOOL, 'Boolean');
     }
+
+
+    /**
+     * Returns description of method parameters
+     * @return external_function_parameters
+     */
+    public static function publish_tutorials_parameters()
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED)
+            )
+        );
+    }
+
+    /**
+     * @param int $course_id
+     * @return bool
+     * @throws dml_exception
+     * @throws invalid_parameter_exception
+     * @throws restricted_context_exception
+     */
+    public static function publish_tutorials($course_id)
+    {
+        global $CFG, $USER, $DB, $PAGE;
+
+        //Parameter validation
+        $params = self::validate_parameters(
+            self::publish_parameters(),
+            array(
+                'courseid' => $course_id
+            )
+        );
+
+        //Context validation
+        //OPTIONAL but in most web service it should present
+        $context = CONTEXT_COURSE::instance($course_id);
+        self::validate_context($context);
+
+        // Get the course record to fetch cria_file_id
+        $courserecord = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
+        if ($courserecord->publish_tutorials == 1) {
+            // Update record with publish 0
+            $DB->set_field('block_aia_settings', 'publish_tutorials', 0, ['courseid' => $course_id]);
+            return false;
+        } else {
+            // Update record with publish 1
+            $DB->set_field('block_aia_settings', 'publish_tutorials', 1, ['courseid' => $course_id]);
+            return true;
+        }
+    }
+
+    /**
+     * Returns method result value
+     * @return external_description
+     */
+    public static function publish_tutorials_returns()
+    {
+        return new external_value(PARAM_BOOL, 'Boolean');
+    }
 }

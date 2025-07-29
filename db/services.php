@@ -54,6 +54,15 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_publish_tutorials' => array(
+        'classname' => 'block_ai_assistant_publish_ws',
+        'methodname' => 'publish_tutorials',
+        'classpath' => 'blocks/ai_assistant/classes/external/publish_ws.php',
+        'description' => 'Make tutorials available, or not, to students',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
     'blcok_block_ai_assistant_delete_autotest_question' => array(
         'classname' => 'block_ai_assistant_autotest_ws',
         'methodname' => 'delete',

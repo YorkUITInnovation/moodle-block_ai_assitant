@@ -307,12 +307,15 @@ class block_ai_assistant extends block_base
            $question_file_id = $question_file->id;
         }
 
-        // Check if tutorials are enabled
-        if ($course_record->publish_tutorials) {
+        $tutorials = '';
+        if (has_capability('block/ai_assistant:teacher', $course_context)) {
             $tutorials = tutorials::get_tutorials($this->page->course->id);
         } else {
-            $tutorials = '';
+            if ($course_record->publish_tutorials) {
+                $tutorials = tutorials::get_tutorials($this->page->course->id);
+            }
         }
+
 
         $params = array(
             'blockid' => $this->instance->id,
@@ -342,6 +345,7 @@ class block_ai_assistant extends block_base
             'is_admin' => has_capability('block/ai_assistant:view_autotest', $course_context),
             'tutorials' => $tutorials,
         );
+
         if (!empty($this->config->text)) {
             $this->content->text = $this->config->text;
         } else {

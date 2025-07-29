@@ -49,7 +49,7 @@ export const sendMessage = async () => {
                 chatMessages.innerHTML += bot_html;
                 input.focus();
             }).fail((error) => {
-                console.log(error);
+                alert(error);
             });
         }
     }
@@ -105,30 +105,6 @@ export const initChatMenu = () => {
 };
 
 
-// Create HTML for a chat item
-const createChatItemHTML = (chat) => {
-    const date = new Date(chat.timemodified * 1000).toLocaleDateString();
-    const title = chat.title || `Chat ${chat.id}`;
-
-    return `
-    <div class="saved-chat-item" data-chat-id="${chat.id}">
-      <div>
-        <div class="chat-title" title="${title}">${title}</div>
-        <div class="chat-date">${date}</div>
-      </div>
-      <div class="chat-actions">
-        <button class="chat-action-btn" data-action="rename" title="Rename chat">
-          <i class="fa fa-edit"></i>
-        </button>
-        <button class="chat-action-btn delete" data-action="delete" title="Delete chat">
-          <i class="fa fa-trash"></i>
-        </button>
-      </div>
-    </div>
-  `;
-};
-
-
 // Delete a chat
 const deleteChat = async (chatId, courseId) => {
     if (!confirm('Are you sure you want to delete this chat?')) {
@@ -143,50 +119,14 @@ const deleteChat = async (chatId, courseId) => {
             },
         }]);
 
-        response[0].done((result) => {
+        response[0].done(() => {
                // Redirect to course page after deletion
                 window.location.href = config.wwwroot + `/course/view.php?id=${courseId}`;
 
         }).fail((error) => {
-            alert('Failed to delete chat. Please try again.');
+            alert('Failed to delete chat. Please try again.' + error);
         });
     } catch (error) {
-        alert('Error deleting chat. Please try again.');
+        alert('Error deleting chat. Please try again. ' + error);
     }
 };
-
-// Rename a chat
-export const renameChat = async (chatId) => {
-    const newTitle = prompt('Enter new chat title:');
-    if (!newTitle || newTitle.trim() === '') {
-        return;
-    }
-
-    try {
-        const response = await ajax.call([{
-            methodname: 'block_ai_assistant_rename_chat',
-            args: {
-                chatid: chatId,
-                title: newTitle.trim()
-            },
-        }]);
-
-        response[0].done((result) => {
-            if (result.success) {
-                // Reload the saved chats list to show the new title
-                loadSavedChats();
-            }
-        }).fail((error) => {
-            console.error('Failed to rename chat:', error);
-            alert('Failed to rename chat. Please try again.');
-        });
-    } catch (error) {
-        console.error('Error renaming chat:', error);
-        alert('Error renaming chat. Please try again.');
-    }
-};
-
-// Initialize the chat menu when the page loads
-document.addEventListener('DOMContentLoaded', () => {
-    initChatMenu();
-});

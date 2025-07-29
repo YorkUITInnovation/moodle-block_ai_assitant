@@ -835,7 +835,6 @@ class cria
         if ($response->status == 200) {
             return $response->content ?? ''; // Return content or empty string if not set
         }
-        print_object($response);
         return $response->status . ' ' . $response->code ?? ''; // Return content or empty string if not set
     }
 

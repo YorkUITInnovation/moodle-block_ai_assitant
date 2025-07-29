@@ -65,7 +65,7 @@ function display_modules() {
                         }
 
                     }]);
-                    insert_modules[0].done(function (response) {
+                    insert_modules[0].done(function () {
                         if (currentNumberChecked === checkedCount) {
                             alert("Successfully added content to the course assistant");
                         }
