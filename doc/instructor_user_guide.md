@@ -40,7 +40,7 @@ The AI Course Assistant is a powerful Moodle plugin that provides instructors wi
    - **Wait patiently** - The initial setup may take 30-60 seconds as it creates a dedicated AI agent for your course
 4. **Verify installation** - The block should appear with basic configuration options
 
-> **Note**: The AI agent is course-specific and maintains conversation context throughout the semester.
+> **Note**: The AI agent is course-specific and maintains conversation context based on material you train it on.
 
 ---
 
