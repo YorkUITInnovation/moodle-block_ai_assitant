@@ -17,7 +17,7 @@
 
 ## Overview
 
-The AI Course Assistant is a powerful Moodle plugin that provides instructors with an intelligent teaching assistant powered by CRIA AI technology. This guide covers all instructor-specific features and capabilities to help you maximize the educational impact of your AI assistant.
+The AI Course Assistant is a powerful Moodle plugin that provides instructors with an intelligent teaching assistant powered by YU AURA AI technology. This guide covers all instructor-specific features and capabilities to help you maximize the educational impact of your AI assistant.
 
 ### Key Instructor Benefits
 - **Reduce Administrative Burden**: Automate responses to common student questions
@@ -44,6 +44,97 @@ The AI Course Assistant is a powerful Moodle plugin that provides instructors wi
 
 ---
 
+## Content Training
+
+It is important to train your AI assistant with relevant course materials to ensure it provides accurate and helpful responses. The AI Assistant 
+can only respond to students on trained content. The training process involves uploading your syllabus and other course content.
+
+### Syllabus Upload
+
+The syllabus serves as the foundation of your AI assistant's knowledge:
+
+1. **Prepare your syllabus**:
+   - Use .docx format for best results
+   - Consider using the provided syllabus template
+   - Include clear headings and sections
+
+2. **Upload process**:
+   - Click **"Upload Syllabus"** in the AI Assistant block
+   - Select your syllabus file
+   - Drag & Drop the file into the designated area or click "Choose a file"
+   - CLick Save changes to initiate training
+   - Monitor the training status badge
+   - If you need help, click on the "Help" header below the upload area for more information.
+> **Note**: Training can take time. It is based on the document size. The AI will not repsond to student queries until training is complete.
+
+3. **Training indicators**:
+   - 🟡 **Yellow**: Queued for processing
+   - 🔵 **Blue**: Currently training
+   - 🟢 **Green**: Successfully trained
+   - 🔴 **Red**: Error occurred (check file format/content)
+
+---
+
+## Question Management
+
+### Creating Q&A Collections
+
+1. **Bulk import via document**:
+   - Prepare a .docx file with Q&A pairs
+   - Use the provided question template for formatting
+   - Click **"Upload Questions"**
+   - Select your prepared document
+   - Drag & Drop the file into the designated area or click "Choose a file"
+   - Click Save changes to initiate training
+   - Monitor the training status badge
+   - If you need help, click on the "Help" header below the upload area for more information.
+
+> **Note**: Use the provided templates for consistent formatting:
+> - **Questions Template**: Structured format for Q&A pairs
+> - **Questions Example**: Sample questions to guide your creation
+
+
+> **Tip**: To retrain the AI Assistant, delete the existing document and re-upload a new version.
+
+---
+
+### Course Module Training
+
+Train your AI on existing Moodle content:
+
+1. **Access training interface**:
+   - Click **"Train Course Content"** in the block
+   - Review available modules
+
+2. **Select training content**: Only the following modules are supported for training:
+   - **Announcement Forums**: Course announcements and updates
+   - **Pages**: Static course pages and content
+   - **Text and Media Areas**: Embedded content in topics
+   - **Books**: Multi-page book resources
+   - **Files**: Uploaded documents and resources
+   - **Folders**: Organized file collections
+   - **Glossaries**: Term definitions and explanations
+
+3. **Visibility considerations**:
+   - 👁️‍🗨️ **Red eye with strikethrough**: The module and it's content is hidden to students. However, it can be trained for the AI assistant.
+   - ⚠️ **Important**: Once trained, content becomes accessible via AI regardless of original visibility settings. The moodle module remains unaccessible to students.
+
+4. **Supported file formats**:
+   - **Documents**: .docx, .pdf, .txt, .html, .rtf, .md, .odt
+   - **Presentations**: .pptx
+   - **Spreadsheets**: .xlsx, .csv
+   - **Audio**: .mp3, .wav, .m4a
+   - **Video**: .mp4
+
+### Training Best Practices
+
+- **Start with syllabus**: Upload syllabus first for foundational knowledge
+- **Gradual training**: Add content progressively rather than all at once
+- **Quality content**: Ensure uploaded materials are current and accurate
+- **Regular updates**: When ever you update a module that is already trained, the system automatically retrains the AI assistant to include the latest information
+
+---
+
 ## Configuration & Settings
 
 ### Bot Display Settings
@@ -66,91 +157,11 @@ Access via the **"Configure Settings"** link in your AI Assistant block:
 
 ---
 
-## Content Training
 
-### Syllabus Upload
-
-The syllabus serves as the foundation of your AI assistant's knowledge:
-
-1. **Prepare your syllabus**:
-   - Use .docx format for best results
-   - Consider using the provided syllabus template
-   - Include clear headings and sections
-   
-2. **Upload process**:
-   - Click **"Upload Syllabus"** in the AI Assistant block
-   - Select your syllabus file
-   - Click "Upload Syllabus"
-   - Monitor the training status badge
-
-3. **Training indicators**:
-   - 🟡 **Yellow**: Queued for processing
-   - 🔵 **Blue**: Currently training
-   - 🟢 **Green**: Successfully trained
-   - 🔴 **Red**: Error occurred (check file format/content)
-
----
-
-## Question Management
-
-### Creating Q&A Collections
-
-1. **Bulk import via document**:
-    - Prepare a .docx file with Q&A pairs
-    - Use the provided question template for formatting
-    - Click **"Upload Questions"**
-    - Select your prepared document
-
-### Question Templates
-
-Use the provided templates for consistent formatting:
-- **Questions Template**: Structured format for Q&A pairs
-- **Questions Example**: Sample questions to guide your creation
-
-> **Note**: To retrain the AI Assistant, delete the existing document and re-upload a new version.
-
----
-
-### Course Module Training
-
-Train your AI on existing Moodle content:
-
-1. **Access training interface**:
-   - Click **"Train Course Content"** in the block
-   - Review available modules
-
-2. **Select training content**:
-   - **Announcement Forums**: Course announcements and updates
-   - **Pages**: Static course pages and content
-   - **Text and Media Areas**: Embedded content in topics
-   - **Books**: Multi-page book resources
-   - **Files**: Uploaded documents and resources
-   - **Folders**: Organized file collections
-   - **Glossaries**: Term definitions and explanations
-
-3. **Visibility considerations**:
-   - 👁️‍🗨️ **Red eye with strikethrough**: THe module and it's content is hidden to students. However, it can be trained for the AI assistant.
-   - ⚠️ **Important**: Once trained, content becomes accessible via AI regardless of original visibility settings. The moodle moodle remains unaccessible to students.
-
-4. **Supported file formats**:
-   - **Documents**: .docx, .pdf, .txt, .html, .rtf, .md, .odt
-   - **Presentations**: .pptx
-   - **Spreadsheets**: .xlsx, .csv
-   - **Audio**: .mp3, .wav, .m4a
-   - **Video**: .mp4
-
-### Training Best Practices
-
-- **Start with syllabus**: Upload syllabus first for foundational knowledge
-- **Gradual training**: Add content progressively rather than all at once
-- **Quality content**: Ensure uploaded materials are current and accurate
-- **Regular updates**: When ever you update a module that is already trained, the system automatically retrains the AI assistant to include the latest information
-
----
 
 ## Autotest & Quality Control
 
-> **Note**: Autotest is a powerful tool to ensure your AI assistant provides accurate and relevant responses. If you require auttesting, please contact your system administrator.
+> **Note**: Autotest is a powerful tool to ensure your AI assistant provides accurate and relevant responses. If you require auto testing, please contact your system administrator.
 
 ---
 
@@ -159,6 +170,10 @@ Train your AI on existing Moodle content:
 ### Learning Assistant Tutorials
 
 Create guided learning experiences for students:
+
+> **Note**: There are two existing tutorials that are available by default and are manged at site level:
+> - **My Tutor**: The prompt is designed to guide an AI-Tutor in helping university students actively learn and understand a topic by engaging them in a personalized, interactive, and supportive conversation.
+> - **Quiz Me On...**: The prompt is designed to guide an AI-Tutor in helping university students actively learn and understand a topic by engaging them in a personalized, interactive, and supportive conversation.
 
 1. **Access tutorial creation**:
    - Click **"Manage Learning Assistants"** in the AI Assistant block

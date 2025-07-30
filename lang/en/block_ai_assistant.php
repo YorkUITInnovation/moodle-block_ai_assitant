@@ -220,6 +220,7 @@ $string['upload_document'] = 'Upload Document';
 $string['upload_file'] = 'Upload File';
 $string['upload_questions'] = 'Upload Q&A File';
 $string['upload_syllabus'] = 'Upload Syllabus';
+$string['user_guide'] = 'User Guide';
 $string['working'] = 'Working...';
 
 // MarkItDown API settings.

@@ -192,10 +192,14 @@ class block_ai_assistant extends block_base
         // Remove trialing comma
         $groups = rtrim($groups, ',');
 
+        $is_student = false;
+        $is_teacher = false;
         // Check to see if user is a student
         if (has_capability('block/ai_assistant:teacher', $course_context)) {
+            $is_teacher = true;
             $name = get_string('teacher_and_name', 'block_ai_assistant', fullname($USER));
         } else {
+            $is_student = true;
             $name = get_string('student_and_name', 'block_ai_assistant', fullname($USER));
         }
 
@@ -344,6 +348,8 @@ class block_ai_assistant extends block_base
             'error_message' => $error_message,
             'is_admin' => has_capability('block/ai_assistant:view_autotest', $course_context),
             'tutorials' => $tutorials,
+            'is_teacher' => $is_teacher,
+            'is_student' => $is_student,
         );
 
         if (!empty($this->config->text)) {

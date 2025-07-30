@@ -220,6 +220,7 @@ $string['upload_document'] = 'Téléverser le document';
 $string['upload_file'] = 'Téléverser le fichier';
 $string['upload_questions'] = 'Téléverser le fichier Q&R';
 $string['upload_syllabus'] = 'Téléverser le plan de cours';
+$string['user_guide'] = 'Guide de l\'utilisateur';
 $string['working'] = 'En cours...';
 
 // MarkItDown API settings.
