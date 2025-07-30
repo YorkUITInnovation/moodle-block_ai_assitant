@@ -28,7 +28,16 @@ $PAGE->set_url(new moodle_url('/blocks/ai_assistant/document_templates.php', ['c
 $PAGE->set_title(get_string('document_templates', 'block_ai_assistant'));
 $PAGE->set_heading(get_string('document_templates', 'block_ai_assistant'));
 $PAGE->set_pagelayout('standard');
+$auto_test = false;
+if (has_capability('block/ai_assistant:view_autotest', $context)) {
+   $auto_test = true;
+}
 
 echo $OUTPUT->header();
-echo $OUTPUT->render_from_template('block_ai_assistant/document_templates', ['courseid' => $courseid]);
+echo $OUTPUT->render_from_template(
+    'block_ai_assistant/document_templates',
+    [
+        'courseid' => $courseid,
+        'auto_test' => $auto_test
+    ]);
 echo $OUTPUT->footer();

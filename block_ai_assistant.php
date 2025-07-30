@@ -23,6 +23,7 @@
  */
 
 use block_ai_assistant\cria;
+use block_ai_assistant\tutorials;
 
 class block_ai_assistant extends block_base
 {
@@ -66,6 +67,9 @@ class block_ai_assistant extends block_base
                 $DB->insert_record('block_aia_settings', $record);
                 $small_talk = cria::create_small_talk_questions($this->page->course->id);
                 $course_record = $DB->get_record('block_aia_settings', array('courseid' => $this->page->course->id));
+
+                // Now add the default tutorials.
+                tutorials::create_default_tutorials($this->page->course->id);
             }
         } else {
             $course_record = new stdClass();
@@ -80,12 +84,17 @@ class block_ai_assistant extends block_base
             $course_record->published = 0;
         }
 
+        $bot_api_key_exists = false;
         if ($availability->exception == 'success') {
             // Update $course_record->bot_api_key if empty
             if (empty($course_record->bot_api_key)) {
                 $course_record->bot_api_key = cria::get_api_key(cria::get_bot_id($this->page->course->id));
-
-                $DB->set_field('block_aia_settings', 'bot_api_key', $course_record->bot_api_key, ['courseid' => $this->page->course->id]);
+                if (!empty($course_record->bot_api_key)) {
+                    $DB->set_field('block_aia_settings', 'bot_api_key', $course_record->bot_api_key, ['courseid' => $this->page->course->id]);
+                    $bot_api_key_exists = true;
+                }
+            } else {
+                $bot_api_key_exists = true;
             }
         }
 
@@ -107,6 +116,7 @@ class block_ai_assistant extends block_base
         $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/training_status', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_question', 'init');
+        $PAGE->requires->js_call_amd('block_ai_assistant/learning_assistant', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/disabled_assistant', 'init', [$course_record->published == 1]);
         $PAGE->requires->css(new moodle_url('/blocks/ai_assistant/css/styles.css'));
 
@@ -182,10 +192,14 @@ class block_ai_assistant extends block_base
         // Remove trialing comma
         $groups = rtrim($groups, ',');
 
+        $is_student = false;
+        $is_teacher = false;
         // Check to see if user is a student
         if (has_capability('block/ai_assistant:teacher', $course_context)) {
+            $is_teacher = true;
             $name = get_string('teacher_and_name', 'block_ai_assistant', fullname($USER));
         } else {
+            $is_student = true;
             $name = get_string('student_and_name', 'block_ai_assistant', fullname($USER));
         }
 
@@ -286,17 +300,33 @@ class block_ai_assistant extends block_base
             $error_message = $availability->message;
         }
 
+        if ($bot_api_key_exists == false) {
+            $error_code = get_string('invalid_token', 'block_ai_assistant');
+            $error_message = get_string('bot_api_key_not_found', 'block_ai_assistant');
+        }
+
         // Set question file id
         $question_file_id = 0;
         if ($question_file) {
            $question_file_id = $question_file->id;
         }
 
+        $tutorials = '';
+        if (has_capability('block/ai_assistant:teacher', $course_context)) {
+            $tutorials = tutorials::get_tutorials($this->page->course->id);
+        } else {
+            if ($course_record->publish_tutorials) {
+                $tutorials = tutorials::get_tutorials($this->page->course->id);
+            }
+        }
+
+
         $params = array(
             'blockid' => $this->instance->id,
             'courseid' => $this->page->course->id,
             'cria_file_id' => $course_record->cria_file_id,
             'published' => $course_record->published,
+            'publish_tutorials' => $course_record->publish_tutorials,
             'is_published' => ($course_record->published == 1),
             'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
@@ -317,6 +347,9 @@ class block_ai_assistant extends block_base
             'error_code' => $error_code,
             'error_message' => $error_message,
             'is_admin' => has_capability('block/ai_assistant:view_autotest', $course_context),
+            'tutorials' => $tutorials,
+            'is_teacher' => $is_teacher,
+            'is_student' => $is_student,
         );
 
         if (!empty($this->config->text)) {
@@ -409,6 +442,17 @@ class block_ai_assistant extends block_base
         $DB->delete_records('block_aia_question_files', array('courseid' => $COURSE->id));
         // Delete course modules
         $DB->delete_records('block_aia_course_modules', array('courseid' => $COURSE->id));
+        // Delete tutorials
+        $DB->delete_records('block_aia_tutorials', array('courseid' => $COURSE->id));
+        // Get all chats for this course
+        $chats = $DB->get_records('block_aia_tutorial_chats', array('courseid' => $COURSE->id));
+        foreach ($chats as $chat) {
+            // Delete the chat
+            $DB->delete_records('block_aia_chat_history', array('tutorialchatid' => $chat->id));
+            // Delete the chat messages
+            $DB->delete_records('block_aia_tutorial_chats', array('id' => $chat->id));
+        }
+        // Delete all chats for this course
         // Delete the files in filearea syllabus
         $fs = get_file_storage();
         $context = \context_course::instance($COURSE->id);

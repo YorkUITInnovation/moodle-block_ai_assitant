@@ -1,0 +1,767 @@
+<?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Plugin upgrade steps are defined here.
+ *
+ * @package     block_ai_assistant
+ * @category    upgrade
+ * @copyright   2022 UIT Innovation  <thibaud@yorku.ca>
+ * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+defined('MOODLE_INTERNAL') || die();
+
+/**
+ * Execute block_ai_assistant upgrade from the given old version.
+ *
+ * @param int $oldversion
+ * @return bool
+ */
+function xmldb_block_ai_assistant_upgrade($oldversion)
+{
+    global $DB;
+
+    $dbman = $DB->get_manager();
+
+    if ($oldversion < 2024070803) {
+
+        // Define table block_aia_settings to be created.
+        $table = new xmldb_table('block_aia_settings');
+
+        // Adding fields to table block_aia_settings.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('blockid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('published', XMLDB_TYPE_INTEGER, '1', null, null, null, '0');
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('bot_name', XMLDB_TYPE_CHAR, '10', null, null, null, '0');
+
+        // Adding keys to table block_aia_settings.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+        // Conditionally launch create table for block_aia_settings.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024070803, 'ai_assistant');
+    }
+
+
+    if ($oldversion < 2024070804) {
+
+        // Define table block_aia_questions to be created.
+        $table = new xmldb_table('block_aia_questions');
+
+        // Adding fields to table block_aia_questions.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('value', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('answer', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('criaquestionid', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+
+        // Adding keys to table block_aia_questions.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Conditionally launch create table for block_aia_questions.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024070804, 'ai_assistant');
+    }
+    if ($oldversion < 2024071609) {
+
+        // Define field welcome_message to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('welcome_message', XMLDB_TYPE_CHAR, '100', null, null, null, '0');
+
+        // Conditionally launch add field welcome_message.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field no_context_message to be added to block_aia_settings.
+        $field = new xmldb_field('no_context_message', XMLDB_TYPE_CHAR, '100', null, null, null, '0');
+
+        // Conditionally launch add field no_context_message.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field subtitle to be added to block_aia_settings.
+        $field = new xmldb_field('subtitle', XMLDB_TYPE_CHAR, '10', null, null, null, '0');
+
+        // Conditionally launch add field subtitle.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field cria_file_id to be added to block_aia_settings.
+        $field = new xmldb_field('cria_file_id', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+
+        // Conditionally launch add field cria_file_id.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024071609, 'ai_assistant');
+    }
+    if ($oldversion < 2024071612) {
+
+        // Define field subtitle to be modified in block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('subtitle', XMLDB_TYPE_CHAR, '50', null, null, null, '0');
+
+        // Conditionally launch alter field subtitle.
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_precision($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024071612, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024072310) {
+
+        // Define field related_questions to be added to block_aia_questions.
+        $table = new xmldb_table('block_aia_questions');
+        $field = new xmldb_field('related_questions', XMLDB_TYPE_TEXT, null, null, null, null, null, 'criaquestionid');
+
+        // Conditionally launch add field related_questions.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024072310, 'ai_assistant');
+    }
+    if ($oldversion < 2024072404) {
+
+        // Define field embed_position to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('embed_position', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'cria_file_id');
+
+        // Conditionally launch add field embed_position.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024072404, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024072800) {
+
+        // Define table block_aia_autotest to be created.
+        $table = new xmldb_table('block_aia_autotest');
+
+        // Adding fields to table block_aia_autotest.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('section', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('questions', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('human_answer', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('bot_answer', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_autotest.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+        // Conditionally launch create table for block_aia_autotest.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024072800, 'ai_assistant');
+    }
+    if ($oldversion < 2024072801) {
+
+        // Define table block_aia_autotest to be dropped.
+        $table = new xmldb_table('block_aia_autotest');
+
+        // Conditionally launch drop table for block_aia_autotest.
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Define table block_aia_autotest to be created.
+        $table = new xmldb_table('block_aia_autotest');
+
+        // Adding fields to table block_aia_autotest.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('blockid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('section', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('questions', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('human_answer', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('bot_answer', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_autotest.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+        // Conditionally launch create table for block_aia_autotest.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024072801, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024073001) {
+
+        // Define field lang to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('lang', XMLDB_TYPE_CHAR, '4', null, null, null, 'en', 'no_context_message');
+
+        // Conditionally launch add field lang.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024073001, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024080200) {
+
+        // Define table block_aia_course_modules to be created.
+        $table = new xmldb_table('block_aia_course_modules');
+
+        // Adding fields to table block_aia_course_modules.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('cria_fileid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('trained', XMLDB_TYPE_INTEGER, '1', null, null, null, '0');
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_course_modules.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+        // Conditionally launch create table for block_aia_course_modules.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024080200, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024080201) {
+
+        // Define table block_aia_course_modules to be dropped.
+        $table = new xmldb_table('block_aia_course_modules');
+
+        // Conditionally launch drop table for block_aia_course_modules.
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+
+        // Define table block_aia_course_modules to be created.
+        $table = new xmldb_table('block_aia_course_modules');
+
+        // Adding fields to table block_aia_course_modules.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('modname', XMLDB_TYPE_CHAR, '50', null, null, null, null);
+        $table->add_field('cria_fileid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('trained', XMLDB_TYPE_INTEGER, '1', null, null, null, '0');
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_course_modules.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+        // Conditionally launch create table for block_aia_course_modules.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024080201, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024080202) {
+
+        // Changing precision of field subtitle on table block_aia_settings to (255).
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('subtitle', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'bot_name');
+
+        // Launch change of precision for field subtitle.
+        $dbman->change_field_precision($table, $field);
+
+        // Changing type of field welcome_message on table block_aia_settings to text.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('welcome_message', XMLDB_TYPE_TEXT, null, null, null, null, null, 'subtitle');
+
+        // Launch change of type for field welcome_message.
+        $dbman->change_field_type($table, $field);
+
+        // Changing type of field no_context_message on table block_aia_settings to text.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('no_context_message', XMLDB_TYPE_TEXT, null, null, null, null, null, 'welcome_message');
+
+        // Launch change of type for field no_context_message.
+        $dbman->change_field_type($table, $field);
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024080202, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024080400) {
+
+        // Define field example_questions to be added to block_aia_questions.
+        $table = new xmldb_table('block_aia_questions');
+        $field = new xmldb_field('example_questions', XMLDB_TYPE_TEXT, null, null, null, null, null, 'answer');
+
+        // Conditionally launch add field example_questions.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024080400, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024080600) {
+
+        // Define table block_aia_question_files to be created.
+        $table = new xmldb_table('block_aia_question_files');
+
+        // Adding fields to table block_aia_question_files.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('cria_fileid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('name', XMLDB_TYPE_CHAR, '1333', null, null, null, null);
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_question_files.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+        // Conditionally launch create table for block_aia_question_files.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024080600, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024081600) {
+
+        // Define table block_aia_questions to be dropped.
+        $table = new xmldb_table('block_aia_questions');
+
+        // Conditionally launch drop table for block_aia_questions.
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024081600, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024082500) {
+
+        // Define field bot_help_text to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('bot_help_text', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'bot_name');
+
+        // Conditionally launch add field bot_help_text.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field bot_contact to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('bot_contact', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'bot_help_text');
+
+        // Conditionally launch add field bot_contact.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024082500, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024090700) {
+
+        // Define field bot_api_key to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('bot_api_key', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'cria_file_id');
+
+        // Conditionally launch add field bot_api_key.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024090700, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024090701) {
+
+        // Define field cria_assignment_file_id to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('cria_assignment_file_id', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'cria_file_id');
+
+        // Conditionally launch add field cria_assignment_file_id.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024090701, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024090802) {
+
+        // Define field cria_group_file_id to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('cria_group_file_id', XMLDB_TYPE_INTEGER, '10', null, null, null, '0', 'cria_assignment_file_id');
+
+        // Conditionally launch add field cria_group_file_id.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024090802, 'ai_assistant');
+    }
+
+    if ($oldversion < 2024090900) {
+
+        // Define field cria_group_file_id to be dropped from block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('cria_group_file_id');
+
+        // Conditionally launch drop field cria_group_file_id.
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2024090900, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072403) {
+
+        // Define field embed_position to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('embed_position', XMLDB_TYPE_INTEGER, '1', null, null, null, '1', 'no_context_message');
+
+        // Conditionally launch add field embed_position.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072403, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072403) {
+
+        // Define field modtimemodified to be added to block_aia_course_modules.
+        $table = new xmldb_table('block_aia_course_modules');
+        $field = new xmldb_field('modtimemodified', XMLDB_TYPE_INTEGER, '16', null, null, null, null, 'modname');
+
+        // Conditionally launch add field modtimemodified.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072403, 'ai_assistant');
+    }
+
+
+    if ($oldversion < 2025072403) {
+
+        // Define table block_aia_course_mod_files to be created.
+        $table = new xmldb_table('block_aia_course_mod_files');
+
+        // Adding fields to table block_aia_course_mod_files.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('bacmid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('cria_fileid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('trained', XMLDB_TYPE_INTEGER, '1', null, null, null, '0');
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+
+        // Adding keys to table block_aia_course_mod_files.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Adding indexes to table block_aia_course_mod_files.
+        $table->add_index('xbacmid', XMLDB_INDEX_NOTUNIQUE, ['bacmid']);
+
+        // Conditionally launch create table for block_aia_course_mod_files.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072403, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072403) {
+
+        // Define table block_aia_tutorials to be created.
+        $table = new xmldb_table('block_aia_tutorials');
+
+        // Adding fields to table block_aia_tutorials.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '1');
+        $table->add_field('blockid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('prompt', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('enabled', XMLDB_TYPE_INTEGER, '1', null, null, null, '0');
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_tutorials.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, ['usermodified'], 'user', ['id']);
+
+        // Adding indexes to table block_aia_tutorials.
+        $table->add_index('courseid_x', XMLDB_INDEX_NOTUNIQUE, ['courseid']);
+        $table->add_index('blockid_x', XMLDB_INDEX_NOTUNIQUE, ['blockid']);
+        $table->add_index('enabled_x', XMLDB_INDEX_NOTUNIQUE, ['enabled']);
+
+        // Conditionally launch create table for block_aia_tutorials.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table block_aia_tutorial_chats to be created.
+        $table = new xmldb_table('block_aia_tutorial_chats');
+
+        // Adding fields to table block_aia_tutorial_chats.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('blockid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('tutorialid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('chatid', XMLDB_TYPE_CHAR, '1333', null, null, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('name', XMLDB_TYPE_CHAR, '1000', null, null, null, null);
+        $table->add_field('history', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table block_aia_tutorial_chats.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Adding indexes to table block_aia_tutorial_chats.
+        $table->add_index('course_user_x', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'userid']);
+        $table->add_index('courseid_x', XMLDB_INDEX_NOTUNIQUE, ['courseid']);
+        $table->add_index('blockid_x', XMLDB_INDEX_NOTUNIQUE, ['blockid']);
+        $table->add_index('tutorialid_x', XMLDB_INDEX_NOTUNIQUE, ['tutorialid']);
+        $table->add_index('userid_x', XMLDB_INDEX_NOTUNIQUE, ['userid']);
+
+        // Conditionally launch create table for block_aia_tutorial_chats.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072403, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072404) {
+
+        // Define field publish_tutorials to be added to block_aia_settings.
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('publish_tutorials', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'published');
+
+        // Conditionally launch add field publish_tutorials.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072404, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072407) {
+
+        // Define field name to be added to block_aia_course_mod_files.
+        $table = new xmldb_table('block_aia_course_mod_files');
+        $field = new xmldb_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'trained');
+
+        // Conditionally launch add field name.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072407, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072411) {
+
+        // Define field cmid to be added to block_aia_tutorial_chats.
+        $table = new xmldb_table('block_aia_tutorial_chats');
+        $field = new xmldb_field('cmid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0', 'userid');
+
+        // Conditionally launch add field cmid.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define index cmid_x (not unique) to be added to block_aia_tutorial_chats.
+        $table = new xmldb_table('block_aia_tutorial_chats');
+        $index = new xmldb_index('cmid_x', XMLDB_INDEX_NOTUNIQUE, ['cmid']);
+
+        // Conditionally launch add index cmid_x.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Define index changemecourse_tut_cm_x (not unique) to be added to block_aia_tutorial_chats.
+        $table = new xmldb_table('block_aia_tutorial_chats');
+        $index = new xmldb_index('changemecourse_tut_cm_x', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'tutorialid', 'cmid', 'userid']);
+
+        // Conditionally launch add index changemecourse_tut_cm_x.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072411, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072416) {
+
+        // Define table block_aia_tutor_chat_assets to be created.
+        $table = new xmldb_table('block_aia_tutor_chat_assets');
+
+        // Adding fields to table block_aia_tutor_chat_assets.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('tutorchatid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('assetid', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('mimetype', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('data', XMLDB_TYPE_TEXT, null, null, null, null, null);
+
+        // Adding keys to table block_aia_tutor_chat_assets.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Conditionally launch create table for block_aia_tutor_chat_assets.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072416, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072417) {
+
+        // Define field chatid to be added to block_aia_tutor_chat_assets.
+        $table = new xmldb_table('block_aia_tutor_chat_assets');
+        $field = new xmldb_field('chatid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'tutorchatid');
+
+        // Conditionally launch add field chatid.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072417, 'ai_assistant');
+    }
+
+    if ($oldversion < 2025072418) {
+
+        // Define table block_aia_chat_history to be created.
+        $table = new xmldb_table('block_aia_chat_history');
+
+        // Adding fields to table block_aia_chat_history.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('tutorialchatid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('message', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '16', null, null, null, '0');
+
+        // Adding keys to table block_aia_chat_history.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+
+        // Adding indexes to table block_aia_chat_history.
+        $table->add_index('tutorialchatid_x', XMLDB_INDEX_NOTUNIQUE, ['tutorialchatid']);
+
+        // Conditionally launch create table for block_aia_chat_history.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072418, 'ai_assistant');
+    }
+
+
+    if ($oldversion < 2025072419) {
+
+        // Define field userid to be added to block_aia_chat_history.
+        $table = new xmldb_table('block_aia_chat_history');
+        $field = new xmldb_field('userid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0', 'tutorialchatid');
+
+        // Conditionally launch add field userid.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field is_human to be added to block_aia_chat_history.
+        $table = new xmldb_table('block_aia_chat_history');
+        $field = new xmldb_field('is_human', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'userid');
+
+        // Conditionally launch add field is_human.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2025072419, 'ai_assistant');
+    }
+    return true;
+
+}

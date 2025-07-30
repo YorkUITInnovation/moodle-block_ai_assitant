@@ -10,10 +10,18 @@
            value="{{training_status_id}}">
     <input type="hidden" id="block-ai_assistant-question-training-status-id" data-question_id="{{question_id}}"
            value="{{question_training_status_id}}">
+    <input type="hidden" id="block-ai-assistant-course-id" value="{{courseid}}">
     <div class="row">
         <div class="col-md-12">
             <div class="alert alert-info">
                 <p>{{#str}}ai_assistant_instructions, block_ai_assistant{{/str}}</p>
+                {{#is_teacher}}
+                    <p>
+                        <a href="{{config.wwwroot}}/blocks/ai_assistant/instructor_user_guide.php?courseid={{courseid}}"
+                           class="btn btn-link btn-sm"
+                           title="{{#str}}user_guide, block_ai_assistant{{/str}}">{{#str}}user_guide, block_ai_assistant{{/str}}</a>
+                    </p>
+                {{/is_teacher}}
             </div>
         </div>
     </div>
@@ -129,9 +137,8 @@
     </div>
 
     <div class="row">
-        <div class="col-md-12">
-            <br>
-            <br>
+        <div class="col-md-12 mt-1">
+
             {{^published}}
                 <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
                         data-courseid="{{courseid}}">{{#str}}enable_ai_assistant, block_ai_assistant{{/str}}
@@ -143,16 +150,54 @@
                         data-courseid="{{courseid}}">{{#str}}disable_ai_assistant, block_ai_assistant{{/str}}
                 </button>
             {{/published}}
+
             {{{teacher_embed_code}}}
         </div>
     </div>
+
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <h5>{{#str}}ai_learning_assistant, block_ai_assistant{{/str}}</h5>
+            <ul class="list-group mt-2">
+                <!--Manage Tutorial -->
+                <li class="list-group-item">
+                    <a href="{{config.wwwroot}}/blocks/ai_assistant/tutorials.php?courseid={{courseid}}"
+                    class="btn btn-link btn-sm edit-button"
+                    title="{{#str}}manage_tutorials, block_ai_assistant{{/str}}"
+                    >{{#str}}manage_tutorials, block_ai_assistant{{/str}}
+                    </a>
+                </li>
+                {{#tutorials}}
+                    <li class="list-group-item">
+                        <button type="button"
+                                class="btn btn-link btn-sm block-ai-assistant-tutorial-button"
+                                data-tutorialid="{{id}}"
+                                data-courseid="{{courseid}}"
+                        >{{name}}</button>
+                    </li>
+                {{/tutorials}}
+            </ul>
+            {{^publish_tutorials}}
+                <button type="button" class="btn btn-primary btn-sm mt-1" id="btn-enable-tutorials"
+                        data-courseid="{{courseid}}">{{#str}}enable_tutorials, block_ai_assistant{{/str}}
+                </button>
+            {{/publish_tutorials}}
+
+            {{#publish_tutorials}}
+                <button type="button" class="btn btn-primary btn-sm  mt-1" id="btn-enable-tutorials"
+                        data-courseid="{{courseid}}">{{#str}}disable_tutorials, block_ai_assistant{{/str}}
+                </button>
+            {{/publish_tutorials}}
+        </div>
+    </div>
+
 
 {{/error_code}}
 {{#error_code}}
     <div class="row">
         <div class="col-md-12">
             <div class="alert alert-danger">
-                <h3{{error_code}}</h3>
+                <h4>{{error_code}}</h4>
                 <p>{{error_message}}</p>
             </div>
         </div>

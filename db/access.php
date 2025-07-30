@@ -38,5 +38,15 @@ $capabilities = array(
             'manager' => CAP_ALLOW,
             'student' => CAP_PROHIBIT
         )
+    ),
+    'block/ai_assistant:edit_site_tutorials' => array(
+        'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_CONFIG,
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => array(
+            'manager' => CAP_ALLOW,
+            'editingteacher' => CAP_PROHIBIT,
+            'student' => CAP_PROHIBIT
+        )
     )
 );

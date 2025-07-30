@@ -47,6 +47,7 @@ class course_modules
                 $course_structure->sections[$i]->sectionname = get_string('general');
             } else {
                 if (isset($section->name)) {
+                    // Remove all characters that are not letters, numbers, or spaces
                     $course_structure->sections[$i]->sectionname = $section->name;
                 } else {
                     $course_structure->sections[$i]->sectionname = 'Topic ' . $sectionnum;
@@ -54,7 +55,11 @@ class course_modules
             }
 
             if (isset($section->name)) {
-                $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(str_replace(' ', '-', $course_structure->sections[$i]->sectionname));
+                $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(preg_replace(
+                        '/[^a-zA-Z0-9\s]/',
+                        '',
+                        str_replace(' ', '-', $course_structure->sections[$i]->sectionname))
+                    );
             } else {
                 $course_structure->sections[$i]->idname = $sectionnum . '-topic-' . $sectionnum;
             }
@@ -777,8 +782,8 @@ class course_modules
                 if ($file->trained == 0 || $file->trained == 3) {
                     // Use cria to check the status of the file
                     $status = cria::get_content_training_status($file->cria_fileid);
-                    if ($status->training_status_id != 0) {
-                        $DB->set_field(
+                        if ($status->training_status_id != 0) {
+                            $DB->set_field(
                             'block_aia_course_mod_files',
                             'trained',
                             $status->training_status_id,
@@ -842,5 +847,25 @@ class course_modules
             'audio/m4a',
             'video/mp4',
         ];
+    }
+
+    public static function get_course_modules_available_to_students(int $courseid): array
+    {
+        global $DB;
+
+        // Get all courses modules for the given course ID
+        $sql = "Select
+                    bacmf.id,
+                    bacm.courseid,
+                    bacm.cmid,
+                    bacmf.name
+                From
+                    {block_aia_course_modules} bacm Inner Join
+                    {block_aia_course_mod_files} bacmf On bacmf.bacmid = bacm.id
+                Where
+                    bacmf.trained = 1 And courseid = ?";
+        $modules = $DB->get_records_sql($sql, [$courseid]);
+
+        return $modules ?: [];
     }
 }

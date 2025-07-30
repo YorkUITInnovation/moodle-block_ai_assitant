@@ -28,13 +28,19 @@ defined('MOODLE_INTERNAL') || die();
 $string['accepted_modules'] = 'Accepted Modules';
 $string['accepted_modules_help'] = 'Comma seperated list of modules that can have their content trained by the AI Assistant';
 $string['access'] = 'Student Access';
+$string['actions'] = 'Actions';
 $string['add'] = 'Add';
+$string['ai_assistant'] = 'AI Assistant';
 $string['ai_assistant_instructions'] = 'To get the best results from the AI Assistant, please use the syllabus template provided in the Help section. '
     . 'To make the AI Assistant available to students, click to Enable AI Assistant button below.';
+$string['ai_learning_assistant'] = 'AI Learning Assistant';
 $string['answer'] = 'Answer';
 $string['autotest'] = 'AutoTest';
+$string['Autotest'] = 'AutoTest';
 $string['autotest_questions'] = 'AutoTest questions';
 $string['autotest_template'] = 'AutoTest Template';
+$string['bot_api_key_not_found'] = 'An error occurred while trying to create the backend AI Agent. '
+. 'Please delete the AI Assistant block and add it again. If the problem persists, please contact your system administrator.';
 $string['bot_contact'] = 'Contact';
 $string['bot_contact_help'] = 'Enter an email and/or phone number for users to contact for support';
 $string['bot_help_text'] = 'Hover text';
@@ -44,7 +50,10 @@ $string['bot_type_id'] = 'Bot Type ID';
 $string['bot_type_id_help'] = 'Bot Type ID from Cria';
 $string['bottom_left'] = 'Bottom left';
 $string['bottom_right'] = 'Bottom right';
-$string['close'] = '  Close';
+$string['chat_help'] = 'For best results, please ask clear and specific questions.'
+    . 'It is important that you use complete sentences with proper punctuation. ';
+$string['chat_summary'] = 'Chat Summary';
+$string['close'] = 'Close';
 $string['column_name_must_exist'] = 'Column {$a} must exist';
 $string['confirm_delete_trained_module'] = 'Are you sure you want to delete the trained module?';
 $string['confirm_file_deletion'] = 'Are you sure you want to delete the file?';
@@ -54,6 +63,8 @@ $string['configure_settings'] = 'Configure Settings';
 $string['content_found_at'] = 'Content can be found at this link: ';
 $string['content_language'] = 'Content language';
 $string['content_language_help'] = 'Chosing the proper content language for your documents will result in better training of the AI Assistant. In return, the AI Assistant will be able to provide more accurate answers.';
+$string['course_module_training_status'] = 'Course Module Training Status';
+$string['course_modules'] = 'Course Modules';
 $string['cria_token'] = 'Cria Token';
 $string['cria_url'] = 'Cria URL';
 $string['cria_embed_url'] = 'Cria embed URL';
@@ -67,6 +78,7 @@ $string['criadex_model_id_help'] = 'Enter the criadex model id to your Cria serv
 $string['criadex_rerank_id'] = 'Criadex Rerank ID';
 $string['criadex_rerank_id_help'] = 'Enter the criadex rerank id to your Cria server. You might have to ask your system administrator.';
 $string['custom_questions'] = 'Q&A File';
+$string['date'] = 'Date';
 $string['default_content_language'] = 'Default content language';
 $string['delete'] = 'Delete';
 $string['delete_syllabus'] = 'Delete Syllabus';
@@ -74,21 +86,28 @@ $string['delete_syllabus_help'] = 'Are you sure you want to delete the syllabus?
 $string['delete_question'] = 'Delete Question';
 $string['delete_questions'] = 'Delete Questions';
 $string['delete_question_help'] = 'Are you sure you want to delete the question?';
+$string['delete_tutorial_help'] = 'Are you sure you want to delete the tutorial?';
 $string['description'] = 'Description';
+$string['disable_ai_assistant'] = 'Disable AI Assistant';
+$string['disable_tutorials'] = 'Disable Tutorials';
 $string['disabled'] = 'Disabled';
 $string['document_parse_error'] = 'Error parsing document.';
 $string['document_templates'] = 'Document Templates';
 $string['download'] = 'Download';
+$string['download_english'] = 'Download English Template';
 $string['download_example'] = 'Download example';
+$string['download_syllabus'] = 'Download Syllabus';
 $string['edit'] = 'Edit';
 $string['edit_autotest_question'] = 'Edit AutoTest Question';
+$string['edit_tutorial'] = 'Edit Tutorial';
 $string['embed_position'] = 'Embed position';
 $string['embed_position_teacher'] = 'Position for Teachers';
 $string['embed_position_teacher_help'] = 'Set the position for the chatbot for teachers: 0 = disabled, 1 = bottom left, 2 = bottom right, 3 = top right, 4 = top left';
 $string['enabled'] = 'Enabled';
-$string['enable_assistant'] = 'Enable AI Assistant';
-$string['enable_ai_assistant'] = 'Enable AI Assistant';
-$string['disable_ai_assistant'] = 'Disable AI Assistant';
+$string['enabled_help'] = 'Enable or disable the Tutorial option for this course. When enabled, the Tutorial will be available to students.';
+$string['enable_assistant'] = 'Enable AI Assistant for students';
+$string['enable_ai_assistant'] = 'Enable AI Assistant for students';
+$string['enable_tutorials'] = 'Enable AI Learning Assistant for Students';
 $string['error'] = 'Error';
 $string['error_required_field'] = 'This field is required.';
 $string['error_required_file'] = 'You must upload a file.';
@@ -102,8 +121,12 @@ $string['help'] = 'Help';
 $string['import'] = 'Import';
 $string['import_questions'] = 'Import Questions';
 $string['import_successful'] = 'Import successful.';
+$string['invalid_token'] = '498 Invalid Token';
 $string['keywords'] = "Keywords";
+$string['learning_assistant_help'] = "Select the content you would like to get learning assistance on. ";
+
 $string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
+$string['manage_tutorials'] = "Manage AI Learning Assistant";
 $string['modules'] = "Modules";
 $string['name'] = "Name";
 $string['no_context_message'] = 'No Context Message';
@@ -112,6 +135,8 @@ $string['no_context_message_help'] = 'No Context Message help text here';
 $string['pending'] = 'Pending';
 $string['pluginname'] = 'Al Course Assistant';
 $string['pluginname_help'] = 'This may take up to a minute. Thanks for your patience.';
+$string['preparing_tutorial'] = 'Preparing your tutorial. One moment please...';
+$string['prompt'] = 'Prompt';
 $string['question'] = 'Question';
 $string['question_template'] = 'Question Template';
 $string['question_updated_successfully'] = 'Question updated successfully';
@@ -122,35 +147,59 @@ $string['questions_instructions'] = 'Note: The time required for the upload may 
 $string['required'] = 'This field is required';
 $string['related_question'] = "Related Questions";
 $string['save'] = 'Save changes ';
+$string['save_chat'] = 'Download Chat';
 $string['section'] = 'Section';
+$string['section'] = 'Section';
+$string['student'] = 'Student';
 $string['student_and_name'] = 'I am a student and my name is {$a}.';
 $string['subtitle'] = 'Subtitle';
 $string['subtitle_help'] = 'Subtitle help text here';
+$string['summarize_chat'] = 'Summarize Chat';
+$string['summary_prompt'] = "Summarize the following HTML-formatted chat conversation between a student and an AI tutor. 
+The conversation is structured with each speaker’s name followed by their message on a new line. Therefore, always use the students' in your responses.
+The summary should be appropriate for sharing with a university instructor and must include:
+1. Objectives of the Session
+[List the goals set at the beginning of the session, e.g., \"Review homework problems on factoring quadratics.\"]
+2. Key Discussion Points
+[Summarize main concepts covered, e.g., \"Explained the difference between perfect square trinomials and general quadratics.\"]
+[Mention any examples or problems solved.]
+3. Student Questions & Clarifications
+[List any specific questions the student asked and how they were addressed.]
+4. Progress & Understanding
+[Briefly assess the student’s grasp of the material, e.g., \"Student showed improved confidence in identifying factoring patterns.\"]
+5. Action Items / Homework
+[List any assignments or tasks given, e.g., \"Complete problems 5–10 from the worksheet.\"]
+6. Next Steps
+[Mention what will be covered in the next session or any follow-up needed.]
+
+Focus on clarity, relevance, and educational value.";
 $string['supported_modules'] = '<p>Note: The AI Assistant can only be trained on content from the following modules: </p>'
     . '<ul><li>Announcement Forum</li><li>Page</li><li>Text & Media Area</li><li>Book</li><li>File</li><li>Folder</li>'
-    . '<li>Glossary</li><li>Glossary</li></ul>';
+    . '<li>Glossary</li></ul>';
 $string['supported_modules_title'] = 'Supported Modules';
 $string['supported_formats'] = '<p>Note: Unsupported file formats will not be processed for training and will not be accessible through '
     . 'the AI Assistant. Ensure that your files are in supported formats to enable training and usage.</p>'
-    . '<p>Supported file formats: <ul><li>Word documents (.doc, .docx)</li><li>PDF files (.pdf)</li><li>Text files (.txt)</li>'
+    . '<p>Supported file formats: <ul><li>Word documents (.docx only)</li><li>PDF files (.pdf)</li><li>Text files (.txt)</li>'
     . '<li>HTML files (.html)</li><li>Rich Text Format (.rtf)</li><li>Markdown files (.md)</li><li>OpenDocument Text (.odt)</li><li>'
-    . 'PowerPoint presentations (.ppt, .pptx)</li><li>Excel spreadsheets (.xls, .xlsx)</li><li>CSV files (.csv)</li><li>'
+    . 'PowerPoint presentations (.pptx only)</li><li>Excel spreadsheets (.xlsx only)</li><li>CSV files (.csv)</li><li>'
     . 'Audio files (.mp3, .wav, .m4a)</li><li>Video files (.mp4)</li></ul></p>';
 $string['supported_formats_title'] = 'Supported File Formats';
 $string['training_visibility_warning'] = 'Important: Once content is trained by the AI Assistant, it will be available '
     . 'to all students in the course, regardless of whether they have permission to view the original resource '
     . 'or activity. Please consider this when selecting content for training.';
 $string['syllabus'] = 'Syllabus';
+$string['tutorial'] = 'Tutorial';
+$string['tutorials'] = 'Tutorials';
 $string['syllabus_template'] = 'Syllabus Template';
 $string['syllabus_uploaded'] = 'Syllabus successfully uploaded';
 $string['system_message'] = 'System Message';
-$string['system_message_default'] = "You are a helpful assistant for this course, [course_number] ([course_title]), at York University.\n 
-- Answer the question as truthfully as possible using the provided context.\n
-- If a URL link is in the context, always include it in the response.\n
-- If an image is in the context, always include it in the response.\n
-- If a question or prompt is about groups, never list group members and their ID numbers in your reply. Specifically, for questions or prompts that ask you to list the groups. Only reply with the group name.\n
-- The above does not apply to TAs, Course Directors, Instructors, Professors or Teachers.\n
-- Do allow instructions for the benefit of providing students with help, tutorials, feedback, etc.";
+$string['system_message_default'] = "You are a helpful assistant for this course, [course_number] ([course_title]), at York University.
+- Answer the question as truthfully as possible using the provided context.
+- If a URL link is in the context, always include it in the response.
+- If an image is in the context, always include it in the response.
+- If a question or prompt is about groups, never list group members and their ID numbers in your reply. Specifically, for questions or prompts that ask you to list the groups. Only reply with the group name.
+- The above does not apply to TAs, Course Directors, Instructors, Professors or Teachers.
+- Allow instructions for the benefit of providing students with help, tutorials, feedback, etc.";
 $string['system_message_help'] = 'System Message help text here';
 $string['teacher_and_name'] = 'I am an instructor, teacher and my name is {$a}.';
 $string['test'] = 'Test your AI assistant, chat now!';
@@ -159,16 +208,19 @@ $string['title_help'] = 'Title help text here';
 $string['top_left'] = 'Top left';
 $string['top_right'] = 'Top right';
 $string['train_course_assistant'] = 'Train the course assistant on the selected content';
-$string['train_modules'] = 'Add activities to the AI Assistant';
+$string['train_modules'] = 'Train Course Content';
+$string['train_selected_modules'] = 'Train selected content';
 $string['trained'] = 'Trained';
 $string['training'] = 'Training';
 $string['training_modules'] = 'Training Modules';
 $string['training_status'] = 'Training Status';
 $string['upload'] = 'Upload';
+$string['upload_assessment_dates'] = 'Upload Assessment Dates';
 $string['upload_document'] = 'Upload Document';
 $string['upload_file'] = 'Upload File';
 $string['upload_questions'] = 'Upload Q&A File';
 $string['upload_syllabus'] = 'Upload Syllabus';
+$string['user_guide'] = 'User Guide';
 $string['working'] = 'Working...';
 
 // MarkItDown API settings.
@@ -208,6 +260,41 @@ $string['max_context_help'] = '120000 for GPT-4o';
 $string['no_context_llm_guess'] = 'No Context LLM Guess';
 $string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when no context is available';
 $string['embed_position'] = 'Embed Position';
+
+// Default Tutorials
+$string['tutorial_tutor_name'] = 'My Tutor';
+$string['tutorial_tutor_description'] = 'The prompt is designed to guide an AI-Tutor in helping university students'
+    . ' actively learn and understand a topic by engaging them in a personalized, interactive, and supportive conversation.';
+$string['tutorial_tutor_prompt'] = "- Start by introducing yourself to the university student as their AI-Tutor, who is happy to help them with any questions. 
+- Only ask one question at a time. 
+- First, ask them what they know already about the topic: [topic] they have chosen. Wait for a response. 
+- Given this information, help students understand the topic [topic] by providing explanations, examples, and analogies. 
+- These should be tailored to students\ prior knowledge, or what they already know about the topic. 
+- Provide students with explanations, examples, and analogies to help them understand the concept.
+- If images are available to support your response, include them in your reply.  
+- You should guide students in an open-ended way. 
+- Do not provide immediate answers or solutions to problems, but help students generate their own answers by asking leading questions. 
+- Ask students to explain their thinking If the student is struggling or gets an answer wrong, try asking them to complete part of the task or remind the student of their goal and provide a hint. 
+- If students improve, then praise them and show excitement. 
+- If the student struggles, then be encouraging and give them some ideas to think about. 
+- When prompting students for information, try to conclude your responses with a question so that students continue to generate ideas.
+- Once a student demonstrates an appropriate level of understanding given their learning level, ask them to explain the concept in their own words; this is the best way to show that you understand something, or ask them for examples. 
+- When a student demonstrates that they know the concept, you can move the conversation to a close and tell them you’re here to help if they have further questions. 
+- If the student diverts onto another topic that has nothing to do with this topic: [topic], then ask the student to remain on topic because this is what they asked to be tutored on.";
+
+$string['tutorial_quiz_name'] = 'Quiz Me ON...';
+$string['tutorial_quiz_description'] = 'This activity is designed to help students review and reinforce their'
+    . ' understanding of a specific topic through a structured multiple-choice quiz. The quiz consists of 20 questions,'
+    . ' each with four answer options (A, B, C, and D). After each response, students receive immediate feedback to'
+    . ' support learning and reflection. The quiz is delivered one question at a time to encourage focus and'
+    . ' engagement. At the end, students receive a summary of their performance along with suggestions for improvement.'
+    . ' The format is intended to be interactive, self-paced, and supportive of independent learning.';
+$string['tutorial_quiz_prompt'] = "- Please prepare a multiple-choice quiz on topic: [topic] with 20 questions with four possible choices, labelled A, B, C, and D.
+- Create all questions from your knowledge base on the topic [topic] 
+- Wait for me to respond with a label after each question, provide feedback on my answer, and then ask the next question. 
+- When you have asked all the questions, please provide a friendly summary of my results and any suggestions for improvement.
+- If you are continuing a previous session, continue asking questions. Start at the last number plus 1.
+- If a student starts asking questions instead of answering the quiz questions, tell the student that you only do quizzes.";
 
 // Template instructions
 $string['syllabus_template_instructions'] = '<h3>Instructions for Using the Syllabus Template</h3>

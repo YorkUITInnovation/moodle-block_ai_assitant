@@ -96,7 +96,8 @@ abstract class module_training
             // Insert record into block_aia_course_mod_files
             $DB->insert_record('block_aia_course_mod_files', [
                 'bacmid' => $this->bacmid,
-                'cria_fileid' => $cria_file_id
+                'cria_fileid' => $cria_file_id,
+                'name' => $this->mod[0]->name,
             ]);
         }
         return true;
@@ -115,7 +116,7 @@ abstract class module_training
         $name =  substr(str_replace(' ', '_', $this->mod[0]->name), 0, 30);
         // Include the url to the module
         $content = get_string('content_found_at', 'block_ai_assistant')
-            . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>';
+            . ' <a href="' . $mod_url . '" title="' . $name . '">' . $name . '</a><br><br>';
 
         if (isset($this->mod[0]->content)) {
             $content .= $this->mod[0]->content;
@@ -134,7 +135,8 @@ abstract class module_training
             // Insert record into block_aia_course_mod_files
             $DB->insert_record('block_aia_course_mod_files', [
                 'bacmid' => $this->bacmid,
-                'cria_fileid' => $cria_file_id
+                'cria_fileid' => $cria_file_id,
+                'name' => $name,
             ]);
         }
         return true;
@@ -182,7 +184,8 @@ abstract class module_training
         } else {
             $DB->insert_record('block_aia_course_mod_files', [
                 'bacmid' => $this->bacmid,
-                'cria_fileid' => $cria_file_id
+                'cria_fileid' => $cria_file_id,
+                'name' => $this->mod[0]->name
             ]);
         }
         return true;
@@ -234,7 +237,8 @@ abstract class module_training
             // Insert record into block_aia_course_mod_files
             $DB->insert_record('block_aia_course_mod_files', [
                 'bacmid' => $this->bacmid,
-                'cria_fileid' => $cria_file_id
+                'cria_fileid' => $cria_file_id,
+                'name' => $this->mod[0]->name
             ]);
         }
 
@@ -294,7 +298,8 @@ abstract class module_training
         } else {
             $DB->insert_record('block_aia_course_mod_files', [
                 'bacmid' => $this->bacmid,
-                'cria_fileid' => $cria_file_id
+                'cria_fileid' => $cria_file_id,
+                'name' => $this->mod[0]->name
             ]);
         }
         return true;
@@ -341,6 +346,7 @@ abstract class module_training
 
                 // Set the file name
                 $file_name = $file->get_filename();
+                $file_name_for_saving = $file_name;
                 // Save a copy of the file
                 $file->copy_content_to($path . $file_name);
                 // Using maritdown to convert the content to HTML
@@ -370,7 +376,8 @@ abstract class module_training
                         // Insert record into block_aia_course_mod_files
                         $DB->insert_record('block_aia_course_mod_files', [
                             'bacmid' => $this->bacmid,
-                            'cria_fileid' => $cria_file_id
+                            'cria_fileid' => $cria_file_id,
+                            'name' => $file_name_for_saving
                         ]);
                     }
                 }
@@ -429,6 +436,7 @@ abstract class module_training
                 }
                 // Set the file name
                 $file_name = $file->get_filename();
+                $file_name_for_saving = $file_name;
                 // Save a copy of the file
                 $file->copy_content_to($path . $file_name);
                 // Using maritdown to convert the content to HTML
@@ -464,7 +472,8 @@ abstract class module_training
                         // Insert record into block_aia_course_mod_files
                         $DB->insert_record('block_aia_course_mod_files', [
                             'bacmid' => $this->bacmid,
-                            'cria_fileid' => $cria_file_id
+                            'cria_fileid' => $cria_file_id,
+                            'name' => $file_name_for_saving
                         ]);
                     }
                     // Wait 2 seconds before moving to the next file
