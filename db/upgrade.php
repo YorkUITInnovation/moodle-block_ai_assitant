@@ -107,7 +107,7 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
         $table->add_field('blockid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
         $table->add_field('tutorialid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
-        $table->add_field('chatid', XMLDB_TYPE_CHAR, '1333', null, null, null, null);
+        $table->add_field('chatid', XMLDB_TYPE_CHAR, '255', null, null, null, null);
         $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
         $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
         $table->add_field('name', XMLDB_TYPE_CHAR, '1000', null, null, null, null);
