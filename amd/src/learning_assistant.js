@@ -22,8 +22,9 @@ function initTutorialButtons() {
         button.addEventListener('click', function (e) {
             e.preventDefault();
 
-            // Get course ID from data attribute
-            const courseid = this.getAttribute('data-courseid');
+            // Get courseid value from hidden element with id block-ai-assistant-course-id
+            const courseid = document.getElementById('block-ai-assistant-course-id').value;
+
             // Get tutorial id from data attribute
             const tutorialid = this.getAttribute('data-tutorialid');
 

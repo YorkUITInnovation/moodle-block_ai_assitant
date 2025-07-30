@@ -33,7 +33,7 @@ The AI Course Assistant is a powerful Moodle plugin that provides instructors wi
 ### Adding the AI Assistant to Your Course
 
 1. **Navigate to your course** in Moodle
-2. **Enable editing mode** by clicking "Turn editing on"
+2. **Enable editing mode** by toggling Edit mode on by using the switch in the top right corner.
 3. **Add the block**:
    - Click "Add a block" in the sidebar
    - Select "AI Assistant" from the available blocks

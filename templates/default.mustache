@@ -10,6 +10,7 @@
            value="{{training_status_id}}">
     <input type="hidden" id="block-ai_assistant-question-training-status-id" data-question_id="{{question_id}}"
            value="{{question_training_status_id}}">
+    <input type="hidden" id="block-ai-assistant-course-id" value="{{courseid}}">
     <div class="row">
         <div class="col-md-12">
             <div class="alert alert-info">
@@ -170,13 +171,13 @@
                 {{/tutorials}}
             </ul>
             {{^publish_tutorials}}
-                <button type="button" class="btn btn-primary btn-sm mt-2" id="btn-enable-tutorials"
+                <button type="button" class="btn btn-primary btn-sm mt-1" id="btn-enable-tutorials"
                         data-courseid="{{courseid}}">{{#str}}enable_tutorials, block_ai_assistant{{/str}}
                 </button>
             {{/publish_tutorials}}
 
             {{#publish_tutorials}}
-                <button type="button" class="btn btn-primary btn-sm  mt-2" id="btn-enable-tutorials"
+                <button type="button" class="btn btn-primary btn-sm  mt-1" id="btn-enable-tutorials"
                         data-courseid="{{courseid}}">{{#str}}disable_tutorials, block_ai_assistant{{/str}}
                 </button>
             {{/publish_tutorials}}

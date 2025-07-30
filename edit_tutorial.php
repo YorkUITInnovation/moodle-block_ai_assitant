@@ -23,6 +23,14 @@ $id = optional_param('id', 0, PARAM_INT);
 
 $context = CONTEXT_COURSE::instance($courseid);
 
+if ($courseid == 1) {
+    // Only those with capability to manage the site can access this page for the front page.
+    require_capability('block/ai_assistant:edit_site_tutorials', $context);
+} else {
+    // For other courses, require the capability to manage the course.
+    require_capability('block/ai_assistant:teacher', $context);
+}
+
 require_login(1, false);
 
 if (!$formdata = $DB->get_record('block_aia_tutorials', array('id' => $id))) {

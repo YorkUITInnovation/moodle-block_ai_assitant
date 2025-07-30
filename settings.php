@@ -26,7 +26,28 @@
 defined('MOODLE_INTERNAL') || die();
 
 if ($hassiteconfig) {
-    $settings = new admin_settingpage('block_ai_assistant_settings', new lang_string('pluginname', 'block_ai_assistant'));
+    global $CFG;
+
+
+    $settings = new admin_externalpage('block_ai_assistant_tutorials',
+        get_string('manage_tutorials', 'block_ai_assistant', null, true),
+        new moodle_url('/blocks/ai_assistant/tutorials.php', ['courseid' => 1])
+    );
+
+
+    $settings = new admin_settingpage(
+        'block_ai_assistant_settings',
+        new lang_string('pluginname', 'block_ai_assistant')
+    );
+
+    $settings->add(new admin_setting_description(
+        'block_ai_assistant_tutorials',
+        '',
+        '<a href="' . $CFG->wwwroot . '/blocks/ai_assistant/tutorials.php?courseid=1" class="btn btn-primary mb-3">'
+        . get_string('manage_tutorials', 'block_ai_assistant') . '</a>',
+        0,
+        PARAM_INT
+    ));
 
     //Bot Server
     $settings->add(new admin_setting_configtext(
@@ -311,9 +332,9 @@ if ($hassiteconfig) {
 
 
     // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
-    if ($ADMIN->fulltree) {
-        // TODO: Define actual plugin settings page and add it to the tree - {@link https://docs.moodle.org/dev/Admin_settings}.
-    }
+//    if ($ADMIN->fulltree) {
+//        // TODO: Define actual plugin settings page and add it to the tree - {@link https://docs.moodle.org/dev/Admin_settings}.
+//    }
 }
 
 set_config('description', '', 'block_ai_assistant');
@@ -334,3 +355,4 @@ set_config('bot_locale', 'en-US', 'block_ai_assistant');
 set_config('child_bots', '', 'block_ai_assistant');
 // Accepted modules
 set_config('blockAiAssistant', 'book,forum,glossary,page,resource', 'block_ai_assistant');
+
