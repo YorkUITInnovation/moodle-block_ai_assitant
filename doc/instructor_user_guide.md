@@ -133,6 +133,7 @@ Train your AI on existing Moodle content:
 - **Quality content**: Ensure uploaded materials are current and accurate
 - **Regular updates**: When ever you update a module that is already trained, the system automatically retrains the AI assistant to include the latest information
 
+> **Note**: If the trained file has an error badge (red), delete the file and reselect it to retrain. If the error persists, check the file format and content for issues.ß
 ---
 
 ## Configuration & Settings
@@ -246,6 +247,7 @@ Create guided learning experiences for students:
 #### Training Problems
 - **File format errors**: Ensure .docx format for documents
 - **Large file issues**: Break large documents into smaller sections
+- **Training error**: If there is an error message on a trained file, delete the selected file and retrain it.
 
 #### Response Quality Issues
 - **Inaccurate answers**: Add more specific training content
