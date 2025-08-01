@@ -152,7 +152,7 @@ class chat
          * @throws \dml_exception
          */
         public
-        static function get_chat_id($courseid, $tutorialid, $userid, $cmid): string|false
+        static function get_chat_id($courseid, $tutorialid, $userid, $cmid)
         {
             global $DB;
 
