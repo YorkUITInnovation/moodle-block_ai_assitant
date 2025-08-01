@@ -289,10 +289,10 @@ $string['tutorial_quiz_description'] = 'This activity is designed to help studen
     . ' support learning and reflection. The quiz is delivered one question at a time to encourage focus and'
     . ' engagement. At the end, students receive a summary of their performance along with suggestions for improvement.'
     . ' The format is intended to be interactive, self-paced, and supportive of independent learning.';
-$string['tutorial_quiz_prompt'] = "- Please prepare a multiple-choice quiz on topic: [topic] with 20 questions with four possible choices, labelled A, B, C, and D.
+$string['tutorial_quiz_prompt'] = "- Please prepare a multiple-choice quiz on topic: [topic] with 10 questions with four possible choices, labelled A, B, C, and D.
 - Create all questions from your knowledge base on the topic [topic] 
 - Wait for me to respond with a label after each question, provide feedback on my answer, and then ask the next question. 
-- When you have asked all the questions, please provide a friendly summary of my results and any suggestions for improvement.
+- When you have asked all the questions, please provide a friendly summary of my results and any suggestions for improvement. Also, ask the student if they would like to try another set of questions. Wait for a reply. If yes, restart a new quiz session with another ten questions. 
 - If you are continuing a previous session, continue asking questions. Start at the last number plus 1.
 - If a student starts asking questions instead of answering the quiz questions, tell the student that you only do quizzes.";
 
