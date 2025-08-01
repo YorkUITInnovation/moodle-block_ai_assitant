@@ -13,7 +13,7 @@ class block_ai_assistant_chat_ws extends external_api
      * Returns description of method parameters
      * @return external_function_parameters
      */
-    public static function chat_parameters(): external_function_parameters
+    public static function chat_parameters()
     {
         return new external_function_parameters(
             array(
@@ -123,7 +123,7 @@ class block_ai_assistant_chat_ws extends external_api
      * Returns description of method parameters
      * @return external_function_parameters
      */
-    public static function start_parameters(): external_function_parameters
+    public static function start_parameters()
     {
         return new external_function_parameters(
             array(
@@ -272,7 +272,7 @@ class block_ai_assistant_chat_ws extends external_api
      * Returns method result value
      * @return external_single_structure
      */
-    public static function start_returns(): external_single_structure
+    public static function start_returns()
     {
         return new external_value(PARAM_RAW, 'JSON Formated data');
     }
@@ -280,7 +280,7 @@ class block_ai_assistant_chat_ws extends external_api
     /**
      * @return external_function_parameters
      */
-    public static function delete_parameters(): external_function_parameters
+    public static function delete_parameters()
     {
         return new external_function_parameters(
             array(
@@ -296,7 +296,7 @@ class block_ai_assistant_chat_ws extends external_api
      * @throws invalid_parameter_exception
      * @throws restricted_context_exception
      */
-    public static function delete(string $chatid): bool
+    public static function delete(string $chatid)
     {
         global $DB;
 
@@ -333,7 +333,7 @@ class block_ai_assistant_chat_ws extends external_api
      * Returns method result value
      * @return external_value
      */
-    public static function delete_returns(): external_value
+    public static function delete_returns()
     {
         return new external_value(PARAM_BOOL, 'True if deleted');
     }
