@@ -112,9 +112,9 @@ class block_ai_assistant_chat_ws extends external_api
 
     /**
      * Returns method result value
-     * @return external_value|external_description
+     * @return external_value
      */
-    public static function chat_returns(): external_value|external_description
+    public static function chat_returns()
     {
         return new external_value(PARAM_RAW, 'Response from AI');
     }
