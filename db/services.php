@@ -144,4 +144,13 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_set_policy_status' => array(
+        'classname' => 'block_ai_assistant_ai_policy_ws',
+        'methodname' => 'execute',
+        'classpath' => 'blocks/ai_assistant/classes/external/ai_policy.php',
+        'description' => 'Register user policy acceptance for AI assistant.',
+        'type' => 'read',
+        'capabilities' => '',
+        'ajax' => true
+    ),
 );

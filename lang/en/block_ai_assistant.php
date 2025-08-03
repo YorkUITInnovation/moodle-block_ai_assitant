@@ -492,3 +492,17 @@ $string['help_intro'] = '<h3>AI Assistant Help</h3>' .
     'To help you get the best results from the AI Assistant, we have provided templates for syllabi and questions. ' .
     'These templates are designed to ensure that the AI Assistant receives accurate and consistent information. ' .
     'Follow the instructions below to use the templates effectively.';
+
+
+// AI Policies
+$string['acceptai'] = 'Accept and continue';
+$string['aipolicyacceptance'] = 'AI policy acceptance';
+$string['declineaipolicy'] = 'Decline';
+$string['userpolicy'] = '<h4><strong>Welcome to the new AI feature!</strong></h4>
+<p>This Artificial Intelligence (AI) feature is based solely on external Large Language Models (LLM) to improve your learning and teaching experience. Before you start using these AI services, please read this usage policy.</p>
+<h4><strong>Accuracy of AI-generated content</strong></h4>
+<p>AI can give useful suggestions and information, but its accuracy may vary. You should always double-check the information provided to make sure it\'s accurate, complete, and suitable for your specific situation.</p>
+<h4><strong>How your data is processed</strong></h4>
+<p>This AI feature uses external Large Language Models (LLM). If you use this feature, any information or personal data you share will be handled according to the privacy policy of those LLMs. We recommend that you read their privacy policy to understand how they will handle your data. Additionally, a record of your interactions with the AI features may be saved in this site.</p>
+<p>If you have questions about how your data is processed, please check with your teachers or learning organisation.</p>
+<p>By continuing, you acknowledge that you understand and agree to this policy.</p>';

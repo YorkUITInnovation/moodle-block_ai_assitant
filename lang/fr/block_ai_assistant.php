@@ -492,3 +492,16 @@ $string['help_intro'] = '<h3>Aide de l\'Assistant IA</h3>' .
     'Pour vous aider à obtenir les meilleurs résultats de l\'Assistant IA, nous avons fourni des modèles pour les plans de cours et les questions. ' .
     'Ces modèles sont conçus pour s\'assurer que l\'Assistant IA reçoit des informations précises et cohérentes. ' .
     'Suivez les instructions ci-dessous pour utiliser efficacement les modèles.';
+
+// AI Policies
+$string['acceptai'] = 'Accepter et continuer';
+$string['aipolicyacceptance'] = 'Acceptation de la politique d\'IA';
+$string['declineaipolicy'] = 'Déclin';
+$string['userpolicy'] = '<h4><strong>Bienvenue dans la nouvelle fonctionnalité d\'IA !</strong></h4>
+<p>Cette fonctionnalité d\'intelligence artificielle (IA) s\'appuie exclusivement sur des modèles de langage étendus (MLL) externes pour améliorer votre expérience d\'apprentissage et d\'enseignement. Avant d\'utiliser ces services d\'IA, veuillez lire cette politique d\'utilisation.</p>
+<h4><strong>Précision du contenu généré par l\'IA</strong></h4>
+<p>L\'IA peut fournir des suggestions et des informations utiles, mais leur précision peut varier. Il est important de toujours vérifier les informations fournies pour vous assurer qu\'elles sont exactes, complètes et adaptées à votre situation.</p>
+<h4><strong>Comment vos données sont traitées</strong></h4>
+<p>Cette fonctionnalité d\'IA utilise des modèles de langage étendus (MLL) externes. Si vous utilisez cette fonctionnalité, toutes les informations ou données personnelles que vous partagez seront traitées conformément à la politique de confidentialité de ces LLM. Nous vous recommandons de lire leur politique de confidentialité pour comprendre comment ils traitent vos données. De plus, un enregistrement de vos interactions avec les fonctionnalités d\'IA peut être conservé sur ce site.</p>
+<p>Si vous avez des questions sur la manière dont vos données sont traitées, veuillez consulter vos enseignants ou votre organisme d’apprentissage.</p>
+<p>En continuant, vous reconnaissez que vous comprenez et acceptez cette politique.</p>';

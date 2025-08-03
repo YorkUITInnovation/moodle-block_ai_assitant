@@ -24,6 +24,7 @@
 
 use block_ai_assistant\cria;
 use block_ai_assistant\tutorials;
+use block_ai_assistant\ai_policy;
 
 class block_ai_assistant extends block_base
 {
@@ -111,6 +112,7 @@ class block_ai_assistant extends block_base
         $this->content->items = array();
         $this->content->icons = array();
         $this->content->footer = '';
+        $PAGE->requires->js_call_amd('block_ai_assistant/ai_policy', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_file', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/publish_to_students', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
@@ -350,6 +352,8 @@ class block_ai_assistant extends block_base
             'tutorials' => $tutorials,
             'is_teacher' => $is_teacher,
             'is_student' => $is_student,
+            'ai_policy_status' => ai_policy::get_policy_status(),
+            'contextid' => $course_context->id,
         );
 
         if (!empty($this->config->text)) {
