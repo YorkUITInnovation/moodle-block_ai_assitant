@@ -15,7 +15,8 @@ class course_modules
             'book',
             'resource',
             'folder',
-            'glossary'
+            'glossary',
+            'tab'
         ];
     }
 
@@ -158,6 +159,10 @@ class course_modules
                             case 'glossary':
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'glossary');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration';
+                                break;
+                            case 'tab':
+                                $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('icon3', 'mod_tab');
+                                $course_structure->sections[$i]->modules[$x]->icontype = 'content';
                                 break;
                         }
                         $x++;

@@ -484,4 +484,53 @@ abstract class module_training
 
         return true;
     }
+
+    /**
+     * Train the tab module content
+     * @return bool
+     * @throws \coding_exception
+     * @throws \dml_exception
+     */
+    public function tab()
+    {
+        global $CFG, $DB;
+        // if $this->bacmid is false, it means that the module is not registered in the block_aia_course_modules table
+        if ($this->bacmid === false) {
+            return false; // If the module is not registered, return false
+        }
+        // Set URL to the module
+        $mod_url = $CFG->wwwroot . '/mod/tab/view.php?id=' . $this->cmid;
+        $content = get_string('content_found_at', 'block_ai_assistant')
+            . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>';
+        // Get book chapters
+        $tab_contents = $DB->get_records('tab_content', ['tabid' => $this->mod[0]->instance], 'tabcontentorder ASC');
+        foreach ($tab_contents as $tab_content) {
+            $content .= '<h4>' . $tab_content->tabname . '</h4>';
+            $content .= file_rewrite_pluginfile_urls(
+                $tab_content->tabcontent,
+                'pluginfile.php',
+                $this->context->id,
+                'mod_tab',
+                'content',
+                $tab_content->id
+            );
+        }
+        // Make sure $content is UTF-8 encoded
+        if (!mb_detect_encoding($content, 'UTF-8', true)) {
+            $content = mb_convert_encoding($content, 'UTF-8');
+        }
+        $content = base64_encode($content);
+        // Upload content to Cria
+        $cria_file_id = cria::upload_content_to_bot($this->mod[0]->course, $this->file_name, $content);
+        if (!$cria_file_id) {
+            return false; // If there was an error uploading the content
+        } else {
+            $DB->insert_record('block_aia_course_mod_files', [
+                'bacmid' => $this->bacmid,
+                'cria_fileid' => $cria_file_id,
+                'name' => $this->mod[0]->name
+            ]);
+        }
+        return true;
+    }
 }
