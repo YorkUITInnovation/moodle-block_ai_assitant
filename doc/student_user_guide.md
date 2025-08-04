@@ -1,10 +1,28 @@
 ## 🧠 **AI Course Assistant Block – Student User Guide**
 
+### **Table of Contents**
+1. [Overview](#overview)
+2. [📘 Syllabus](#-syllabus)
+   - [AI Course Assistant Agent](#ai-course-assistant-agent)
+3. [🤖 My Learning Companion](#-my-learning-companion)
+   - [1. Manage Saved Chats](#1-manage-saved-chats)
+   - [2. My Tutor](#2-my-tutor)
+   - [3. QuizMe ON...](#3-quizme-on)
+   - [4. Chat Interface Features](#4-chat-interface-features)
+4. [🔧 Troubleshooting](#-troubleshooting)
+   - [Understanding AI Limitations](#understanding-ai-limitations)
+   - [AI Course Assistant Agent Issues](#ai-course-assistant-agent-issues)
+   - [Chat Interface Problems](#chat-interface-problems)
+   - [Best Practices for AI Interaction](#best-practices-for-ai-interaction)
+5. [Tips for Students](#tips-for-students)
+
+---
+
 ### **Overview**
 The **AI Course Assistant Block** is a centralized hub designed to support students throughout their course. It combines access to key materials with intelligent tools that personalize and enhance the learning experience.
 Not all course material is available in the AI Course assistant. The AI Course Assistant is trained by your instructors based on course content your instructor selected to be trained.
 
-> **Note:** If you see the AI Course Assistant block, but it is empty, it means your instructor has not yet added any content or tools to this block or that your instructor has not enabled the features for students. Please check back later or contact your instructor for more information.
+> **Note:** If the AI Course Assistant block appears empty, it means your instructor hasn’t added any content yet or hasn’t enabled student access. Please check back later or contact your instructor for more details.
 
 ### **📘 Syllabus**
 - **Purpose:** Provides a downloadable version of the course syllabus.
@@ -22,6 +40,7 @@ Not all course material is available in the AI Course assistant. The AI Course A
 - **Availability:** The agent is accessible from the course page for instant help
 
 > **Note:** The AI Course Assistant is designed to assist with course-related questions and provide explanations. It does not replace human instructors but serves as a supplementary resource for your learning.
+
 ---
 
 ### **🤖 My Learning Companion**

@@ -2,16 +2,24 @@
 
 ## Table of Contents
 1. [Overview](#overview)
+   - [Key Instructor Benefits](#key-instructor-benefits)
 2. [Getting Started](#getting-started)
-3. [Configuration & Settings](#configuration--settings)
-4. [Content Training](#content-training)
-5. [Question Management](#question-management)
+   - [Adding the AI Assistant to Your Course](#adding-the-ai-assistant-to-your-course)
+3. [Content Training](#content-training)
+   - [Syllabus Upload](#syllabus-upload)
+4. [Question Management](#question-management)
+   - [Creating Q&A Collections](#creating-qa-collections)
+   - [Course Module Training](#course-module-training)
+   - [Training Best Practices](#training-best-practices)
+5. [Configuration & Settings](#configuration--settings)
+   - [Bot Display Settings](#bot-display-settings)
 6. [Autotest & Quality Control](#autotest--quality-control)
-7. [Tutorial Creation](#tutorial-creation)
-8. [Chat Management](#chat-management)
-9. [Monitoring & Analytics](#monitoring--analytics)
-10. [Best Practices](#best-practices)
-11. [Troubleshooting](#troubleshooting)
+7. [Learning Assistant Tutorial Creation](#learning-assistant-tutorial-creation)
+   - [Learning Assistant Tutorials](#learning-assistant-tutorials)
+8. [Chat Features](#chat-features)
+   - [Chat Summarization](#chat-summarization)
+   - [Download Chat](#download-chat)
+9. [Best Practices](#best-practices)
 
 ---
 
