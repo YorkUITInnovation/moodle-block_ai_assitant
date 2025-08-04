@@ -176,7 +176,7 @@ Le résumé doit être approprié pour être partagé avec un instructeur univer
 
 Concentrez-vous sur la clarté, la pertinence et la valeur éducative.";
 $string['supported_modules'] = '<p>Note : L\'Assistant IA ne peut être entraîné que sur le contenu des modules suivants : </p>'
-    . '<ul><li>Forum d\'annonces</li><li>Page</li><li>Zone de texte et média</li><li>Livre</li><li>Fichier</li><li>Dossier</li>'
+    . '<ul><li>Forum d\'annonces</li><li>Page</li><li>Onglet</li><li>Zone de texte et média</li><li>Livre</li><li>Fichier</li><li>Dossier</li>'
     . '<li>Glossaire</li></ul>';
 $string['supported_modules_title'] = 'Modules supportés';
 $string['supported_formats'] = '<p>Note : Les formats de fichiers non supportés ne seront pas traités pour l\'entraînement et ne seront pas accessibles via '

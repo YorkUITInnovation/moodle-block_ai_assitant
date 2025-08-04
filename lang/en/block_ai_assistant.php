@@ -176,7 +176,7 @@ The summary should be appropriate for sharing with a university instructor and m
 
 Focus on clarity, relevance, and educational value.";
 $string['supported_modules'] = '<p>Note: The AI Assistant can only be trained on content from the following modules: </p>'
-    . '<ul><li>Announcement Forum</li><li>Page</li><li>Text & Media Area</li><li>Book</li><li>File</li><li>Folder</li>'
+    . '<ul><li>Announcement Forum</li><li>Page</li><li>Tab Display</li><li>Text & Media Area</li><li>Book</li><li>File</li><li>Folder</li>'
     . '<li>Glossary</li></ul>';
 $string['supported_modules_title'] = 'Supported Modules';
 $string['supported_formats'] = '<p>Note: Unsupported file formats will not be processed for training and will not be accessible through '
