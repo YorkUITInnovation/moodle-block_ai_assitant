@@ -198,7 +198,9 @@ class cria
             'child_bots' => $config->child_bots,
             'publish' => 0,
             'bot_contact' => $bot_contact,
-            'bot_help_text' => $bot_help_text
+            'bot_help_text' => $bot_help_text,
+            'variables' => "idNumber\nname\nip\ngrade\ngroups",
+            'preprocess_rules' => "My id number is [idNumber]\nMy name is [name]\nMy IP address is [ip]\nMy grade is [grade]\nI am in the following groups: [groups]",
         );
         return $data;
     }
