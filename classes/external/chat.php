@@ -366,7 +366,8 @@ class block_ai_assistant_chat_ws extends external_api
         $curent_lang = current_language();
         $topic_prompt = 'Give me oly a topic title for ' . $name . ' in ' . $curent_lang . ' language. Nothing else!';
         $topic_title = cria::chat_send($chat_id, $topic_prompt, $bot_name);
-        $initial_prompt = str_replace(
+        $initial_prompt = 'The students\' name is ' . $USER->firstname . '. ';
+        $initial_prompt .= str_replace(
             '[topic]',
             $topic_title,
             $tutorial->prompt

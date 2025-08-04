@@ -126,7 +126,7 @@ class chat
             $i++;
         }
         $content .= "\n\nUse the above context as a summary so that you can continue the chat now. ";
-        $content .= "Tell the student that you can now continue where you left off.";
+        $content .= "Tell the student $USER->firstanme that you can now continue where you left off.";
 
         $response = cria::chat_send($chat_id, $content, $bot_name);
         // Insert the response into the chat history.
