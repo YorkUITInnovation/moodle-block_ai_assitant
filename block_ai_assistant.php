@@ -321,7 +321,7 @@ class block_ai_assistant extends block_base
 
         $tutorials = '';
         if (has_capability('block/ai_assistant:teacher', $course_context)) {
-            $tutorials = tutorials::get_tutorials($this->page->course->id);
+            $tutorials = tutorials::get_tutorials($this->page->course->id, true);
         } else {
             if ($course_record->publish_tutorials) {
                 $tutorials = tutorials::get_tutorials($this->page->course->id);

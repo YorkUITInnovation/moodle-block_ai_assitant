@@ -20,8 +20,9 @@
                 {{#is_teacher}}
                     <p>
                         <a href="{{config.wwwroot}}/blocks/ai_assistant/instructor_user_guide.php?courseid={{courseid}}"
-                           class="btn btn-link btn-sm"
-                           title="{{#str}}user_guide, block_ai_assistant{{/str}}">{{#str}}user_guide, block_ai_assistant{{/str}}</a>
+                        class="btn btn-link btn-sm"
+                        title="{{#str}}
+                        user_guide, block_ai_assistant{{/str}}">{{#str}}user_guide, block_ai_assistant{{/str}}</a>
                     </p>
                 {{/is_teacher}}
             </div>
@@ -175,7 +176,13 @@
                                 class="btn btn-link btn-sm block-ai-assistant-tutorial-button"
                                 data-tutorialid="{{id}}"
                                 data-courseid="{{courseid}}"
-                        >{{name}}</button>
+                        >{{name}}
+                            {{^enabled}}
+                                <span class="text-danger ml-1" title="{{#str}}hiddenfromstudents, core{{/str}}">
+                                        <i class="fa fa-eye-slash"></i>
+                                    </span>
+                            {{/enabled}}
+                        </button>
                     </li>
                 {{/tutorials}}
                 <li class="list-group-item">

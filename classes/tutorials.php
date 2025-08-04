@@ -4,13 +4,20 @@ namespace block_ai_assistant;
 
 class tutorials
 {
-    public static function get_tutorials($courseid): array
+    public static function get_tutorials($courseid, $is_teacher = false): array
     {
         global $DB;
 
-        // Fetch tutorials from the database for the given course ID.
-        $sql = "SELECT * FROM {block_aia_tutorials} WHERE "
-            . "(courseid = ? OR courseid = 1) and enabled = 1 ORDER BY name ASC";
+        if ($is_teacher) {
+            // If the user is a teacher, fetch all tutorials for the course.
+            $sql = "SELECT * FROM {block_aia_tutorials} WHERE (courseid = 1 OR courseid = ?) ORDER BY name ASC";
+            $params = [$courseid];
+        } else {
+            // Fetch tutorials from the database for the given course ID.
+            $sql = "SELECT * FROM {block_aia_tutorials} WHERE "
+                . "(courseid = ? OR courseid = 1) and enabled = 1 ORDER BY name ASC";
+        }
+
         $params = [$courseid];
         $tutorials = $DB->get_records_sql($sql, $params);
         // Reset the keys to be sequential.
