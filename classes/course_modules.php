@@ -56,9 +56,9 @@ class course_modules
 
             if (isset($section->name)) {
                 $course_structure->sections[$i]->idname = $sectionnum . '-' . strtolower(preg_replace(
-                        '/[^a-zA-Z0-9\s]/',
-                        '',
-                        str_replace(' ', '-', $course_structure->sections[$i]->sectionname))
+                            '/[^a-zA-Z0-9\s]/',
+                            '',
+                            str_replace(' ', '-', $course_structure->sections[$i]->sectionname))
                     );
             } else {
                 $course_structure->sections[$i]->idname = $sectionnum . '-topic-' . $sectionnum;
@@ -227,11 +227,8 @@ class course_modules
         foreach ($file_records as $file_record) {
             // Delete the file from Cria
             $status = cria::delete_content_from_bot($file_record->cria_fileid);
-            if ($status == 200 || $status == 404) {
-                // Delete existing record from block_aia_course_mod_files
-                $DB->delete_records('block_aia_course_mod_files', ['id' => $file_record->id]);
-            }
-
+            // Delete existing record from block_aia_course_mod_files
+            $DB->delete_records('block_aia_course_mod_files', ['id' => $file_record->id]);
         }
     }
 
@@ -782,8 +779,8 @@ class course_modules
                 if ($file->trained == 0 || $file->trained == 3) {
                     // Use cria to check the status of the file
                     $status = cria::get_content_training_status($file->cria_fileid);
-                        if ($status->training_status_id != 0) {
-                            $DB->set_field(
+                    if ($status->training_status_id != 0) {
+                        $DB->set_field(
                             'block_aia_course_mod_files',
                             'trained',
                             $status->training_status_id,
