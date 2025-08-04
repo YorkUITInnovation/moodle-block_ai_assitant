@@ -124,7 +124,7 @@ $string['import_successful'] = 'Import successful.';
 $string['invalid_token'] = '498 Invalid Token';
 $string['keywords'] = "Keywords";
 $string['learning_assistant_help'] = "Select the content you would like to get learning assistance on. ";
-
+$string['learning_tutorials'] = "My Learning Companion";
 $string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
 $string['manage_saved_chats'] = "Manage Saved Chats";
 $string['manage_tutorials'] = "Manage AI Learning Assistant";

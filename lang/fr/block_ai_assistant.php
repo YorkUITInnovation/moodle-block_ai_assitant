@@ -124,7 +124,7 @@ $string['import_successful'] = 'Importation réussie.';
 $string['invalid_token'] = '498 Jeton invalide';
 $string['keywords'] = "Mots-clés";
 $string['learning_assistant_help'] = "Sélectionnez le contenu sur lequel vous souhaitez obtenir une aide à l\'apprentissage. ";
-
+$string['learning_tutorials'] = "Mon compagnon d’apprentissage";
 $string['letAIGenerate'] = "Laisser l\'IA générer une réponse basée sur votre réponse ci-dessus ?";
 $string['manage_saved_chats'] = "Gérer les discussions sauvegardées";
 $string['manage_tutorials'] = "Gérer l\'Assistant d\'apprentissage IA";
