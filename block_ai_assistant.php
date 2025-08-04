@@ -25,6 +25,7 @@
 use block_ai_assistant\cria;
 use block_ai_assistant\tutorials;
 use block_ai_assistant\ai_policy;
+use block_ai_assistant\chat;
 
 class block_ai_assistant extends block_base
 {
@@ -120,6 +121,11 @@ class block_ai_assistant extends block_base
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_question', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/learning_assistant', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/disabled_assistant', 'init', [$course_record->published == 1]);
+
+        // Initialize saved_chats module with saved chats data
+        $saved_chats = chat::get_saved_chats($this->page->course->id, $USER->id);
+        $PAGE->requires->js_call_amd('block_ai_assistant/saved_chats', 'init', [$saved_chats, $this->page->course->id]);
+
         $PAGE->requires->css(new moodle_url('/blocks/ai_assistant/css/styles.css'));
 
         $course_context = \context_course::instance($this->page->course->id);

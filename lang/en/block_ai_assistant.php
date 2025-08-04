@@ -126,6 +126,7 @@ $string['keywords'] = "Keywords";
 $string['learning_assistant_help'] = "Select the content you would like to get learning assistance on. ";
 
 $string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
+$string['manage_saved_chats'] = "Manage Saved Chats";
 $string['manage_tutorials'] = "Manage AI Learning Assistant";
 $string['modules'] = "Modules";
 $string['name'] = "Name";
@@ -148,6 +149,7 @@ $string['required'] = 'This field is required';
 $string['related_question'] = "Related Questions";
 $string['save'] = 'Save changes ';
 $string['save_chat'] = 'Download Chat';
+$string['saved_chats'] = 'Saved Chats';
 $string['section'] = 'Section';
 $string['section'] = 'Section';
 $string['student'] = 'Student';
