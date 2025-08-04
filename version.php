@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'block_ai_assistant';
-$plugin->release = '2.0.1 (Build: 2025080300)';
+$plugin->release = '2.0.0 (Build: 2025080300)';
 $plugin->version = 2025080300;
 $plugin->requires = 2022041900;
 $plugin->maturity = MATURITY_STABLE;
