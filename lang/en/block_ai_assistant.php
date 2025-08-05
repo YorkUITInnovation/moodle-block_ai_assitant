@@ -265,6 +265,7 @@ $string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when n
 $string['embed_position'] = 'Embed Position';
 
 // Default Tutorials
+$string['learning_assistant_tutorials'] = 'AI Learning Assistant Tutorials';
 $string['shortname'] = 'Short Name';
 $string['shortname_exists'] = 'Shortname already exist. Please choose a different shortname.';
 $string['tutorial_tutor_name'] = 'My Tutor';

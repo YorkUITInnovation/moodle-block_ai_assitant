@@ -38,8 +38,8 @@ if (!$table->is_downloading()) {
     // Only print headers if not asked to download data
     // Print the page header
     $PAGE->set_url(new moodle_url('/blocks/ai_assistant/tutorials.php', ['courseid' => $courseid]));
-    $PAGE->set_title('tutorials_download');
-    $PAGE->set_heading('Downloading Tutorials');
+    $PAGE->set_title(get_string('learning_assistant_tutorials', 'block_ai_assistant'))   ;
+    $PAGE->set_heading(get_string('learning_assistant_tutorials', 'block_ai_assistant'));
     $PAGE->navbar->add('Downloading data', new moodle_url('/blocks/ai_assistant/tutorials.php', ['courseid' => $courseid]));
     echo $OUTPUT->header();
 } else {

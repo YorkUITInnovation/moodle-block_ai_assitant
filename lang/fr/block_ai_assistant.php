@@ -265,6 +265,7 @@ $string['no_context_llm_guess_help'] = 'Permettre au LLM de retourner une répon
 $string['embed_position'] = 'Position d\'intégration';
 
 // Default Tutorials
+$string['learning_assistant_tutorials'] = 'Tutoriels d\'assistant d\'apprentissage';
 $string['shortname'] = 'Nom court';
 $string['shortname_exists'] = 'Shortname already exist. Please choose a different shortname.';
 $string['tutorial_tutor_name'] = 'Mon tuteur';
