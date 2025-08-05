@@ -34,6 +34,7 @@ $string['ai_assistant'] = 'Assistant IA';
 $string['ai_assistant_instructions'] = 'Pour obtenir les meilleurs résultats de l\'Assistant IA, veuillez utiliser le modèle de plan de cours fourni dans la section Aide. '
     . 'Pour rendre l\'Assistant IA disponible aux étudiants, cliquez sur le bouton Activer l\'Assistant IA ci-dessous.';
 $string['ai_learning_assistant'] = 'Assistant d\'apprentissage IA';
+$string['ai_policy_not_accepted'] = 'Vous devez accepter la politique de l\'IA pour utiliser cette fonctionnalité.';
 $string['answer'] = 'Réponse';
 $string['autotest'] = 'AutoTest';
 $string['Autotest'] = 'AutoTest';
@@ -264,6 +265,8 @@ $string['no_context_llm_guess_help'] = 'Permettre au LLM de retourner une répon
 $string['embed_position'] = 'Position d\'intégration';
 
 // Default Tutorials
+$string['shortname'] = 'Nom court';
+$string['shortname_exists'] = 'Shortname already exist. Please choose a different shortname.';
 $string['tutorial_tutor_name'] = 'Mon tuteur';
 $string['tutorial_tutor_description'] = 'L\'invite est conçue pour guider un Tuteur-IA dans l\'aide aux étudiants universitaires'
     . ' à apprendre activement et comprendre un sujet en les engageant dans une conversation personnalisée, interactive et soutenante.';

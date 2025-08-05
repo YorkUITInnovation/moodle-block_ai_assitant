@@ -1,215 +1,224 @@
+<input type="hidden" id="block-ai_assistant-training-status-id" data-course_id="{{courseid}}"
+       value="{{training_status_id}}">
+<input type="hidden" id="block-ai_assistant-question-training-status-id" data-question_id="{{question_id}}"
+       value="{{question_training_status_id}}">
+<input type="hidden" id="ai-policy-status" value="{{ai_policy_status}}">
+<input type="hidden" id="block-ai-assistant-course-id" value="{{courseid}}">
+<input type="hidden" id="block-ai-assistant-context-id" value="{{contextid}}">
 {{^error_code}}
-    {{#embed_offset}}
-        <style>
-            .cria-wrapper {
-                bottom: {{embed_offset}}px !important;
-            }
-        </style>
-    {{/embed_offset}}
-    <input type="hidden" id="block-ai_assistant-training-status-id" data-course_id="{{courseid}}"
-           value="{{training_status_id}}">
-    <input type="hidden" id="block-ai_assistant-question-training-status-id" data-question_id="{{question_id}}"
-           value="{{question_training_status_id}}">
-    <input type="hidden" id="ai-policy-status" value="{{ai_policy_status}}">
-    <input type="hidden" id="block-ai-assistant-course-id" value="{{courseid}}">
-    <input type="hidden" id="block-ai-assistant-context-id" value="{{contextid}}">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="alert alert-info">
-                <p>{{#str}}ai_assistant_instructions, block_ai_assistant{{/str}}</p>
-                {{#is_teacher}}
-                    <p>
-                        <a href="{{config.wwwroot}}/blocks/ai_assistant/instructor_user_guide.php?courseid={{courseid}}"
-                        class="btn btn-link btn-sm"
-                        title="{{#str}}
-                        user_guide, block_ai_assistant{{/str}}">{{#str}}user_guide, block_ai_assistant{{/str}}</a>
-                    </p>
-                {{/is_teacher}}
+    {{^ai_policy_status}}
+        <div class="alert alert-danger" role="alert">
+            <p>
+                {{#str}}ai_policy_not_accepted, block_ai_assistant{{/str}}
+            </p>
+        </div>
+    {{/ai_policy_status}}
+    {{#ai_policy_status}}
+
+        {{#embed_offset}}
+            <style>
+                .cria-wrapper {
+                    bottom: {{embed_offset}}px !important;
+                }
+            </style>
+        {{/embed_offset}}
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="alert alert-info">
+                    <p>{{#str}}ai_assistant_instructions, block_ai_assistant{{/str}}</p>
+                    {{#is_teacher}}
+                        <p>
+                            <a href="{{config.wwwroot}}/blocks/ai_assistant/instructor_user_guide.php?courseid={{courseid}}"
+                            class="btn btn-link btn-sm"
+                            title="{{#str}}
+                            user_guide, block_ai_assistant{{/str}}">{{#str}}user_guide, block_ai_assistant{{/str}}</a>
+                        </p>
+                    {{/is_teacher}}
+                </div>
             </div>
         </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <ul class="list-group">
-                <li class="list-group-item">
-                    <!--upload syllabus -->
-                    {{^syllabus_url}}
-                        <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_upload.php?courseid={{courseid}}"
-                        class="btn btn-link btn-sm"
-                        title="{{#str}}upload_syllabus, block_ai_assistant{{/str}}"
-                        >{{#str}}upload_syllabus, block_ai_assistant{{/str}}</a>
-                    {{/syllabus_url}}
-                    <!--download syllabus -->
-                    {{#syllabus_url}}
-                        <a href="{{syllabus_url}}"
-                           class="btn btn-link btn-sm"
-                           title="{{#str}}download_syllabus, block_ai_assistant{{/str}}"
-                        >{{#str}}syllabus, block_ai_assistant{{/str}}
-                        </a>
-                        <!-- Content training status -->
-                        <span id="block-ai-assistant-training-status">
-                            {{{training_status}}}
-                        </span>
-                        <!-- Upload questions -->
-                        <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_upload.php?courseid={{courseid}}"
-                        class="btn btn-link btn-sm"
-                        title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
-                        ><i class="fa fa-upload"></i></a>
-                        <!-- Delete syllabus -->
-                        <button
-                                id="btn-ai-assistant-delete-syllabus"
-                                data-courseid="{{courseid}}"
-                                class="btn btn-link btn-sm"
-                                title="{{#str}}delete_syllabus, block_ai_assistant{{/str}}"
-                                data-confirm="{{#str}}confirm_file_deletion, block_ai_assistant{{/str}}">
-                            <i class="fa fa-trash"></i>
-                        </button>
-                    {{/syllabus_url}}
-                </li>
-                <li class="list-group-item">
-                    {{^questions_url}}
-                        <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_import.php?courseid={{courseid}}"
-                        class="btn btn-link btn-sm"
-                        title="{{#str}}upload_syllabus, block_ai_assistant{{/str}}"
-                        >{{#str}}upload_questions, block_ai_assistant{{/str}}</a>
-                    {{/questions_url}}
-                    {{#questions_url}}
-                        <!--download questions -->
-                        <a href="{{questions_url}}"
-                           class="btn btn-link btn-sm"
-                           title="{{#str}}
-                custom_questions, block_ai_assistant{{/str}}">{{#str}}
-                            custom_questions, block_ai_assistant{{/str}}</a>
-                        <!-- Content training status -->
-                        <span id="block-ai-assistant-question-training-status">
-                            {{{question_training_status}}}
-                        </span>
-                        <!-- Upload questions -->
-                        <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_import.php?courseid={{courseid}}"
-                        class="btn btn-link btn-sm"
-                        title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
-                        ><i class="fa fa-upload"></i></a>
-                        <!-- Delete questions -->
-                        <button
-                                id="btn-ai-assistant-delete-question"
-                                data-courseid="{{courseid}}"
-                                data-questionid="{{question_id}}"
-                                class="btn btn-link btn-sm"
-                                title="{{#str}}delete_question, block_ai_assistant{{/str}}"
-                                data-confirm="{{#str}}confirm_question_deletion, block_ai_assistant{{/str}}">
-                            <i class="fa fa-trash"></i>
-                        </button>
-                    {{/questions_url}}
-                </li>
-                <li class="list-group-item">
-                    <button type="button"
-                            id="btn-ai-assistant-train-modules"
-                            data-courseid="{{courseid}}"
-                            class="btn btn-link btn-sm" title="{{#str}}train_modules, block_ai_assistant{{/str}}">
-                        {{#str}}train_modules, block_ai_assistant{{/str}}
-                    </button>
-                </li>
-                <!--configure settings -->
-                <li class="list-group-item">
-                    <a href="{{configure_settings_url}}"
-                       class="btn btn-link btn-sm edit-button"
-                       title="{{#str}}configure_bot_settings, block_ai_assistant{{/str}}"
-                    >{{#str}}configure_bot_settings, block_ai_assistant{{/str}}
-                    </a>
-                </li>
-                {{#is_admin}}
+        <div class="row">
+            <div class="col-md-12">
+                <ul class="list-group">
                     <li class="list-group-item">
-                        <!--upload autotest -->
-                        <a href="{{autotest_url}}"
-                           class="btn btn-link btn-sm" title="{{#str}}autotest, block_ai_assistant{{/str}}">
-                            {{#str}}autotest, block_ai_assistant{{/str}}
-                        </a>
-                        <!--upload autotest -->
+                        <!--upload syllabus -->
+                        {{^syllabus_url}}
+                            <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_upload.php?courseid={{courseid}}"
+                            class="btn btn-link btn-sm"
+                            title="{{#str}}upload_syllabus, block_ai_assistant{{/str}}"
+                            >{{#str}}upload_syllabus, block_ai_assistant{{/str}}</a>
+                        {{/syllabus_url}}
+                        <!--download syllabus -->
+                        {{#syllabus_url}}
+                            <a href="{{syllabus_url}}"
+                               class="btn btn-link btn-sm"
+                               title="{{#str}}download_syllabus, block_ai_assistant{{/str}}"
+                            >{{#str}}syllabus, block_ai_assistant{{/str}}
+                            </a>
+                            <!-- Content training status -->
+                            <span id="block-ai-assistant-training-status">
+                                {{{training_status}}}
+                            </span>
+                            <!-- Upload questions -->
+                            <a href="{{config.wwwroot}}/blocks/ai_assistant/syllabus_upload.php?courseid={{courseid}}"
+                            class="btn btn-link btn-sm"
+                            title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
+                            ><i class="fa fa-upload"></i></a>
+                            <!-- Delete syllabus -->
+                            <button
+                                    id="btn-ai-assistant-delete-syllabus"
+                                    data-courseid="{{courseid}}"
+                                    class="btn btn-link btn-sm"
+                                    title="{{#str}}delete_syllabus, block_ai_assistant{{/str}}"
+                                    data-confirm="{{#str}}confirm_file_deletion, block_ai_assistant{{/str}}">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        {{/syllabus_url}}
                     </li>
-                {{/is_admin}}
-                <!-- Document Templates-->
-                <li class="list-group-item">
-                    <a href="{{config.wwwroot}}/blocks/ai_assistant/document_templates.php?courseid={{courseid}}"
-                    class="btn btn-link btn-sm"
-                    title="{{#str}}document_templates, block_ai_assistant{{/str}}">
-                    {{#str}}help, block_ai_assistant{{/str}}
-                    </a>
-                </li>
-            </ul>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-md-12 mt-1">
-
-            {{^published}}
-                <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
-                        data-courseid="{{courseid}}">{{#str}}enable_ai_assistant, block_ai_assistant{{/str}}
-                </button>
-            {{/published}}
-
-            {{#published}}
-                <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
-                        data-courseid="{{courseid}}">{{#str}}disable_ai_assistant, block_ai_assistant{{/str}}
-                </button>
-            {{/published}}
-
-            {{{teacher_embed_code}}}
-        </div>
-    </div>
-
-    <div class="row mt-4">
-        <div class="col-md-12">
-            <h5>{{#str}}ai_learning_assistant, block_ai_assistant{{/str}}</h5>
-            <ul class="list-group mt-2">
-                <!--Manage Tutorial -->
-                <li class="list-group-item">
-                    <a href="{{config.wwwroot}}/blocks/ai_assistant/tutorials.php?courseid={{courseid}}"
-                    class="btn btn-link btn-sm edit-button"
-                    title="{{#str}}manage_tutorials, block_ai_assistant{{/str}}"
-                    >{{#str}}manage_tutorials, block_ai_assistant{{/str}}
-                    </a>
-                </li>
-                {{#tutorials}}
+                    <li class="list-group-item">
+                        {{^questions_url}}
+                            <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_import.php?courseid={{courseid}}"
+                            class="btn btn-link btn-sm"
+                            title="{{#str}}upload_syllabus, block_ai_assistant{{/str}}"
+                            >{{#str}}upload_questions, block_ai_assistant{{/str}}</a>
+                        {{/questions_url}}
+                        {{#questions_url}}
+                            <!--download questions -->
+                            <a href="{{questions_url}}"
+                               class="btn btn-link btn-sm"
+                               title="{{#str}}
+                custom_questions, block_ai_assistant{{/str}}">{{#str}}
+                                custom_questions, block_ai_assistant{{/str}}</a>
+                            <!-- Content training status -->
+                            <span id="block-ai-assistant-question-training-status">
+                                {{{question_training_status}}}
+                            </span>
+                            <!-- Upload questions -->
+                            <a href="{{config.wwwroot}}/blocks/ai_assistant/questions_import.php?courseid={{courseid}}"
+                            class="btn btn-link btn-sm"
+                            title="{{#str}}upload_questions, block_ai_assistant{{/str}}"
+                            ><i class="fa fa-upload"></i></a>
+                            <!-- Delete questions -->
+                            <button
+                                    id="btn-ai-assistant-delete-question"
+                                    data-courseid="{{courseid}}"
+                                    data-questionid="{{question_id}}"
+                                    class="btn btn-link btn-sm"
+                                    title="{{#str}}delete_question, block_ai_assistant{{/str}}"
+                                    data-confirm="{{#str}}confirm_question_deletion, block_ai_assistant{{/str}}">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        {{/questions_url}}
+                    </li>
                     <li class="list-group-item">
                         <button type="button"
-                                class="btn btn-link btn-sm block-ai-assistant-tutorial-button"
-                                data-tutorialid="{{id}}"
+                                id="btn-ai-assistant-train-modules"
                                 data-courseid="{{courseid}}"
-                        >{{name}}
-                            {{^enabled}}
-                                <span class="text-danger ml-1" title="{{#str}}hiddenfromstudents, core{{/str}}">
-                                        <i class="fa fa-eye-slash"></i>
-                                    </span>
-                            {{/enabled}}
+                                class="btn btn-link btn-sm" title="{{#str}}train_modules, block_ai_assistant{{/str}}">
+                            {{#str}}train_modules, block_ai_assistant{{/str}}
                         </button>
                     </li>
-                {{/tutorials}}
-                <li class="list-group-item">
-                    <button type="button"
-                            id="btn-ai-assistant-manage-saved-chats"
-                            data-courseid="{{courseid}}"
-                            class="btn btn-link btn-sm"
-                            title="{{#str}}manage_saved_chats, block_ai_assistant{{/str}}"
-                    >{{#str}}manage_saved_chats, block_ai_assistant{{/str}}
-                    </button>
-                </li>
-            </ul>
-            {{^publish_tutorials}}
-                <button type="button" class="btn btn-primary btn-sm mt-1" id="btn-enable-tutorials"
-                        data-courseid="{{courseid}}">{{#str}}enable_tutorials, block_ai_assistant{{/str}}
-                </button>
-            {{/publish_tutorials}}
-
-            {{#publish_tutorials}}
-                <button type="button" class="btn btn-primary btn-sm  mt-1" id="btn-enable-tutorials"
-                        data-courseid="{{courseid}}">{{#str}}disable_tutorials, block_ai_assistant{{/str}}
-                </button>
-            {{/publish_tutorials}}
+                    <!--configure settings -->
+                    <li class="list-group-item">
+                        <a href="{{configure_settings_url}}"
+                           class="btn btn-link btn-sm edit-button"
+                           title="{{#str}}configure_bot_settings, block_ai_assistant{{/str}}"
+                        >{{#str}}configure_bot_settings, block_ai_assistant{{/str}}
+                        </a>
+                    </li>
+                    {{#is_admin}}
+                        <li class="list-group-item">
+                            <!--upload autotest -->
+                            <a href="{{autotest_url}}"
+                               class="btn btn-link btn-sm" title="{{#str}}autotest, block_ai_assistant{{/str}}">
+                                {{#str}}autotest, block_ai_assistant{{/str}}
+                            </a>
+                            <!--upload autotest -->
+                        </li>
+                    {{/is_admin}}
+                    <!-- Document Templates-->
+                    <li class="list-group-item">
+                        <a href="{{config.wwwroot}}/blocks/ai_assistant/document_templates.php?courseid={{courseid}}"
+                        class="btn btn-link btn-sm"
+                        title="{{#str}}document_templates, block_ai_assistant{{/str}}">
+                        {{#str}}help, block_ai_assistant{{/str}}
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
-    </div>
 
+        <div class="row">
+            <div class="col-md-12 mt-1">
 
+                {{^published}}
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
+                            data-courseid="{{courseid}}">{{#str}}enable_ai_assistant, block_ai_assistant{{/str}}
+                    </button>
+                {{/published}}
+
+                {{#published}}
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-enable-ai-assistant"
+                            data-courseid="{{courseid}}">{{#str}}disable_ai_assistant, block_ai_assistant{{/str}}
+                    </button>
+                {{/published}}
+
+                {{{teacher_embed_code}}}
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <h5>{{#str}}ai_learning_assistant, block_ai_assistant{{/str}}</h5>
+                <ul class="list-group mt-2">
+                    <!--Manage Tutorial -->
+                    <li class="list-group-item">
+                        <a href="{{config.wwwroot}}/blocks/ai_assistant/tutorials.php?courseid={{courseid}}"
+                        class="btn btn-link btn-sm edit-button"
+                        title="{{#str}}manage_tutorials, block_ai_assistant{{/str}}"
+                        >{{#str}}manage_tutorials, block_ai_assistant{{/str}}
+                        </a>
+                    </li>
+                    {{#tutorials}}
+                        <li class="list-group-item">
+                            <button type="button"
+                                    class="btn btn-link btn-sm block-ai-assistant-tutorial-button"
+                                    data-tutorialid="{{id}}"
+                                    data-courseid="{{courseid}}"
+                            >{{name}}
+                                {{^enabled}}
+                                    <span class="text-danger ml-1" title="{{#str}}hiddenfromstudents, core{{/str}}">
+                                        <i class="fa fa-eye-slash"></i>
+                                    </span>
+                                {{/enabled}}
+                            </button>
+                        </li>
+                    {{/tutorials}}
+                    <li class="list-group-item">
+                        <button type="button"
+                                id="btn-ai-assistant-manage-saved-chats"
+                                data-courseid="{{courseid}}"
+                                class="btn btn-link btn-sm"
+                                title="{{#str}}manage_saved_chats, block_ai_assistant{{/str}}"
+                        >{{#str}}manage_saved_chats, block_ai_assistant{{/str}}
+                        </button>
+                    </li>
+                </ul>
+                {{^publish_tutorials}}
+                    <button type="button" class="btn btn-primary btn-sm mt-1" id="btn-enable-tutorials"
+                            data-courseid="{{courseid}}">{{#str}}enable_tutorials, block_ai_assistant{{/str}}
+                    </button>
+                {{/publish_tutorials}}
+
+                {{#publish_tutorials}}
+                    <button type="button" class="btn btn-primary btn-sm  mt-1" id="btn-enable-tutorials"
+                            data-courseid="{{courseid}}">{{#str}}disable_tutorials, block_ai_assistant{{/str}}
+                    </button>
+                {{/publish_tutorials}}
+            </div>
+        </div>
+    {{/ai_policy_status}}
 {{/error_code}}
 {{#error_code}}
     <div class="row">

@@ -41,7 +41,26 @@ class tutorials extends \moodleform
             array('size' => '50', 'maxlength' => '255')
         );
         $mform->setType('name', PARAM_TEXT);
-        $mform->addRule('name', get_string('required'), 'required', null, 'client');
+        $mform->addRule('name', get_string('required'), 'required');
+
+        // Shortname field
+        $mform->addElement(
+            'text',
+            'shortname',
+            get_string('shortname', 'block_ai_assistant'),
+            array('size' => '50', 'maxlength' => '255')
+        );
+        $mform->setType('shortname', PARAM_TEXT);
+
+        // disable shortname field if editing an existing tutorial
+        if (!empty($formdata->id)) {
+            $mform->disabledIf('shortname', 'id', 'eq', $formdata->id);
+        } else {
+            $mform->addRule('shortname', get_string('required'), 'required');
+        }
+
+
+
 
         // Description field
         $mform->addElement(
@@ -60,6 +79,7 @@ class tutorials extends \moodleform
             array('wrap' => 'virtual', 'rows' => '6', 'cols' => '50')
         );
         $mform->setType('prompt', PARAM_RAW);
+        $mform->addRule('prompt', get_string('required'), 'required');
 
         // Enabled field
         $mform->addElement(
@@ -80,6 +100,7 @@ class tutorials extends \moodleform
      */
     public function validation($data, $files)
     {
+        global $DB;
         $errors = parent::validation($data, $files);
 
         // Validate name is not empty
@@ -87,10 +108,23 @@ class tutorials extends \moodleform
             $errors['name'] = get_string('required' , 'block_ai_assistant');
         }
 
+        if (empty(trim($data['shortname']))) {
+            $errors['shortname'] = get_string('required' , 'block_ai_assistant');
+        }
+
         if (empty(trim($data['prompt']))) {
             $errors['prompt'] = get_string('required', 'block_ai_assistant');
         }
 
+        if ($data['id'] == 0) {
+            if ($exists = $DB->get_record('block_aia_tutorials',
+                array(
+                    'shortname' => $data['shortname'],
+                    'courseid' => $data['courseid']
+                ))) {
+                $errors['shortname'] = get_string('shortname_exists', 'block_ai_assistant');
+            }
+        }
         return $errors;
     }
 }

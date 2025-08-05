@@ -34,6 +34,7 @@ $string['ai_assistant'] = 'AI Assistant';
 $string['ai_assistant_instructions'] = 'To get the best results from the AI Assistant, please use the syllabus template provided in the Help section. '
     . 'To make the AI Assistant available to students, click to Enable AI Assistant button below.';
 $string['ai_learning_assistant'] = 'AI Learning Assistant';
+$string['ai_policy_not_accepted'] = 'You must accept the AI policy to use this feature.';
 $string['answer'] = 'Answer';
 $string['autotest'] = 'AutoTest';
 $string['Autotest'] = 'AutoTest';
@@ -264,6 +265,8 @@ $string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when n
 $string['embed_position'] = 'Embed Position';
 
 // Default Tutorials
+$string['shortname'] = 'Short Name';
+$string['shortname_exists'] = 'Shortname already exist. Please choose a different shortname.';
 $string['tutorial_tutor_name'] = 'My Tutor';
 $string['tutorial_tutor_description'] = 'The prompt is designed to guide an AI-Tutor in helping university students'
     . ' actively learn and understand a topic by engaging them in a personalized, interactive, and supportive conversation.';
