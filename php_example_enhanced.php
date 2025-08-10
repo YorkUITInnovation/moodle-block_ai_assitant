@@ -1,52 +1,6 @@
 <?php
 
-namespace block_ai_assistant;
-
-class webservice
-{
-    /**
-     * @param string $method
-     * @param array $data
-     * @return mixed
-     */
-    public static function exec($method, $data)
-    {
-        // Get the plugin configuration
-        $config = get_config('block_ai_assistant');
-        // Set the URL
-        $url = $config->cria_url . '/webservice/restful/server.php/' . $method;
-        // Set the authorization token (replace with your actual token)
-        $token = $config->cria_token;
-
-// Initialize cURL session
-        $ch = curl_init();
-
-// Set cURL options
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            "Content-Type: application/json",
-            "Accept: application/json",
-            "Authorization: " . $token
-        ));
-
-// Execute the cURL request
-        $response = curl_exec($ch);
-
-// Check for errors
-        if (curl_errno($ch)) {
-            return curl_error($ch);
-        } else {
-            // Print the response
-            return $response;
-        }
-
-// Close cURL session
-        curl_close($ch);
-
-    }
+class CriaEmbedClient {
 
     /**
      * Execute embed request with chat session persistence
@@ -59,6 +13,7 @@ class webservice
      */
     public static function exec_embed($bot_id, $api_key, $payload, $chat_id = null)
     {
+        // Get the plugin configuration
         $config = get_config('block_ai_assistant');
         // Set the URL
         $url = $config->cria_embed_url . '/embed/' . $bot_id . '/load';
@@ -193,3 +148,78 @@ class webservice
         ];
     }
 }
+
+// Example usage:
+
+/**
+ * Example 1: Simple usage with automatic session management
+ */
+function example_simple_usage() {
+    $bot_id = '429';
+    $api_key = 'your-api-key';
+    $payload = [
+        'user_id' => 12345,
+        'user_name' => 'John Doe',
+        'context' => 'mathematics_help'
+    ];
+
+    // This will automatically handle chat session persistence
+    $result = CriaEmbedClient::exec_embed_with_session($bot_id, $api_key, $payload);
+
+    echo "Chat ID: " . $result['chat_id'] . "\n";
+    echo "Is new session: " . ($result['is_new_session'] ? 'Yes' : 'No') . "\n";
+    echo "Response: " . $result['response'] . "\n";
+
+    return $result['response'];
+}
+
+/**
+ * Example 2: Manual session management for more control
+ */
+function example_manual_session_management() {
+    $bot_id = '429';
+    $api_key = 'your-api-key';
+
+    // First request - no existing chat ID
+    $payload1 = ['user_id' => 12345, 'question' => 'first question'];
+    $result1 = CriaEmbedClient::exec_embed($bot_id, $api_key, $payload1);
+
+    echo "First request - Chat ID: " . $result1['chat_id'] . "\n";
+
+    // Second request - reuse the chat ID for conversation continuity
+    $payload2 = ['user_id' => 12345, 'question' => 'follow up question'];
+    $result2 = CriaEmbedClient::exec_embed($bot_id, $api_key, $payload2, $result1['chat_id']);
+
+    echo "Second request - Chat ID: " . $result2['chat_id'] . "\n";
+    echo "Same session: " . ($result1['chat_id'] === $result2['chat_id'] ? 'Yes' : 'No') . "\n";
+}
+
+/**
+ * Example 3: Starting a fresh conversation
+ */
+function example_start_fresh() {
+    $bot_id = '429';
+    $api_key = 'your-api-key';
+    $payload = ['user_id' => 12345, 'context' => 'new_topic'];
+
+    // Force a new session (clears stored chat ID)
+    $result = CriaEmbedClient::exec_embed_with_session($bot_id, $api_key, $payload, true);
+
+    echo "Fresh session - Chat ID: " . $result['chat_id'] . "\n";
+
+    return $result['response'];
+}
+
+/**
+ * Replace your existing method with this enhanced version
+ * This maintains backward compatibility while adding session persistence
+ */
+function enhanced_exec_embed($bot_id, $api_key, $payload) {
+    // Use the new method with automatic session management
+    $result = CriaEmbedClient::exec_embed_with_session($bot_id, $api_key, $payload);
+
+    // Return just the response for backward compatibility
+    return $result['response'];
+}
+
+?>

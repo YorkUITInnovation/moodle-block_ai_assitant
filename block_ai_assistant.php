@@ -225,7 +225,8 @@ class block_ai_assistant extends block_base
                 $course_record->bot_api_key,
                 $payload) ;
 
-        $embed_code_data = '<script>' . $embed_session_data . '</script>';
+//        $embed_code_data = '<script>' . $embed_session_data . '</script>';
+        $embed_code_data = '<script type="text/javascript" src="' . $config->cria_embed_url . '/embed/' . $bot_id . '/load" async> </script>';
         $embed_code = '';
         if ($availability->exception == 'success') {
             if ($course_record->published == 1) {
