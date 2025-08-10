@@ -625,6 +625,34 @@ class syllabus_parser
     }
 
     /**
+     * Save the parsed nodes to a markdown file with only text content
+     *
+     * @param array $nodes List of parsed node dictionaries
+     * @param string $outputFile Path to output markdown file
+     */
+    public function save_text_only_to_markdown($nodes, $outputFile)
+    {
+        $output = "";
+
+        foreach ($nodes as $node) {
+            // Extract only the text content without any metadata or structure
+            $textContent = trim($node['text']);
+
+            if (!empty($textContent)) {
+                // Convert *text*\n patterns to markdown headings
+                $textContent = preg_replace('/^\*([^*]+)\*$/m', '## $1', $textContent);
+
+                $output .= $textContent . "\n\n";
+            }
+        }
+
+        // Remove any trailing whitespace
+        $output = rtrim($output);
+
+        file_put_contents($outputFile, $output);
+    }
+
+    /**
      * Execute the complete conversion process from input file to output file
      *
      * @param string $inputFilePath Path to input markdown file
@@ -651,6 +679,42 @@ class syllabus_parser
 
         // Save the results
         $this->save_results_to_markdown($nodes, $outputFilePath);
+
+        return [
+            'nodes' => $nodes,
+            'input_file' => $inputFilePath,
+            'output_file' => $outputFilePath,
+            'node_count' => count($nodes)
+        ];
+    }
+
+    /**
+     * Execute the complete conversion process and save as text-only markdown
+     *
+     * @param string $inputFilePath Path to input markdown file
+     * @param string $outputFilePath Optional path to output file. If not provided, will use input filename with '_text_only' suffix
+     * @return array Returns the parsed nodes and file information
+     * @throws Exception If file operations fail
+     */
+    public function execute_text_only_conversion($inputFilePath, $outputFilePath = null)
+    {
+        // Check if input file exists
+        if (!file_exists($inputFilePath)) {
+            throw new Exception("Input file not found: {$inputFilePath}");
+        }
+
+        // Generate output file path if not provided
+        if ($outputFilePath === null) {
+            $pathInfo = pathinfo($inputFilePath);
+            $outputFilePath = $pathInfo['dirname'] . DIRECTORY_SEPARATOR .
+                             $pathInfo['filename'] . '_text_only.' . $pathInfo['extension'];
+        }
+
+        // Execute the conversion
+        $nodes = $this->convert_markdown_file_from_path($inputFilePath);
+
+        // Save as text-only
+        $this->save_text_only_to_markdown($nodes, $outputFilePath);
 
         return [
             'nodes' => $nodes,

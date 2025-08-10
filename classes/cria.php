@@ -4,6 +4,8 @@ namespace block_ai_assistant;
 
 
 use block_ai_assistant\webservice;
+use block_ai_assistant\markitdown;
+use block_ai_assistant\syllabus_parser;
 
 use Exception;
 
@@ -304,7 +306,6 @@ class cria
         global $CFG;
         $fs = get_file_storage();
         $files = $fs->get_area_files($contextid, 'block_ai_assistant', 'syllabus', $courseid);
-
         if ($files) {
 //            $file = reset($files);
             $temppath = $CFG->dataroot . '/temp/' . $courseid . '/cria';
@@ -317,10 +318,24 @@ class cria
             }
 
             foreach ($files as $file) {
-                if ($file->get_filesize() > 0) { // Ensures it's not a directory
+                if (!$file->is_directory()) { // Ensures it's not a directory
                     $filepath = $temppath . '/' . $file->get_filename();
                     $file->copy_content_to($filepath);
-                    return $filepath;
+                    // Now convert the file using Markitdown
+                    $converted_data = (object)markitdown::execute($filepath);
+                    // Save the converted content back to a md file
+                    $md_filepath = $temppath . '/' . $converted_data->filename . '.md';
+                    file_put_contents($md_filepath, $converted_data->content);
+                    // Delete original file
+                    unlink($filepath);
+                    // Now parse the md file through the syllabus parser
+                    $parser = new syllabus_parser();
+                    $parsed_file_path = $temppath . '/' . $converted_data->filename . '_parsed.md';
+                    $new_file = $parser->execute_text_only_conversion($md_filepath, $parsed_file_path );
+                    // Delete the original md file
+                    unlink($md_filepath);
+                    // Return the path of the new file
+                    return $new_file['output_file'];
                 }
             }
         }

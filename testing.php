@@ -10,7 +10,7 @@ use block_ai_assistant\course_modules;
 use block_ai_assistant\cria;
 use block_ai_assistant\chat;
 
-$context = context_system::instance();
+
 
 require_login(1, false);
 $PAGE->set_url(new moodle_url('/blocks/learningassist/testing.php', []));
@@ -20,8 +20,10 @@ $PAGE->set_pagelayout('standard');
 $PAGE->set_context($context);
 
 $courseid = required_param('courseid', PARAM_INT);
+$context = context_course::instance($courseid);
 
 echo $OUTPUT->header();
-print_object(cria::chat_exists('989177a6-95b1-44fa-b40f-e01609aedc66'));
+
+print_object(cria::copy_file_to_temp_folder($context->id, $courseid));
 
 echo $OUTPUT->footer();
