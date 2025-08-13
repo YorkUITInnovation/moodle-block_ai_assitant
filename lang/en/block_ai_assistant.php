@@ -197,24 +197,14 @@ $string['syllabus_instructions_more'] = 'Learn more';
 $string['syllabus_instructions_why'] = '<h5>Why?</h5>Using the provided syllabus template ensures a consistent document structure so the AI Course Assistant can parse and understand course details more accurately. The tool only supports Word documents (.docx) for syllabus uploads.';
 $string['syllabus_instructions_why_word'] = '<h5>Why Only Word Documents?</h5><p><img class="img-thumbnail" style="width:50%; height=auto;" src="/blocks/ai_assistant/pix/pdf_word_structured.png" alt="Image comparing unstructured PDF to structured Word for AI Nodes"></p></p><p>The AI Course Assistant works best with Word documents because they use a structured format called OpenXML. This format organizes content into clear sections (headings, paragraphs, tables), making it easy for the AI to read and retrieve information accurately. Other formats, like PDFs, often lack this structure, which can lead to errors.</p>';
 $string['syllabus_instructions_no_template'] = '<h5>I Prefer Using My Existing Syllabus</h5>
-<p>You can upload your own Word document (<strong>.docx</strong>) syllabus, but please <strong>use clear headings to separate each section</strong>. This helps the AI understand and organize your content accurately.</p>
-
-<h6>Example structure:</h6>
-<ul>
-    <li><strong>Course Information</strong><br>
-        Include: instructor name, email, course dates, classroom, Zoom link</li>
-    <li><strong>Course Description</strong><br>
-        Provide a detailed description of the course</li>
-    <li><strong>Learning Outcomes</strong><br>
-        List the detailed learning outcomes</li>
-</ul>
-
+<p>You can upload your own Word document (<strong>.docx</strong>) syllabus, but please <strong>apply proper heading styles using Word’s built-in “Styles” '
+    . 'feature (e.g., Heading 1, Heading 2, Heading 3)</strong>. This helps the AI understand and organize your content accurately.</p>
 <h6>Important for tables:</h6>
 <ul>
     <li>Place each table immediately after its related heading</li>
     <li>The first row must contain clear column headers</li>
-    <li>Do not leave any empty cells</li>
     <li>Avoid using complex column structures. Example: mixing merged and un-merged columns</li>
+    <li>Avoid empty cells.</li>
 </ul>
 
 <p><a href="/blocks/ai_assistant/doc/AI_Course_Assistant_Syllabus_Upload_Guide.docx" title="Syllabus Upload Guide Download">Download the Syllabus Upload Guide</a> for more detailed instructions.</p>
