@@ -187,6 +187,13 @@ $string['supported_formats'] = '<p>Note: Unsupported file formats will not be pr
     . 'PowerPoint presentations (.pptx only)</li><li>Excel spreadsheets (.xlsx only)</li><li>CSV files (.csv)</li><li>'
     . 'Audio files (.mp3, .wav, .m4a)</li><li>Video files (.mp4)</li></ul></p>';
 $string['supported_formats_title'] = 'Supported File Formats';
+
+$string['syllabus_instructions'] = 'To ensure optimal performance from the AI Course Assistant, it is <b>essential</b> that you use the provided syllabus template. '
+    . 'Following these guidelines will significantly improve the accuracy and relevance of responses to student questions.'
+    . 'The AI Course Assistant\'s effectiveness directly depends on the quality and format of your syllabus. Taking time to properly complete the template '
+    . 'in Word (.docx) format will save you and your students significant time throughout the use of teh AI Course Assistant.';
+$string['syllabus_instructions_title'] = 'Important: Syllabus Instructions';
+
 $string['training_visibility_warning'] = 'Important: Once content is trained by the AI Assistant, it will be available '
     . 'to all students in the course, regardless of whether they have permission to view the original resource '
     . 'or activity. Please consider this when selecting content for training.';

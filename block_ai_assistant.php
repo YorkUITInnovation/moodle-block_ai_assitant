@@ -226,7 +226,7 @@ class block_ai_assistant extends block_base
 //                $payload) ;
 
         // Using this method to get the embed code because the above does not work properly.
-        $embed_code_data = '<script type="text/javascript" src="' .$config->cria_embed_url . '/embed/' . $bot_id . '/load" async></script>';
+        $embed_code_data = '<script type="text/javascript" src="' . $config->cria_embed_url . '/embed/' . $bot_id . '/load" async></script>';
         $embed_code = '';
         if ($availability->exception == 'success') {
             if ($course_record->published == 1) {

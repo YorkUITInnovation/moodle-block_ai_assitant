@@ -332,10 +332,15 @@ class cria
                     $parser = new syllabus_parser();
                     $parsed_file_path = $temppath . '/' . $converted_data->filename . '_parsed.md';
                     $new_file = $parser->execute_text_only_conversion($md_filepath, $parsed_file_path );
+                    $new_content = file_get_contents($new_file['output_file']);
+                    $html_file_path = $temppath . '/' . $converted_data->filename . '_parsed.html';
+                    file_put_contents($html_file_path, markdown_to_html($new_content));
+
                     // Delete the original md file
                     unlink($md_filepath);
+                    unlink($parsed_file_path);
                     // Return the path of the new file
-                    return $new_file['output_file'];
+                    return $html_file_path;
                 }
             }
         }
