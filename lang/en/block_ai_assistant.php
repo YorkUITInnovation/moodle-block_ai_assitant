@@ -143,9 +143,10 @@ $string['question'] = 'Question';
 $string['question_template'] = 'Question Template';
 $string['question_updated_successfully'] = 'Question updated successfully';
 $string['questions'] = 'Questions';
-$string['questions_instructions'] = 'Note: The time required for the upload may vary depending on the number of rows (questions) in the file. '
+$string['questions_instructions'] = '<p>Note: The time required for the upload may vary depending on the number of rows (questions) in the file. '
     . 'Larger files with more rows will take longer to process. Do not close or refresh your browser window. '
-    . 'You will be redirected to the course page once the upload is complete.';
+    . 'You will be redirected to the course page once the upload is complete.</p>
+<p><strong>Refer to the Help section</strong> below for detailed instructions on how to create the question template.</p>';
 $string['required'] = 'This field is required';
 $string['related_question'] = "Related Questions";
 $string['save'] = 'Save changes ';
@@ -213,6 +214,7 @@ $string['syllabus_instructions_no_template'] = '<h5>I Prefer Using My Existing S
     <li>Place each table immediately after its related heading</li>
     <li>The first row must contain clear column headers</li>
     <li>Do not leave any empty cells</li>
+    <li>Avoid using complex column structures. Example: mixing merged and un-merged columns</li>
 </ul>
 
 <p><a href="/blocks/ai_assistant/doc/AI_Course_Assistant_Syllabus_Upload_Guide.docx" title="Syllabus Upload Guide Download">Download the Syllabus Upload Guide</a> for more detailed instructions.</p>
