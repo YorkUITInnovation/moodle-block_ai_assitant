@@ -187,14 +187,27 @@ $string['supported_formats'] = '<p>Note : Les formats de fichiers non supportés
     . 'Présentations PowerPoint (.pptx seulement)</li><li>Feuilles de calcul Excel (.xlsx seulement)</li><li>Fichiers CSV (.csv)</li><li>'
     . 'Fichiers audio (.mp3, .wav, .m4a)</li><li>Fichiers vidéo (.mp4)</li></ul></p>';
 $string['supported_formats_title'] = 'Formats de fichiers supportés';
-$string['training_visibility_warning'] = 'Important : Une fois que le contenu est entraîné par l\'Assistant IA, il sera disponible '
-    . 'pour tous les étudiants du cours, peu importe s\'ils ont la permission de voir la ressource ou l\'activité originale '
-    . 'ou non. Veuillez considérer ceci lors de la sélection du contenu pour l\'entraînement.';
-$string['syllabus'] = 'Plan de cours';
-$string['tutorial'] = 'Tutoriel';
-$string['tutorials'] = 'Tutoriels';
-$string['syllabus_template'] = 'Modèle de plan de cours';
-$string['syllabus_uploaded'] = 'Plan de cours téléversé avec succès';
+$string['syllabus_instructions'] = 'Pour garantir des performances optimales de l’Assistant de cours IA, il est essentiel d’utiliser le modèle de plan de cours fourni. Le respect de ces consignes améliorera significativement la précision et la pertinence des réponses aux questions des étudiants.';
+$string['syllabus_instructions_title'] = 'Important : Instructions pour le plan de cours';
+$string['syllabus_instructions_more'] = 'En savoir plus';
+$string['syllabus_instructions_why'] = '<h5>Pourquoi ?</h5>Utiliser le modèle de plan de cours fourni garantit une structure de document cohérente afin que l’Assistant de cours IA puisse analyser et comprendre les détails du cours avec plus de précision. L’outil ne prend en charge que les documents Word (.docx) pour l’importation du plan de cours.';
+$string['syllabus_instructions_why_word'] = '<h5>Pourquoi seulement des documents Word ?</h5><p><img class="img-thumbnail" style="width:50%; height=auto;" src="/blocks/ai_assistant/pix/pdf_word_structured.png" alt="Image comparant un PDF non structuré à un document Word structuré pour les nœuds IA"></p><p>L’Assistant de cours IA fonctionne mieux avec des documents Word car ils utilisent le format structuré OpenXML. Ce format organise le contenu en sections claires (titres, paragraphes, tableaux), facilitant la lecture et la récupération d’informations par l’IA. D’autres formats, comme les PDF, manquent souvent de cette structure, ce qui peut entraîner des erreurs.</p>';
+$string['syllabus_instructions_no_template'] = '<h5>Je préfère utiliser mon propre plan de cours existant</h5>
+<p>Vous pouvez téléverser votre propre syllabus Word (<strong>.docx</strong>), mais veuillez <strong>utiliser des titres clairs pour séparer chaque section</strong>. Cela aide l’IA à comprendre et organiser votre contenu avec précision.</p>
+<h6>Exemple de structure :</h6>
+<ul>
+<li><strong>Informations sur le cours</strong><br>Inclure : nom de l’instructeur, e-mail, dates du cours, salle de classe, lien Zoom</li>
+<li><strong>Description du cours</strong><br>Fournir une description détaillée du cours</li>
+<li><strong>Résultats d’apprentissage</strong><br>Lister les objectifs d’apprentissage détaillés</li>
+</ul>
+<h6>Points importants pour les tableaux :</h6>
+<ul>
+<li>Placez chaque tableau immédiatement après le titre correspondant</li>
+<li>La première ligne doit contenir des en-têtes de colonnes clairs</li>
+<li>Ne laissez aucune cellule vide</li>
+</ul>
+<p><a href="/blocks/ai_assistant/doc/AI_Course_Assistant_Syllabus_Upload_Guide.docx" title="Télécharger le guide d’importation du plan de cours">Téléchargez le guide d’importation du plan de cours</a> pour des instructions plus détaillées.</p>
+<p>Suivre ces étapes garantit que l’IA peut lire correctement votre plan de cours et fournir des réponses précises aux étudiants.</p>';
 $string['system_message'] = 'Message système';
 $string['system_message_default'] = "Vous êtes un assistant utile pour ce cours, [course_number] ([course_title]), à l\'Université York.
 - Répondez à la question aussi fidèlement que possible en utilisant le contexte fourni.

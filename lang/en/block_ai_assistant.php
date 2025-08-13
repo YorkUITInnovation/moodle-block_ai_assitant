@@ -188,11 +188,37 @@ $string['supported_formats'] = '<p>Note: Unsupported file formats will not be pr
     . 'Audio files (.mp3, .wav, .m4a)</li><li>Video files (.mp4)</li></ul></p>';
 $string['supported_formats_title'] = 'Supported File Formats';
 
-$string['syllabus_instructions'] = 'To ensure optimal performance from the AI Course Assistant, it is <b>essential</b> that you use the provided syllabus template. '
-    . 'Following these guidelines will significantly improve the accuracy and relevance of responses to student questions.'
-    . 'The AI Course Assistant\'s effectiveness directly depends on the quality and format of your syllabus. Taking time to properly complete the template '
-    . 'in Word (.docx) format will save you and your students significant time throughout the use of teh AI Course Assistant.';
+$string['syllabus_instructions'] = 'To ensure optimal performance from the AI Course Assistant, it is <b>essential</b> '
+    . 'that you use the <a href="/blocks/ai_assistant/doc_templates/syllabus_template.docx" title="SYllabus Template Download">provided syllabus template</a>. '
+    . 'Following these guidelines will significantly improve the accuracy and relevance of responses to student questions.';
 $string['syllabus_instructions_title'] = 'Important: Syllabus Instructions';
+$string['syllabus_instructions_more'] = 'Learn more';
+$string['syllabus_instructions_why'] = '<h5>Why?</h5>Using the provided syllabus template ensures a consistent document structure so the AI Course Assistant can parse and understand course details more accurately. The tool only supports Word documents (.docx) for syllabus uploads.';
+$string['syllabus_instructions_why_word'] = '<h5>Why Only Word Documents?</h5><p><img class="img-thumbnail" style="width:50%; height=auto;" src="/blocks/ai_assistant/pix/pdf_word_structured.png" alt="Image comparing unstructured PDF to structured Word for AI Nodes"></p></p><p>The AI Course Assistant works best with Word documents because they use a structured format called OpenXML. This format organizes content into clear sections (headings, paragraphs, tables), making it easy for the AI to read and retrieve information accurately. Other formats, like PDFs, often lack this structure, which can lead to errors.</p>';
+$string['syllabus_instructions_no_template'] = '<h5>I Prefer Using My Existing Syllabus</h5>
+<p>You can upload your own Word document (<strong>.docx</strong>) syllabus, but please <strong>use clear headings to separate each section</strong>. This helps the AI understand and organize your content accurately.</p>
+
+<h6>Example structure:</h6>
+<ul>
+    <li><strong>Course Information</strong><br>
+        Include: instructor name, email, course dates, classroom, Zoom link</li>
+    <li><strong>Course Description</strong><br>
+        Provide a detailed description of the course</li>
+    <li><strong>Learning Outcomes</strong><br>
+        List the detailed learning outcomes</li>
+</ul>
+
+<h6>Important for tables:</h6>
+<ul>
+    <li>Place each table immediately after its related heading</li>
+    <li>The first row must contain clear column headers</li>
+    <li>Do not leave any empty cells</li>
+</ul>
+
+<p><a href="/blocks/ai_assistant/doc/AI_Course_Assistant_Syllabus_Upload_Guide.docx" title="Syllabus Upload Guide Download">Download the Syllabus Upload Guide</a> for more detailed instructions.</p>
+
+<p>Following these steps ensures the AI can read your syllabus correctly and provide accurate answers to students.</p>';
+
 
 $string['training_visibility_warning'] = 'Important: Once content is trained by the AI Assistant, it will be available '
     . 'to all students in the course, regardless of whether they have permission to view the original resource '
@@ -519,3 +545,4 @@ $string['userpolicy'] = '<h4><strong>Welcome to the new AI feature!</strong></h4
 <p>This AI feature uses external Large Language Models (LLM). If you use this feature, any information or personal data you share will be handled according to the privacy policy of those LLMs. We recommend that you read their privacy policy to understand how they will handle your data. Additionally, a record of your interactions with the AI features may be saved in this site.</p>
 <p>If you have questions about how your data is processed, please check with your teachers or learning organisation.</p>
 <p>By continuing, you acknowledge that you understand and agree to this policy.</p>';
+
