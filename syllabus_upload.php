@@ -77,5 +77,6 @@ $PAGE->set_title(get_string('syllabus', 'block_ai_assistant'));
 $PAGE->set_heading(get_string('syllabus', 'block_ai_assistant'));
 
 echo $OUTPUT->header();
+echo $OUTPUT->render_from_template('block_ai_assistant/syllabus_instructions', []);
 $mform->display();
 echo $OUTPUT->footer();

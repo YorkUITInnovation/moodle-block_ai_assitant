@@ -220,13 +220,13 @@ class block_ai_assistant extends block_base
             'groups' => $groups,
         );
         // get embed code data
-        $embed_session_data = cria::start_session(
-                $this->page->course->id,
-                $course_record->bot_api_key,
-                $payload) ;
+//        $embed_session_data = cria::start_session(
+//                $this->page->course->id,
+//                $course_record->bot_api_key,
+//                $payload) ;
 
-//        $embed_code_data = '<script>' . $embed_session_data . '</script>';
-        $embed_code_data = '<script type="text/javascript" src="' . $config->cria_embed_url . '/embed/' . $bot_id . '/load" async> </script>';
+        // Using this method to get the embed code because the above does not work properly.
+        $embed_code_data = '<script type="text/javascript" src="' . $config->cria_embed_url . '/embed/' . $bot_id . '/load" async></script>';
         $embed_code = '';
         if ($availability->exception == 'success') {
             if ($course_record->published == 1) {
