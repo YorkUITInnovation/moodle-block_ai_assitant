@@ -70,7 +70,11 @@ class course_modules
                 foreach ($section_mods as $cmid) {
                     $mod = self::get_module_from_cmid($cmid);
                     // Only get the modules that are accepted
-                    if (in_array($mod[1]->modname, $accepted_modules)) {
+                    if ((
+                        $mod[1]->modname !== 'forum' && in_array($mod[1]->modname, $accepted_modules)
+                    ) || (
+                        $mod[1]->modname === 'forum' && !empty($mod[0]->type) && $mod[0]->type === 'news'
+                    )) {
                         if ($only_visible && !$mod[1]->visible) {
                             continue; // Skip if the module is not visible
                         }
