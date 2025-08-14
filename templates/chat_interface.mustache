@@ -343,6 +343,14 @@
         font-style: italic;
     }
 
+    /* Disclaimer at bottom */
+    .disclaimer {
+        font-size: 12px;
+        color: #6b7280;
+        text-align: center;
+        margin-bottom: 8px;
+    }
+
     /* Typing indicator animation (for future use) */
     .typing-indicator {
         display: none;
@@ -436,6 +444,9 @@
                     {{/messages}}
                 </div>
                 <div class="card-footer p-2">
+                    <div class="disclaimer">
+                        {{#str}}chat_disclaimer, block_ai_assistant{{/str}}
+                    </div>
                     <form id="chat-form" class="d-flex">
                         <input type="text" class="form-control me-2" id="block-ai-assistant-chat-input"
                                placeholder="Type your message..." autocomplete="off">

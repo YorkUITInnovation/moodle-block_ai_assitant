@@ -50,6 +50,7 @@ $string['bot_type_id'] = 'Bot Type ID';
 $string['bot_type_id_help'] = 'Bot Type ID from Cria';
 $string['bottom_left'] = 'Bottom left';
 $string['bottom_right'] = 'Bottom right';
+$string['chat_disclaimer'] = 'AI-generated content. Please verify for accuracy.';
 $string['chat_help'] = 'For best results, please ask clear and specific questions.'
     . 'It is important that you use complete sentences with proper punctuation. ';
 $string['chat_summary'] = 'Chat Summary';
