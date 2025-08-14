@@ -71,6 +71,10 @@ class tutorials extends \moodleform
         );
         $mform->setType('description', PARAM_RAW);
 
+        $mform->addElement('html', '<div class="alert alert-info">' .
+            get_string('prompt_help', 'block_ai_assistant') .
+            '</div>');
+
         // Prompt field
         $mform->addElement(
             'textarea',
@@ -79,6 +83,7 @@ class tutorials extends \moodleform
             array('wrap' => 'virtual', 'rows' => '6', 'cols' => '50')
         );
         $mform->setType('prompt', PARAM_RAW);
+        $mform->addHelpButton('prompt', 'prompt', 'block_ai_assistant');
         $mform->addRule('prompt', get_string('required'), 'required');
 
         // Enabled field
