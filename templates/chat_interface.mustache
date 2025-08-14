@@ -1,22 +1,23 @@
 <style>
     #region-main {
-        /* Use available height within the page layout */
+        /* Allow full display without cropping chat input */
         height: auto;
-        min-height: calc(100vh - 300px); /* Adjust based on header/nav height */
-        max-height: calc(100vh - 300px);
-        position: relative;
-        overflow: hidden;
+        min-height: auto;
+        max-height: none;
+        overflow: visible;
     }
 
     .chat-container {
-        height: calc(100vh - 300px); /* Account for Moodle header/footer space */
-        max-height: calc(100vh - 300px);
+        /* Responsive full height minus header/footer */
+        height: calc(100vh - 350px);
+        max-height: calc(100vh - 350px);
+        box-sizing: border-box;
         display: flex;
         flex-direction: column;
         background: #ffffff;
         border-radius: 8px;
         box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
+        overflow: visible; /* show footer despite container size */
     }
 
     .chat-card {
