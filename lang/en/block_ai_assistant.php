@@ -53,6 +53,7 @@ $string['bottom_right'] = 'Bottom right';
 $string['chat_help'] = 'For best results, please ask clear and specific questions.'
     . 'It is important that you use complete sentences with proper punctuation. ';
 $string['chat_summary'] = 'Chat Summary';
+$string['chat_warning'] = '<strong>Note:</strong> My Learning Companion is a supplemental study tool. It may provide information beyond your course material, so always verify details against your official syllabus, lectures, and assigned readings. Use it to support your learning, not as a substitute for your instructor’s guidance or course resources.';
 $string['close'] = 'Close';
 $string['column_name_must_exist'] = 'Column {$a} must exist';
 $string['confirm_delete_trained_module'] = 'Are you sure you want to delete the trained module?';
@@ -138,6 +139,7 @@ $string['pluginname'] = 'Al Course Assistant';
 $string['pluginname_help'] = 'This may take up to a minute. Thanks for your patience.';
 $string['preparing_tutorial'] = 'Preparing your tutorial. One moment please...';
 $string['prompt'] = 'Prompt';
+$string['prompt_help'] = 'Alwyas using the placeholder [topic] in your prompt. Example: "You are an expert tutor helping a university student understand [topic].';
 $string['question'] = 'Question';
 $string['question_template'] = 'Question Template';
 $string['question_updated_successfully'] = 'Question updated successfully';

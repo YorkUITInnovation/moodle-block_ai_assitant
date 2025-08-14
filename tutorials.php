@@ -55,13 +55,15 @@ if (!$table->is_downloading()) {
 $table->set_sql(
     'id,courseid, name,prompt,description,enabled',
     "{block_aia_tutorials}",
-    'courseid=' . $courseid
+    '(courseid=' . $courseid . ' OR courseid=1)'
 );
 
 
 $table->define_baseurl("$CFG->wwwroot/blocks/ai_assistant/tutorials.php?courseid=$courseid");
 
 if (!$table->is_downloading()) {
+
+    echo $OUTPUT->render_from_template('block_ai_assistant/tutorials_instructions', ['courseid' => $courseid]);
     echo $OUTPUT->render_from_template('block_ai_assistant/tutorials_buttons', ['courseid' => $courseid]);
 }
 
