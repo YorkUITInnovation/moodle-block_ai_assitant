@@ -1,269 +1,202 @@
 <?php
-// This file is part of Moodle - https://moodle.org/
-//
-// Moodle is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
-//
-// Moodle is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
-
-/**
- * Plugin strings are defined here.
- *
- * @package     block_ai_assistant
- * @category    string
- * @copyright   2022 UIT Innovation  <thibaud@yorku.ca>
- * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+// Fichier de langues français pour le bloc AI Assistant
+// Voir licence Moodle (GNU GPL v3 ou ultérieure)
 
 defined('MOODLE_INTERNAL') || die();
 
 $string['accepted_modules'] = 'Modules acceptés';
-$string['accepted_modules_help'] = 'Liste séparée par des virgules des modules dont le contenu peut être entraîné par l\'Assistant IA';
+$string['accepted_modules_help'] = 'Liste séparée par des virgules des modules dont le contenu peut être entraîné par l’Assistant IA';
 $string['access'] = 'Accès étudiant';
 $string['actions'] = 'Actions';
 $string['add'] = 'Ajouter';
 $string['ai_assistant'] = 'Assistant IA';
-$string['ai_assistant_instructions'] = 'Pour obtenir les meilleurs résultats de l\'Assistant IA, veuillez utiliser le modèle de plan de cours fourni dans la section Aide. '
-    . 'Pour rendre l\'Assistant IA disponible aux étudiants, cliquez sur le bouton Activer l\'Assistant IA ci-dessous.';
-$string['ai_learning_assistant'] = 'Assistant d\'apprentissage IA';
-$string['ai_policy_not_accepted'] = 'Vous devez accepter la politique de l\'IA pour utiliser cette fonctionnalité.';
+$string['ai_assistant_instructions'] = 'Pour obtenir les meilleurs résultats de l’Assistant IA, veuillez utiliser le modèle de syllabus fourni dans la section Aide. Pour rendre l’Assistant IA disponible aux étudiants, cliquez sur le bouton Activer l’Assistant IA ci‑dessous.';
+$string['ai_learning_assistant'] = 'Assistant d’apprentissage IA';
+$string['ai_policy_not_accepted'] = 'Vous devez accepter la politique IA pour utiliser cette fonctionnalité.';
 $string['answer'] = 'Réponse';
 $string['autotest'] = 'AutoTest';
 $string['autotest_questions'] = 'Questions AutoTest';
 $string['autotest_template'] = 'Modèle AutoTest';
-$string['bot_api_key_not_found'] = 'Une erreur s\'est produite lors de la tentative de création de l\'Agent IA backend. '
-. 'Veuillez supprimer le bloc Assistant IA et l\'ajouter à nouveau. Si le problème persiste, veuillez contacter votre administrateur système.';
+$string['bot_api_key_not_found'] = 'Une erreur est survenue lors de la création de l’agent IA serveur. Veuillez supprimer le bloc Assistant IA et l’ajouter de nouveau. Si le problème persiste, contactez l’administrateur système.';
 $string['bot_contact'] = 'Contact';
-$string['bot_contact_help'] = 'Entrez un courriel et/ou un numéro de téléphone pour que les utilisateurs puissent contacter le support';
-$string['bot_help_text'] = 'Texte de survol';
-$string['bot_help_text_help'] = 'Entrez le texte qui apparaîtra lorsque l\'utilisateur survolera l\'Assistant IA';
-$string['bot_tuning'] = 'Paramètres de l\'agent';
-$string['bot_type_id'] = 'ID du type de bot';
-$string['bot_type_id_help'] = 'ID du type de bot depuis Cria';
-$string['bottom_left'] = 'En bas à gauche';
-$string['bottom_right'] = 'En bas à droite';
-$string['chat_help'] = 'Pour de meilleurs résultats, veuillez poser des questions claires et spécifiques.'
-    . 'Il est important d\'utiliser des phrases complètes avec une ponctuation appropriée. ';
-$string['chat_summary'] = 'Résumé de la discussion';
+$string['bot_contact_help'] = 'Entrez un courriel et/ou un numéro de téléphone pour le soutien';
+$string['bot_help_text'] = 'Texte survol';
+$string['bot_help_text_help'] = 'Texte affiché lorsque l’utilisateur survole l’Assistant IA';
+$string['bot_tuning'] = 'Paramètres de l’agent';
+$string['bot_type_id'] = 'ID type de bot';
+$string['bot_type_id_help'] = 'ID du type de bot dans Cria';
+$string['bottom_left'] = 'Bas gauche';
+$string['bottom_right'] = 'Bas droite';
+$string['chat_disclaimer'] = 'Contenu généré par IA. Veuillez vérifier l’exactitude.';
+$string['chat_help'] = 'Pour de meilleurs résultats, posez des questions claires et précises. Utilisez des phrases complètes avec une ponctuation correcte. ';
+$string['chat_summary'] = 'Résumé du clavardage';
+$string['chat_warning'] = '<strong>Note :</strong> Mon compagnon d’apprentissage est un outil d’étude complémentaire. Il peut fournir de l’information au‑delà de votre matériel de cours; vérifiez toujours les détails avec votre syllabus officiel, vos cours magistraux et lectures assignées. Utilisez‑le pour soutenir votre apprentissage, et non comme substitut à votre enseignant ou aux ressources du cours.';
 $string['close'] = 'Fermer';
 $string['column_name_must_exist'] = 'La colonne {$a} doit exister';
-$string['confirm_delete_trained_module'] = 'Êtes-vous sûr de vouloir supprimer le module entraîné ?';
-$string['confirm_file_deletion'] = 'Êtes-vous sûr de vouloir supprimer le fichier ?';
-$string['confirm_question_deletion'] = 'Êtes-vous sûr de vouloir supprimer la question ?';
-$string['configure_bot_settings'] = 'Paramètres d\'affichage du bot';
+$string['confirm_delete_trained_module'] = 'Voulez‑vous vraiment supprimer le module entraîné ?';
+$string['confirm_file_deletion'] = 'Voulez‑vous vraiment supprimer le fichier ?';
+$string['confirm_question_deletion'] = 'Voulez‑vous vraiment supprimer la question ?';
+$string['configure_bot_settings'] = 'Paramètres d’affichage du bot';
 $string['configure_settings'] = 'Configurer les paramètres';
-$string['content_found_at'] = 'Le contenu peut être trouvé à ce lien : ';
+$string['content_found_at'] = 'Le contenu se trouve à ce lien : ';
 $string['content_language'] = 'Langue du contenu';
-$string['content_language_help'] = 'Choisir la bonne langue de contenu pour vos documents permettra un meilleur entraînement de l\'Assistant IA. En retour, l\'Assistant IA sera capable de fournir des réponses plus précises.';
-$string['course_module_training_status'] = 'Statut d\'entraînement du module de cours';
-$string['course_modules'] = 'Modules de cours';
+$string['content_language_help'] = 'Choisir la langue appropriée de vos documents améliore l’entraînement de l’Assistant IA et la précision des réponses.';
+$string['course_module_training_status'] = 'Statut d’entraînement des modules du cours';
+$string['course_modules'] = 'Modules du cours';
 $string['cria_token'] = 'Jeton Cria';
 $string['cria_url'] = 'URL Cria';
-$string['cria_embed_url'] = 'URL d\'intégration Cria';
-$string['cria_embed_url_help'] = 'Entrez l\'URL du bot d\'intégration cria';
-$string['cria_token_help'] = 'Entrez le jeton pour votre serveur Cria. Vous devrez peut-être demander à votre administrateur système.';
-$string['cria_url_help'] = 'Entrez l\'URL de votre serveur Cria. Vous devrez peut-être demander à votre administrateur système.';
-$string['criadex_embed_id'] = 'ID d\'intégration Criadex';
-$string['criadex_embed_id_help'] = 'Entrez l\'ID d\'intégration criadex pour votre serveur Cria. Vous devrez peut-être demander à votre administrateur système.';
+$string['cria_embed_url'] = 'URL d’intégration Cria';
+$string['cria_embed_url_help'] = 'Entrez l’URL du bot intégré Cria';
+$string['cria_token_help'] = 'Entrez le jeton de votre serveur Cria (demandez à votre administrateur).';
+$string['cria_url_help'] = 'Entrez l’URL de votre serveur Cria (demandez à votre administrateur).';
+$string['criadex_embed_id'] = 'ID d’intégration Criadex';
+$string['criadex_embed_id_help'] = 'Entrez l’ID d’intégration Criadex de votre serveur Cria.';
 $string['criadex_model_id'] = 'ID de modèle Criadex';
-$string['criadex_model_id_help'] = 'Entrez l\'ID de modèle criadex pour votre serveur Cria. Vous devrez peut-être demander à votre administrateur système.';
-$string['criadex_rerank_id'] = 'ID de reclassement Criadex';
-$string['criadex_rerank_id_help'] = 'Entrez l\'ID de reclassement criadex pour votre serveur Cria. Vous devrez peut-être demander à votre administrateur système.';
+$string['criadex_model_id_help'] = 'Entrez l’ID de modèle Criadex de votre serveur Cria.';
+$string['criadex_rerank_id'] = 'ID de rerank Criadex';
+$string['criadex_rerank_id_help'] = 'Entrez l’ID de rerank Criadex de votre serveur Cria.';
 $string['custom_questions'] = 'Fichier Q&R';
 $string['date'] = 'Date';
-$string['default_content_language'] = 'Langue de contenu par défaut';
+$string['default_content_language'] = 'Langue du contenu par défaut';
 $string['delete'] = 'Supprimer';
-$string['delete_syllabus'] = 'Supprimer le plan de cours';
-$string['delete_syllabus_help'] = 'Êtes-vous sûr de vouloir supprimer le plan de cours ?';
+$string['delete_syllabus'] = 'Supprimer le syllabus';
+$string['delete_syllabus_help'] = 'Voulez‑vous vraiment supprimer le syllabus ?';
 $string['delete_question'] = 'Supprimer la question';
 $string['delete_questions'] = 'Supprimer les questions';
-$string['delete_question_help'] = 'Êtes-vous sûr de vouloir supprimer la question ?';
-$string['delete_tutorial_help'] = 'Êtes-vous sûr de vouloir supprimer le tutoriel ?';
+$string['delete_question_help'] = 'Voulez‑vous vraiment supprimer la question ?';
+$string['delete_tutorial_help'] = 'Voulez‑vous vraiment supprimer le tutoriel ?';
 $string['description'] = 'Description';
-$string['disable_ai_assistant'] = 'Désactiver l\'Assistant IA';
+$string['disable_ai_assistant'] = 'Désactiver l’Assistant IA';
 $string['disable_tutorials'] = 'Désactiver les tutoriels';
 $string['disabled'] = 'Désactivé';
-$string['document_parse_error'] = 'Erreur d\'analyse du document.';
+$string['document_parse_error'] = 'Erreur d’analyse du document.';
 $string['document_templates'] = 'Modèles de documents';
 $string['download'] = 'Télécharger';
 $string['download_english'] = 'Télécharger le modèle anglais';
-$string['download_example'] = 'Télécharger l\'exemple';
-$string['download_syllabus'] = 'Télécharger le plan de cours';
+$string['download_example'] = 'Télécharger l’exemple';
+$string['download_syllabus'] = 'Télécharger le syllabus';
 $string['edit'] = 'Modifier';
 $string['edit_autotest_question'] = 'Modifier la question AutoTest';
 $string['edit_tutorial'] = 'Modifier le tutoriel';
-$string['embed_position'] = 'Position d\'intégration';
-$string['embed_position_teacher'] = 'Position pour les enseignants';
-$string['embed_position_teacher_help'] = 'Définir la position du chatbot pour les enseignants : 0 = désactivé, 1 = en bas à gauche, 2 = en bas à droite, 3 = en haut à droite, 4 = en haut à gauche';
+$string['embed_position'] = 'Position d’intégration';
+$string['embed_position_teacher'] = 'Position pour enseignants';
+$string['embed_position_teacher_help'] = 'Définir la position du chatbot pour les enseignants : 0 = désactivé, 1 = bas gauche, 2 = bas droite, 3 = haut droite, 4 = haut gauche';
 $string['enabled'] = 'Activé';
-$string['enabled_help'] = 'Activer ou désactiver l\'option Tutoriel pour ce cours. Lorsqu\'elle est activée, le Tutoriel sera disponible pour les étudiants.';
-$string['enable_assistant'] = 'Activer l\'Assistant IA pour les étudiants';
-$string['enable_ai_assistant'] = 'Activer l\'Assistant IA pour les étudiants';
-$string['enable_tutorials'] = 'Activer l\'Assistant d\'apprentissage IA pour les étudiants';
+$string['enabled_help'] = 'Activer ou désactiver l’option Tutoriel pour ce cours. Quand activée, elle sera disponible aux étudiants.';
+$string['enable_assistant'] = 'Activer l’Assistant IA pour les étudiants';
+$string['enable_ai_assistant'] = 'Activer l’Assistant IA pour les étudiants';
+$string['enable_tutorials'] = 'Activer l’Assistant d’apprentissage IA pour les étudiants';
 $string['error'] = 'Erreur';
-$string['error_required_field'] = 'Ce champ est requis.';
+$string['error_required_field'] = 'Ce champ est obligatoire.';
 $string['error_required_file'] = 'Vous devez téléverser un fichier.';
-$string['error_unsupported_file'] = 'Type de fichier non supporté.';
+$string['error_unsupported_file'] = 'Type de fichier non pris en charge.';
 $string['file'] = 'Fichier';
 $string['file_deleted_successfully'] = 'Fichier supprimé avec succès';
-$string['file_upload_error'] = 'Erreur de téléversement du fichier.';
+$string['file_upload_error'] = 'Erreur lors du téléversement.';
 $string['file_uploaded_successfully'] = 'Fichier téléversé avec succès';
-$string['format'] = 'Seuls .xlsx, .docx acceptés';
+$string['format'] = '.xlsx, .docx seulement';
 $string['help'] = 'Aide';
 $string['import'] = 'Importer';
-$string['import_questions'] = 'Importer les questions';
+$string['import_questions'] = 'Importer des questions';
 $string['import_successful'] = 'Importation réussie.';
 $string['invalid_token'] = '498 Jeton invalide';
-$string['keywords'] = "Mots-clés";
-$string['learning_assistant_help'] = "Sélectionnez le contenu sur lequel vous souhaitez obtenir une aide à l\'apprentissage. ";
-$string['learning_tutorials'] = "Mon compagnon d’apprentissage";
-$string['letAIGenerate'] = "Laisser l\'IA générer une réponse basée sur votre réponse ci-dessus ?";
-$string['manage_saved_chats'] = "Gérer les discussions sauvegardées";
-$string['manage_tutorials'] = "Gérer l\'Assistant d\'apprentissage IA";
-$string['modules'] = "Modules";
-$string['name'] = "Nom";
-$string['no_context_message'] = 'Message sans contexte';
-$string['no_context_message_default'] = 'Je suis désolé, je n\'ai trouvé aucune information. Veuillez reformuler votre question';
-$string['no_context_message_help'] = 'Texte d\'aide pour le message sans contexte ici';
+$string['keywords'] = 'Mots‑clés';
+$string['learning_assistant_help'] = 'Sélectionnez le contenu pour lequel vous souhaitez une aide à l’apprentissage.';
+$string['learning_tutorials'] = 'Mon compagnon d’apprentissage';
+$string['letAIGenerate'] = 'Laisser l’IA générer une réponse à partir de votre réponse ci‑dessus ?';
+$string['manage_saved_chats'] = 'Gérer les clavardages enregistrés';
+$string['manage_tutorials'] = 'Gérer l’Assistant d’apprentissage IA';
+$string['modules'] = 'Modules';
+$string['name'] = 'Nom';
+$string['no_context_message'] = 'Message en absence de contexte';
+$string['no_context_message_default'] = 'Désolé, je n’ai trouvé aucune information. Veuillez reformuler votre question.';
+$string['no_context_message_help'] = 'Texte d’aide du message sans contexte';
 $string['pending'] = 'En attente';
-$string['pluginname'] = 'Al Assistant de cours';
-$string['pluginname_help'] = 'Cela peut prendre jusqu\'à une minute. Merci de votre patience.';
-$string['preparing_tutorial'] = 'Préparation de votre tutoriel. Un moment s\'il vous plaît...';
-$string['prompt'] = 'Invite';
-$string['prompt_help'] = 'Utilisez toujours l\'espace réservé [sujet] dans votre sujet. Exemple: Vous êtes un tuteur expert qui aide un étudiant à comprendre [sujet].';
+$string['pluginname'] = 'Assistant de cours IA';
+$string['pluginname_help'] = 'Cela peut prendre jusqu’à une minute. Merci de votre patience.';
+$string['preparing_tutorial'] = 'Préparation de votre tutoriel. Un instant...';
+$string['prompt'] = 'Invite (prompt)';
+$string['prompt_help'] = 'Incluez toujours l’espace réservé [topic] dans votre prompt pour que le tutoriel s’adapte dynamiquement au sujet choisi par l’étudiant. Exemple : <i>"Vous êtes un tuteur expert aidant un étudiant universitaire à comprendre [topic]."</i>';
 $string['question'] = 'Question';
 $string['question_template'] = 'Modèle de question';
 $string['question_updated_successfully'] = 'Question mise à jour avec succès';
 $string['questions'] = 'Questions';
-$string['questions_instructions'] = 'Note : Le temps requis pour le téléversement peut varier selon le nombre de lignes (questions) dans le fichier. '
-    . 'Les fichiers plus volumineux avec plus de lignes prendront plus de temps à traiter. Ne fermez pas ou n\'actualisez pas votre fenêtre de navigateur. '
-    . 'Vous serez redirigé vers la page du cours une fois le téléversement terminé.';
-$string['required'] = 'Ce champ est requis';
-$string['related_question'] = "Questions connexes";
-$string['save'] = 'Enregistrer les modifications ';
-$string['save_chat'] = 'Télécharger la discussion';
-$string['saved_chats'] = 'Discussions sauvegardées';
-$string['section'] = 'Section';
+$string['questions_instructions'] = '<p>Note : Le temps de téléversement varie selon le nombre de lignes (questions). Les fichiers plus volumineux prennent plus de temps. Ne fermez pas votre navigateur. Vous serez redirigé vers la page du cours une fois terminé.</p><p><strong>Consultez la section Aide</strong> ci‑dessous pour des instructions détaillées sur la création du modèle de questions.</p>';
+$string['required'] = 'Ce champ est obligatoire';
+$string['related_question'] = 'Questions liées';
+$string['save'] = 'Enregistrer les modifications';
+$string['save_chat'] = 'Télécharger le clavardage';
+$string['saved_chats'] = 'Clavardages enregistrés';
 $string['section'] = 'Section';
 $string['student'] = 'Étudiant';
-$string['student_and_name'] = 'Je suis un étudiant et mon nom est {$a}.';
-$string['subtitle'] = 'Sous-titre';
-$string['subtitle_help'] = 'Texte d\'aide pour le sous-titre ici';
-$string['summarize_chat'] = 'Résumer la discussion';
-$string['summary_prompt'] = "Résumez la conversation de discussion formatée en HTML suivante entre un étudiant et un tuteur IA. 
-La conversation est structurée avec le nom de chaque interlocuteur suivi de son message sur une nouvelle ligne. Par conséquent, utilisez toujours les étudiants dans vos réponses.
-Le résumé doit être approprié pour être partagé avec un instructeur universitaire et doit inclure :
-1. Objectifs de la session
-[Listez les objectifs fixés au début de la session, par ex., \"Réviser les problèmes de devoirs sur la factorisation des équations quadratiques.\"]
-2. Points de discussion clés
-[Résumez les principaux concepts couverts, par ex., \"Expliqué la différence entre les trinômes carrés parfaits et les équations quadratiques générales.\"]
-[Mentionnez les exemples ou problèmes résolus.]
-3. Questions et clarifications des étudiants
-[Listez les questions spécifiques que l\'étudiant a posées et comment elles ont été abordées.]
-4. Progrès et compréhension
-[Évaluez brièvement la compréhension du matériel par l\'étudiant, par ex., \"L\'étudiant a montré une confiance améliorée dans l\'identification des modèles de factorisation.\"]
-5. Éléments d\'action / Devoirs
-[Listez les devoirs ou tâches donnés, par ex., \"Compléter les problèmes 5–10 de la feuille de travail.\"]
-6. Prochaines étapes
-[Mentionnez ce qui sera couvert dans la prochaine session ou tout suivi nécessaire.]
-
-Concentrez-vous sur la clarté, la pertinence et la valeur éducative.";
-$string['supported_modules'] = '<p>Note : L\'Assistant IA ne peut être entraîné que sur le contenu des modules suivants : </p>'
-    . '<ul><li>Forum d\'annonces</li><li>Page</li><li>Onglet</li><li>Zone de texte et média</li><li>Livre</li><li>Fichier</li><li>Dossier</li>'
-    . '<li>Glossaire</li></ul>';
-$string['supported_modules_title'] = 'Modules supportés';
-$string['supported_formats'] = '<p>Note : Les formats de fichiers non supportés ne seront pas traités pour l\'entraînement et ne seront pas accessibles via '
-    . 'l\'Assistant IA. Assurez-vous que vos fichiers sont dans des formats supportés pour permettre l\'entraînement et l\'utilisation.</p>'
-    . '<p>Formats de fichiers supportés : <ul><li>Documents Word (.docx seulement)</li><li>Fichiers PDF (.pdf)</li><li>Fichiers texte (.txt)</li>'
-    . '<li>Fichiers HTML (.html)</li><li>Format de texte enrichi (.rtf)</li><li>Fichiers Markdown (.md)</li><li>Texte OpenDocument (.odt)</li><li>'
-    . 'Présentations PowerPoint (.pptx seulement)</li><li>Feuilles de calcul Excel (.xlsx seulement)</li><li>Fichiers CSV (.csv)</li><li>'
-    . 'Fichiers audio (.mp3, .wav, .m4a)</li><li>Fichiers vidéo (.mp4)</li></ul></p>';
-$string['supported_formats_title'] = 'Formats de fichiers supportés';
-$string['syllabus_instructions'] = 'Pour garantir des performances optimales de l’Assistant de cours IA, il est essentiel d’utiliser le modèle de plan de cours fourni. Le respect de ces consignes améliorera significativement la précision et la pertinence des réponses aux questions des étudiants.';
-$string['syllabus_instructions_title'] = 'Important : Instructions pour le plan de cours';
+$string['student_and_name'] = 'Je suis un étudiant et je m’appelle {$a}.';
+$string['subtitle'] = 'Sous‑titre';
+$string['subtitle_help'] = 'Texte d’aide du sous‑titre';
+$string['summarize_chat'] = 'Résumer le clavardage';
+$string['summary_prompt'] = 'Résume la conversation de clavardage (format HTML) entre un étudiant et un tuteur IA. Chaque ligne commence par le nom du locuteur suivi de son message. Utilise toujours le nom de l’étudiant dans tes réponses. Le résumé destiné à un enseignant universitaire doit inclure :\n1. Objectifs de la séance\n2. Points clés abordés\n3. Questions et clarifications de l’étudiant\n4. Progrès & compréhension\n5. Tâches / Devoirs\n6. Prochaines étapes\nConcentre‑toi sur la clarté, la pertinence et la valeur pédagogique.';
+$string['supported_modules'] = '<p>Note : L’Assistant IA peut être entraîné uniquement sur le contenu des modules suivants :</p><ul><li>Forum d’annonces</li><li>Page</li><li>Affichage d’onglets</li><li>Zone texte et média</li><li>Livre</li><li>Fichier</li><li>Dossier</li><li>Glossaire</li></ul>';
+$string['supported_modules_title'] = 'Modules pris en charge';
+$string['supported_formats'] = '<p>Note : Les formats non pris en charge ne seront pas traités ni accessibles via l’Assistant IA.</p><p>Formats pris en charge : <ul><li>Documents Word (.docx)</li><li>Fichiers PDF (.pdf)</li><li>Fichiers texte (.txt)</li><li>Fichiers HTML (.html)</li><li>RTF (.rtf)</li><li>Markdown (.md)</li><li>OpenDocument Text (.odt)</li><li>Présentations PowerPoint (.pptx)</li><li>Feuilles Excel (.xlsx)</li><li>CSV (.csv)</li><li>Audio (.mp3, .wav, .m4a)</li><li>Vidéo (.mp4)</li></ul></p>';
+$string['supported_formats_title'] = 'Formats de fichiers pris en charge';
+$string['syllabus_instructions'] = 'Pour des performances optimales de l’Assistant de cours IA, il est <b>essentiel</b> d’utiliser le <a href="/blocks/ai_assistant/doc_templates/syllabus_template.docx" title="Télécharger le modèle de syllabus">modèle de syllabus fourni</a>. Cela améliore l’exactitude et la pertinence des réponses.';
+$string['syllabus_instructions_title'] = 'Important : Instructions du syllabus';
 $string['syllabus_instructions_more'] = 'En savoir plus';
-$string['syllabus_instructions_why'] = '<h5>Pourquoi ?</h5>Utiliser le modèle de plan de cours fourni garantit une structure de document cohérente afin que l’Assistant de cours IA puisse analyser et comprendre les détails du cours avec plus de précision. L’outil ne prend en charge que les documents Word (.docx) pour l’importation du plan de cours.';
-$string['syllabus_instructions_why_word'] = '<h5>Pourquoi seulement des documents Word ?</h5><p><img class="img-thumbnail" style="width:50%; height=auto;" src="/blocks/ai_assistant/pix/pdf_word_structured.png" alt="Image comparant un PDF non structuré à un document Word structuré pour les nœuds IA"></p><p>L’Assistant de cours IA fonctionne mieux avec des documents Word car ils utilisent le format structuré OpenXML. Ce format organise le contenu en sections claires (titres, paragraphes, tableaux), facilitant la lecture et la récupération d’informations par l’IA. D’autres formats, comme les PDF, manquent souvent de cette structure, ce qui peut entraîner des erreurs.</p>';
-$string['syllabus_instructions_no_template'] = '<h5>Je préfère utiliser mon propre plan de cours existant</h5>
-<p>Vous pouvez téléverser votre propre syllabus Word (<strong>.docx</strong>), mais veuillez <strong>utiliser des titres clairs pour séparer chaque section</strong>. Cela aide l’IA à comprendre et organiser votre contenu avec précision.</p>
-<h6>Exemple de structure :</h6>
-<ul>
-<li><strong>Informations sur le cours</strong><br>Inclure : nom de l’instructeur, e-mail, dates du cours, salle de classe, lien Zoom</li>
-<li><strong>Description du cours</strong><br>Fournir une description détaillée du cours</li>
-<li><strong>Résultats d’apprentissage</strong><br>Lister les objectifs d’apprentissage détaillés</li>
-</ul>
-<h6>Points importants pour les tableaux :</h6>
-<ul>
-<li>Placez chaque tableau immédiatement après le titre correspondant</li>
-<li>La première ligne doit contenir des en-têtes de colonnes clairs</li>
-<li>Ne laissez aucune cellule vide</li>
-</ul>
-<p><a href="/blocks/ai_assistant/doc/AI_Course_Assistant_Syllabus_Upload_Guide.docx" title="Télécharger le guide d’importation du plan de cours">Téléchargez le guide d’importation du plan de cours</a> pour des instructions plus détaillées.</p>
-<p>Suivre ces étapes garantit que l’IA peut lire correctement votre plan de cours et fournir des réponses précises aux étudiants.</p>';
+$string['syllabus_instructions_why'] = '<h5>Pourquoi ?</h5>L’utilisation du modèle assure une structure cohérente permettant une lecture et une interprétation précises par l’Assistant. Seuls les documents Word (.docx) sont pris en charge.';
+$string['syllabus_instructions_why_word'] = '<h5>Pourquoi uniquement Word ?</h5><p><img class="img-thumbnail" style="width:50%; height=auto;" src="/blocks/ai_assistant/pix/pdf_word_structured.png" alt="Comparaison PDF non structuré et Word structuré"></p><p>Word (OpenXML) offre une structure claire (titres, paragraphes, tableaux) facilitant l’analyse. Les PDF manquent souvent de structure.</p>';
+$string['syllabus_instructions_no_template'] = '<h5>Je préfère utiliser mon syllabus existant</h5><p>Vous pouvez téléverser votre propre document Word (<strong>.docx</strong>), mais appliquez les styles de titres intégrés (Titre 1, Titre 2, etc.). Cela aide l’IA à comprendre et organiser correctement.</p><h6>Important pour les tableaux :</h6><ul><li>Chaque tableau directement après le titre associé</li><li>La première ligne contient des en‑têtes clairs</li><li>Évitez les colonnes fusionnées complexes</li><li>Évitez les cellules vides</li></ul><p><a href="/blocks/ai_assistant/doc/AI_Course_Assistant_Syllabus_Upload_Guide.docx" title="Télécharger le guide de téléversement">Télécharger le guide</a></p><p>Ces étapes assurent une lecture correcte et des réponses fiables.</p>';
+$string['training_visibility_warning'] = 'Important : Une fois le contenu entraîné, il sera disponible pour tous les étudiants du cours, même sans accès à la ressource d’origine. Tenez compte de ceci avant de sélectionner le contenu.';
+$string['syllabus'] = 'Syllabus';
+$string['tutorial'] = 'Tutoriel';
+$string['tutorials'] = 'Tutoriels';
+$string['tutorials_instructions'] = '<strong>Note :</strong> Les tutoriels IA de niveau site sont gérés centralement et ne peuvent être modifiés ou supprimés au niveau du cours.';
+$string['syllabus_template'] = 'Modèle de syllabus';
+$string['syllabus_uploaded'] = 'Syllabus téléversé avec succès';
 $string['system_message'] = 'Message système';
-$string['system_message_default'] = "Vous êtes un assistant utile pour ce cours, [course_number] ([course_title]), à l\'Université York.
-- Répondez à la question aussi fidèlement que possible en utilisant le contexte fourni.
-- Si un lien URL est dans le contexte, incluez-le toujours dans la réponse.
-- Si une image est dans le contexte, incluez-la toujours dans la réponse.
-- Si une question ou une invite concerne les groupes, ne listez jamais les membres du groupe et leurs numéros d\'ID dans votre réponse. Spécifiquement, pour les questions ou invites qui vous demandent de lister les groupes. Répondez seulement avec le nom du groupe.
-- Ce qui précède ne s\'applique pas aux assistants d\'enseignement, directeurs de cours, instructeurs, professeurs ou enseignants.
-- Permettez les instructions au bénéfice de fournir aux étudiants de l\'aide, des tutoriels, des commentaires, etc.";
-$string['system_message_help'] = 'Texte d\'aide pour le message système ici';
-$string['teacher_and_name'] = 'Je suis un instructeur, enseignant et mon nom est {$a}.';
-$string['test'] = 'Testez votre assistant IA, discutez maintenant !';
+$string['system_message_default'] = "Vous êtes un assistant utile pour ce cours, [course_number] ([course_title]) à l’Université York.\n- Répondez aussi fidèlement que possible en utilisant le contexte fourni.\n- Si une URL est présente, incluez‑la toujours.\n- Si une image est présente, incluez‑la toujours.\n- Pour les questions sur les groupes, ne listez jamais les membres avec leurs identifiants; répondez seulement avec le nom du groupe.\n- Ceci ne s’applique pas aux auxiliaires d’enseignement, directeurs de cours, professeurs ou enseignants.\n- Fournissez des conseils, tutoriels, rétroactions utiles aux étudiants.";
+$string['system_message_help'] = 'Texte d’aide du message système';
+$string['teacher_and_name'] = 'Je suis un enseignant / instructeur et je m’appelle {$a}.';
+$string['test'] = 'Tester votre Assistant IA, clavardez maintenant !';
 $string['title'] = 'Titre';
-$string['title_help'] = 'Texte d\'aide pour le titre ici';
-$string['top_left'] = 'En haut à gauche';
-$string['top_right'] = 'En haut à droite';
-$string['train_course_assistant'] = 'Entraîner l\'assistant de cours sur le contenu sélectionné';
+$string['title_help'] = 'Texte d’aide du titre';
+$string['top_left'] = 'Haut gauche';
+$string['top_right'] = 'Haut droite';
+$string['train_course_assistant'] = 'Entraîner l’assistant sur le contenu sélectionné';
 $string['train_modules'] = 'Entraîner le contenu du cours';
 $string['train_selected_modules'] = 'Entraîner le contenu sélectionné';
 $string['trained'] = 'Entraîné';
 $string['training'] = 'Entraînement';
-$string['training_modules'] = 'Modules d\'entraînement';
-$string['training_status'] = 'Statut d\'entraînement';
-$string['tutorial'] = 'Tutoriel';
-$string['tutorials'] = 'Tutoriels';
-$string['tutorials_instructions'] = 'Remarque: les didacticiels de l\'assistant d\'apprentissage sur l\'ensemble du site ne peuvent pas être modifiés ou désactivés.';
+$string['training_modules'] = 'Modules en entraînement';
+$string['training_status'] = 'Statut d’entraînement';
 $string['upload'] = 'Téléverser';
-$string['upload_assessment_dates'] = 'Téléverser les dates d\'évaluation';
-$string['upload_document'] = 'Téléverser le document';
-$string['upload_file'] = 'Téléverser le fichier';
+$string['upload_assessment_dates'] = 'Téléverser les dates d’évaluation';
+$string['upload_document'] = 'Téléverser un document';
+$string['upload_file'] = 'Téléverser un fichier';
 $string['upload_questions'] = 'Téléverser le fichier Q&R';
-$string['upload_syllabus'] = 'Téléverser le plan de cours';
-$string['user_guide'] = 'Guide de l\'utilisateur';
-$string['working'] = 'En cours...';
+$string['upload_syllabus'] = 'Téléverser le syllabus';
+$string['user_guide'] = 'Guide d’utilisation';
+$string['working'] = 'Traitement en cours...';
 
-// MarkItDown API settings.
-$string['markitdown_api'] = 'Paramètres de l\'API MarkItDown';
-$string['markitdown_api_desc'] = 'Configurer le service API MarkItDown pour le traitement et la conversion de documents';
-$string['markitdown_api_url'] = 'URL de l\'API MarkItDown';
-$string['markitdown_api_url_help'] = 'Entrez l\'URL du point de terminaison du service API MarkItDown pour le traitement de documents';
-$string['markitdown_api_key'] = 'Clé de l\'API MarkItDown';
-$string['markitdown_api_key_help'] = 'Entrez la clé API pour l\'authentification avec le service MarkItDown';
-$string['welcome_message'] = 'Message de bienvenue';
-$string['welcome_message_help'] = 'Entrez un message de bienvenue personnalisé qui sera affiché aux utilisateurs lors de leur première interaction avec l\'Assistant IA';
+// MarkItDown
+$string['markitdown_api'] = 'Paramètres API MarkItDown';
+$string['markitdown_api_desc'] = 'Configurer le service API MarkItDown pour le traitement des documents';
+$string['markitdown_api_url'] = 'URL API MarkItDown';
+$string['markitdown_api_url_help'] = 'Entrez l’URL du point de terminaison du service MarkItDown';
+$string['markitdown_api_key'] = 'Clé API MarkItDown';
+$string['markitdown_api_key_help'] = 'Entrez la clé API pour l’authentification';
+$string['welcome_message'] = 'Message d’accueil';
+$string['welcome_message_help'] = 'Message d’accueil affiché lors de la première interaction avec l’Assistant IA';
 
-// Capabilites
-$string['ai_assistant:addinstance'] = 'Ajouter un bloc au cours';
-$string['ai_assistant:view_autotest'] = 'Voir/Exécuter AutoTest';
+// Capacités
+$string['ai_assistant:addinstance'] = 'Ajouter le bloc au cours';
+$string['ai_assistant:view_autotest'] = 'Voir / exécuter AutoTest';
 $string['ai_assistant:student'] = 'Disponible pour les étudiants';
 $string['ai_assistant:teacher'] = 'Disponible pour les enseignants';
 
-
-// Bot tuning
-$string['max_tokens'] = 'Jetons maximum';
+// Paramètres de réglage du bot
+$string['max_tokens'] = 'Jetons max';
 $string['max_tokens_help'] = '4000 pour GPT-4o';
 $string['temperature'] = 'Température';
-$string['temperature_help'] = '0.1 Précis 0.5 Créatif 1.0 Sauvage';
+$string['temperature_help'] = '0.1 Précis 0.5 Créatif 1.0 Très libre';
 $string['top_p'] = 'Top P';
 $string['top_p_help'] = '0 pour GPT-4o';
 $string['top_k'] = 'Top K';
@@ -272,258 +205,41 @@ $string['top_n'] = 'Top N';
 $string['top_n_help'] = '10 pour GPT-4o';
 $string['min_k'] = 'Min K';
 $string['min_k_help'] = '0.6 pour GPT-4o';
-$string['min_relevance'] = 'Pertinence minimale';
+$string['min_relevance'] = 'Pertinence min';
 $string['min_relevance_help'] = '0.8 pour GPT-4o';
-$string['max_context'] = 'Contexte maximum';
+$string['max_context'] = 'Contexte max';
 $string['max_context_help'] = '120000 pour GPT-4o';
-$string['no_context_llm_guess'] = 'Supposition LLM sans contexte';
-$string['no_context_llm_guess_help'] = 'Permettre au LLM de retourner une réponse lorsqu\'aucun contexte n\'est disponible';
-$string['embed_position'] = 'Position d\'intégration';
+$string['no_context_llm_guess'] = 'Réponse sans contexte';
+$string['no_context_llm_guess_help'] = 'Autoriser le LLM à répondre sans contexte disponible';
+$string['embed_position'] = 'Position d’intégration';
 
-// Default Tutorials
-$string['learning_assistant_tutorials'] = 'Tutoriels d\'assistant d\'apprentissage';
+// Tutoriels par défaut
+$string['learning_assistant_tutorials'] = 'Tutoriels Assistant d’apprentissage IA';
 $string['shortname'] = 'Nom court';
-$string['shortname_exists'] = 'Shortname already exist. Please choose a different shortname.';
+$string['shortname_exists'] = 'Ce nom court existe déjà. Choisissez-en un autre.';
 $string['tutorial_tutor_name'] = 'Mon tuteur';
-$string['tutorial_tutor_description'] = 'L\'invite est conçue pour guider un Tuteur-IA dans l\'aide aux étudiants universitaires'
-    . ' à apprendre activement et comprendre un sujet en les engageant dans une conversation personnalisée, interactive et soutenante.';
-$string['tutorial_tutor_prompt'] = "- Commencez par vous présenter à l\'étudiant universitaire comme leur Tuteur-IA, qui est heureux de les aider avec toutes questions. 
-- Ne posez qu\'une question à la fois. 
-- D\'abord, demandez-leur ce qu\'ils savent déjà sur le sujet : [topic] qu\'ils ont choisi. Attendez une réponse. 
-- Avec cette information, aidez les étudiants à comprendre le sujet [topic] en fournissant des explications, des exemples et des analogies. 
-- Celles-ci doivent être adaptées aux connaissances préalables des étudiants, ou ce qu\'ils savent déjà sur le sujet. 
-- Fournissez aux étudiants des explications, des exemples et des analogies pour les aider à comprendre le concept.
-- Si des images sont disponibles pour soutenir votre réponse, incluez-les dans votre réponse.  
-- Vous devriez guider les étudiants de manière ouverte. 
-- Ne fournissez pas de réponses ou solutions immédiates aux problèmes, mais aidez les étudiants à générer leurs propres réponses en posant des questions directrices. 
-- Demandez aux étudiants d\'expliquer leur raisonnement. Si l\'étudiant a des difficultés ou donne une mauvaise réponse, essayez de lui demander de compléter une partie de la tâche ou rappelez à l\'étudiant son objectif et donnez un indice. 
-- Si les étudiants s\'améliorent, alors félicitez-les et montrez de l\'enthousiasme. 
-- Si l\'étudiant a des difficultés, alors soyez encourageant et donnez-lui quelques idées auxquelles réfléchir. 
-- Lorsque vous demandez des informations aux étudiants, essayez de conclure vos réponses par une question pour que les étudiants continuent à générer des idées.
-- Une fois qu\'un étudiant démontre un niveau de compréhension approprié selon son niveau d\'apprentissage, demandez-lui d\'expliquer le concept avec ses propres mots ; c\'est la meilleure façon de montrer que vous comprenez quelque chose, ou demandez-lui des exemples. 
-- Lorsqu\'un étudiant démontre qu\'il connaît le concept, vous pouvez terminer la conversation et lui dire que vous êtes là pour l\'aider s\'il a d\'autres questions. 
-- Si l\'étudiant dévie sur un autre sujet qui n\'a rien à voir avec ce sujet : [topic], alors demandez à l\'étudiant de rester sur le sujet car c\'est ce sur quoi il a demandé à être tutoré.";
-
+$string['tutorial_tutor_description'] = 'Invite conçue pour guider un tuteur IA aidant les étudiants universitaires à apprendre activement un sujet via une conversation personnalisée.';
+$string['tutorial_tutor_prompt'] = "- Présentez-vous comme leur tuteur IA prêt à aider.\n- Ne posez qu’une question à la fois.\n- Demandez d’abord ce que l’étudiant connaît déjà sur [topic]. Attendez la réponse.\n- Aidez à comprendre [topic] avec explications, exemples, analogies adaptés aux connaissances préalables.\n- Fournissez explications, exemples et analogies.\n- Incluez les images disponibles pertinentes.\n- Guidez de façon ouverte sans donner immédiatement les réponses.\n- Utilisez des questions directrices pour amener l’étudiant à formuler ses réponses.\n- Demandez d’expliquer son raisonnement; en cas de difficulté, fractionnez la tâche ou rappelez l’objectif et donnez un indice.\n- Félicitez les progrès; encouragez en cas de difficulté.\n- Terminez souvent par une question pour maintenir l’engagement.\n- Quand la compréhension est démontrée, demandez d’expliquer avec ses propres mots ou de donner des exemples.\n- Clôturez quand l’étudiant maîtrise le concept et offrez votre aide future.\n- Si l’étudiant dérive vers un autre sujet sans lien avec [topic], ramenez-le au sujet demandé.";
 $string['tutorial_quiz_name'] = 'Quiz sur...';
-$string['tutorial_quiz_description'] = 'Cette activité est conçue pour aider les étudiants à réviser et renforcer leur'
-    . ' compréhension d\'un sujet spécifique à travers un quiz à choix multiples structuré. Le quiz consiste en 20 questions,'
-    . ' chacune avec quatre options de réponse (A, B, C et D). Après chaque réponse, les étudiants reçoivent des commentaires immédiats pour'
-    . ' soutenir l\'apprentissage et la réflexion. Le quiz est livré une question à la fois pour encourager la concentration et'
-    . ' l\'engagement. À la fin, les étudiants reçoivent un résumé de leur performance avec des suggestions d\'amélioration.'
-    . ' Le format est destiné à être interactif, auto-rythmé et soutenant l\'apprentissage indépendant.';
-$string['tutorial_quiz_prompt'] = "- Veuillez préparer un quiz à choix multiples sur le sujet : [topic] avec 20 questions avec quatre choix possibles, étiquetés A, B, C et D.
-- Créez toutes les questions à partir de votre base de connaissances sur le sujet [topic] 
-- Attendez que je réponde avec une étiquette après chaque question, fournissez des commentaires sur ma réponse, puis posez la question suivante. 
-- Lorsque vous avez posé toutes les questions, veuillez fournir un résumé amical de mes résultats et toute suggestion d\'amélioration.
-- Si vous continuez une session précédente, continuez à poser des questions. Commencez au dernier numéro plus 1.
-- Si un étudiant commence à poser des questions au lieu de répondre aux questions du quiz, dites à l\'étudiant que vous ne faites que des quiz.";
+$string['tutorial_quiz_description'] = 'Activité permettant de réviser et renforcer la compréhension d’un sujet via un quiz à choix multiples question par question avec rétroaction immédiate et résumé final.';
+$string['tutorial_quiz_prompt'] = "- Prépare un quiz à choix multiples sur [topic] avec 10 questions (A, B, C, D).\n- Crée les questions à partir de ta base de connaissances sur [topic].\n- Attends la réponse (lettre) après chaque question, donne une rétroaction puis pose la suivante.\n- Après les 10 questions, fournis un résumé convivial des résultats et des suggestions. Propose un nouveau jeu si souhaité.\n- En reprise de session, continue à partir du dernier numéro + 1.\n- Si l’étudiant pose des questions hors format du quiz, rappelle que tu ne fais que des quiz.";
 
-// Template instructions
-$string['syllabus_template_instructions'] = '<h3>Instructions pour utiliser le modèle de plan de cours</h3>
-<p>Le modèle de plan de cours est conçu pour assurer l\'exactitude et la cohérence lors de l\'entraînement du bot IA, AL l\'Assistant de cours
-    . Le modèle consiste en des espaces réservés qui commencent par <code><</code> et se terminent par <code>></code>. Suivez
-    ces étapes pour utiliser efficacement le modèle :</p>
+// Instructions modèle syllabus
+$string['syllabus_template_instructions'] = '<h3>Instructions d\'utilisation du modèle de syllabus</h3><p>Le modèle assure précision et cohérence lors de l\'entraînement de l\'Assistant. Remplacez les espaces réservés (&lt; &gt;).</p>';
 
-<h4>Étape 1 : Ouvrir le modèle</h4>
-<ol>
-    <li>Ouvrez le fichier de modèle de plan de cours dans votre éditeur de texte ou traitement de texte préféré.</li>
-</ol>
+// Instructions modèle questions
+$string['question_template_instructions'] = '<h3>Instructions pour créer un modèle de questions Word</h3><ol><li><strong>Chaque question comme titre</strong></li><li><strong>Variantes de formulation</strong></li><li><strong>Section réponse</strong> sans supprimer la phrase indiquée</li><li>Répéter pour chaque question</li><li>Téléverser le document et attendre l\'entraînement</li></ol>';
 
-<h4>Étape 2 : Identifier les espaces réservés</h4>
-<ol start="2">
-    <li>Recherchez les espaces réservés dans le modèle. Ces espaces réservés sont entourés de crochets angulaires, tels que 
-        <code>&lt;CourseTitle&gt;</code>, <code>&lt;InstructorName>InstructorName&gt;</code>, etc.
-    </li>
-</ol>
+// Instructions modèle AutoTest
+$string['autotest_tempalte_instructions'] = '<h3>Instructions pour le modèle Excel AutoTest</h3><p>Définissez section, question et réponse attendue. Laissez la colonne Section vide pour les questions suivantes de la même section.</p>';
 
-<h4>Étape 3 : Remplacer les espaces réservés</h4>
-<ol start="3">
-    <li>Remplacez chaque espace réservé par l\'information appropriée. Par exemple :
-        <ul>
-            <li><code>
-                &lt;Course Code&gt;
-            </code> : Entrez le code du cours.
-            </li>
-            <li><code>
-                &lt;Course Title&gt;
-            </code> : Entrez le titre du cours.
-            </li>
-            <li><code>
-                &lt;Instructor Name&gt;
-            </code> : Entrez le nom de l\'instructeur.
-            </li>
-            <li><code>
-                &lt;Course Description&gt;
-            </code> : Fournissez une brève description du cours.
-            </li>
-        </ul>
-    </li>
-</ol>
-<div class="alert alert-warning">
-    <p><strong>Important :</strong> </p>
-    <p>Assurez-vous que tous les espaces réservés sont remplacés par des informations exactes pour fournir
-        aux étudiants les détails corrects sur le cours.</p>
-        <p>Soyez précis ! Évitez les phrases modales telles que "vous pourriez", "vous pouvez", "il est possible", "vous pourriez possiblement" etc. Celles-ci introduisent
-        l\'ambiguïté et l\'incertitude qui peuvent mener à des réponses incohérentes et à la méfiance de l\'utilisateur envers l\'IA. Pour l\'entraînement de l\'IA, il est crucial d\'avoir des instructions claires et précises 
-        pour s\'assurer que l\'IA apprend avec précision</p>
-        <p>Évitez d\'utiliser des balises HTML (<>) dans votre document car cela causera l\'omission des données.</p>
-        <p>Si vous ajoutez de nouveaux sujets/sections, assurez-vous de les formater avec des titres (Titre 1, Titre 2 etc.)</p>
-        <p>Si vous ajoutez de nouveaux tableaux, assurez-vous que la première ligne est un en-tête et que toutes les cellules ont du contenu. (Pas de cellules vides)</p>
-</div>
+$string['help_intro'] = '<h3>Aide de l\'Assistant IA</h3>Formatez correctement vos documents pour des réponses précises. Utilisez les modèles fournis (syllabus et questions).';
 
-<h4>Étape 4 : Réviser et sauvegarder</h4>
-<ol start="4">
-    <li>Révisez soigneusement le modèle rempli pour vous assurer que tous les espaces réservés ont été remplacés par des
-        informations exactes.
-    </li>
-    <li>Sauvegardez le fichier de plan de cours mis à jour avec un nouveau nom pour éviter d\'écraser le modèle original.</li>
-</ol>
-
-<h4>Étape 5 : Utiliser le plan de cours</h4>
-<ol start="6">
-    <li>Utilisez le plan de cours complété pour votre cours. Ce document aidera à s\'assurer qu\'AL l\'Assistant de cours a
-        des informations exactes et cohérentes pour aider efficacement les étudiants.
-    </li>
-</ol>
-
-<p>En suivant ces instructions, vous pouvez vous assurer que le plan de cours est exact et prêt à être utilisé pour entraîner AL
-    l\'Assistant de cours.</p>';
-// Question template instructions
-$string['question_template_instructions'] = '<h3>Instructions pour créer un modèle de question Word</h3>
-<ol>
-    <li><strong>Ajouter des questions comme titres</strong>
-        <ul>
-            <li>Chaque question doit être définie comme un titre.</li>
-            <li>Exemple : <strong>Titre1</strong></li>
-        </ul>
-    </li>
-    <li><strong>Fournir des formulations alternatives</strong>
-        <ul>
-            <li>Sous chaque titre, listez des exemples d\'autres façons de poser la question.</li>
-            <li>Exemple :
-                <ul>
-                    <li>Comment créer un modèle de question Word ?</li>
-                    <li>Pouvez-vous m\'aider avec un modèle de question Word ?</li>
-                </ul>
-            </li>
-        </ul>
-    </li>
-    <li><strong>Section de réponse</strong>
-        <ul>
-            <li>Ne supprimez pas : <strong>La réponse à toutes ces questions ou invites est :</strong></li>
-            <li>Sous cette phrase, ajoutez votre réponse.</li>
-            <li>Exemple :
-                <ul>
-                    <li>La réponse à toutes ces questions ou invites est :</li>
-                    <li>Vous pouvez créer un modèle de question Word en suivant ces étapes...</li>
-                </ul>
-            </li>
-        </ul>
-    </li>
-    <li><strong>Répéter pour chaque question</strong>
-        <ul>
-            <li>Répétez les mêmes étapes pour chaque question que vous voulez inclure.</li>
-        </ul>
-    </li>
-    <li><strong>Téléverser le document</strong>
-        <ul>
-            <li>Une fois le document prêt, cliquez sur <strong>Questions personnalisées</strong> pour téléverser votre document.</li>
-            <li>Accordez du temps à l\'Assistant IA pour s\'entraîner sur les questions.</li>
-        </ul>
-    </li>
-</ol>';
-
-// AutoTest template instructions
-$string['autotest_tempalte_instructions'] = '<h3>Instructions pour utiliser le modèle Excel AutoTest</h3>
-AutoTest est une fonctionnalité puissante conçue pour les instructeurs pour créer et gérer des questions qui évaluent la performance et les capacités d\'un Assistant IA. 
-Le modèle AutoTest est un fichier Excel qui permet aux instructeurs de définir des questions, des réponses et des réponses attendues pour l\'Assistant IA. Suivez ces étapes pour utiliser efficacement le modèle AutoTest :
-<br>
-<h5>Instructions du modèle Excel AutoTest</h5>
-<ol>
-    <li><strong>Ouvrir le modèle Excel AutoTest</strong> : Assurez-vous d\'avoir le modèle ouvert et prêt à modifier.</li>
-    <li><strong>Comprendre les colonnes</strong> :
-        <ul>
-            <li><strong>Section</strong> : Cette colonne représente la catégorie des questions.</li>
-            <li><strong>Questions</strong> : Cette colonne contient les questions à poser.</li>
-            <li><strong>Réponse</strong> : Cette colonne contient les réponses anticipées.</li>
-        </ul>
-    </li>
-    <li><strong>Saisie des données</strong> :
-        <ul>
-            <li><strong>Première question dans une section</strong> :
-                <ul>
-                    <li>Entrez le nom de la section dans la colonne <strong>Section</strong>.</li>
-                    <li>Entrez la question dans la colonne <strong>Questions</strong>.</li>
-                    <li>Entrez la réponse anticipée dans la colonne <strong>Réponse</strong>.</li>
-                </ul>
-            </li>
-            <li><strong>Questions supplémentaires dans la même section</strong> :
-                <ul>
-                    <li>Laissez la colonne <strong>Section</strong> vide.</li>
-                    <li>Entrez la question suivante dans la colonne <strong>Questions</strong>.</li>
-                    <li>Entrez la réponse anticipée dans la colonne <strong>Réponse</strong>.</li>
-                </ul>
-            </li>
-        </ul>
-    </li>
-    <li><strong>Exemple</strong> :</li>
-</ol>
-<table border="1">
-    <thead>
-    <tr>
-        <th>Section</th>
-        <th>Questions</th>
-        <th>Réponse</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr>
-        <td>Mathématiques</td>
-        <td>Combien font 2+2 ?</td>
-        <td>4</td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>Quelle est la racine carrée de 9 ?</td>
-        <td>3</td>
-    </tr>
-    <tr>
-        <td>Sciences</td>
-        <td>Quel est le symbole chimique de l\'eau ?</td>
-        <td>H2O</td>
-    </tr>
-    <tr>
-        <td></td>
-        <td>Quelle planète est connue comme la planète rouge ?</td>
-        <td>Mars</td>
-    </tr>
-    </tbody>
-</table>
-<ol start="5">
-    <li><strong>Réviser et sauvegarder</strong> :
-        <ul>
-            <li>Vérifiez vos entrées pour l\'exactitude.</li>
-            <li>Sauvegardez le modèle pour vous assurer que toutes vos données sont préservées.</li>
-        </ul>
-    </li>
-</ol>';
-
-$string['help_intro'] = '<h3>Aide de l\'Assistant IA</h3>' .
-    'Formater correctement un document est crucial lors de l\'entraînement d\'un bot IA pour s\'assurer qu\'il répond avec précision et efficacité. ' .
-    'L\'Assistant IA utilise le contenu du document pour générer des réponses aux requêtes des utilisateurs. ' .
-    'Pour vous aider à obtenir les meilleurs résultats de l\'Assistant IA, nous avons fourni des modèles pour les plans de cours et les questions. ' .
-    'Ces modèles sont conçus pour s\'assurer que l\'Assistant IA reçoit des informations précises et cohérentes. ' .
-    'Suivez les instructions ci-dessous pour utiliser efficacement les modèles.';
-
-// AI Policies
+// Politiques IA
 $string['acceptai'] = 'Accepter et continuer';
-$string['aipolicyacceptance'] = 'Acceptation de la politique d\'IA';
-$string['declineaipolicy'] = 'Déclin';
-$string['userpolicy'] = '<h4><strong>Bienvenue dans la nouvelle fonctionnalité d\'IA !</strong></h4>
-<p>Cette fonctionnalité d\'intelligence artificielle (IA) s\'appuie exclusivement sur des modèles de langage étendus (MLL) externes pour améliorer votre expérience d\'apprentissage et d\'enseignement. Avant d\'utiliser ces services d\'IA, veuillez lire cette politique d\'utilisation.</p>
-<h4><strong>Précision du contenu généré par l\'IA</strong></h4>
-<p>L\'IA peut fournir des suggestions et des informations utiles, mais leur précision peut varier. Il est important de toujours vérifier les informations fournies pour vous assurer qu\'elles sont exactes, complètes et adaptées à votre situation.</p>
-<h4><strong>Comment vos données sont traitées</strong></h4>
-<p>Cette fonctionnalité d\'IA utilise des modèles de langage étendus (MLL) externes. Si vous utilisez cette fonctionnalité, toutes les informations ou données personnelles que vous partagez seront traitées conformément à la politique de confidentialité de ces LLM. Nous vous recommandons de lire leur politique de confidentialité pour comprendre comment ils traitent vos données. De plus, un enregistrement de vos interactions avec les fonctionnalités d\'IA peut être conservé sur ce site.</p>
-<p>Si vous avez des questions sur la manière dont vos données sont traitées, veuillez consulter vos enseignants ou votre organisme d’apprentissage.</p>
-<p>En continuant, vous reconnaissez que vous comprenez et acceptez cette politique.</p>';
+$string['aipolicyacceptance'] = 'Acceptation de la politique IA';
+$string['declineaipolicy'] = 'Refuser';
+$string['userpolicy'] = '<h4><strong>Bienvenue dans la nouvelle fonctionnalité IA !</strong></h4><p>Cette fonctionnalité s\'appuie sur des modèles de langage externes. Vérifiez toujours les informations. Consultez la politique de confidentialité des services tiers. En continuant vous acceptez cette politique.</p>';
+
+?>
+
