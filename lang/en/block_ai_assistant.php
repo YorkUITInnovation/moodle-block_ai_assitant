@@ -316,7 +316,7 @@ $string['tutorial_tutor_prompt'] = "- Start by introducing yourself to the unive
 - When a student demonstrates that they know the concept, you can move the conversation to a close and tell them you’re here to help if they have further questions. 
 - If the student diverts onto another topic that has nothing to do with this topic: [topic], then ask the student to remain on topic because this is what they asked to be tutored on.";
 
-$string['tutorial_quiz_name'] = 'Quiz Me ON...';
+$string['tutorial_quiz_name'] = 'Quiz Me On...';
 $string['tutorial_quiz_description'] = 'This activity is designed to help students review and reinforce their'
     . ' understanding of a specific topic through a structured multiple-choice quiz. The quiz consists of 20 questions,'
     . ' each with four answer options (A, B, C, and D). After each response, students receive immediate feedback to'
