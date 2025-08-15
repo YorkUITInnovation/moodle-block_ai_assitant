@@ -29,7 +29,7 @@
                     <p>{{#str}}ai_assistant_instructions, block_ai_assistant{{/str}}</p>
                     {{#is_teacher}}
                         <p>
-                            <a href="{{config.wwwroot}}/blocks/ai_assistant/instructor_user_guide.php?courseid={{courseid}}"
+                            <a href="{{#str}}help_url, block_ai_assistant{{/str}}"
                             class="btn btn-link btn-sm"
                             title="{{#str}}
                             user_guide, block_ai_assistant{{/str}}">{{#str}}user_guide, block_ai_assistant{{/str}}</a>
