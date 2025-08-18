@@ -210,32 +210,6 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         ];
         $DB->insert_record('block_aia_tutorials', (object)$quiz_params);
 
-        // Create defautl turorials
-        $tutor_params = [
-            'courseid' => 1,
-            'name' => get_string('tutorial_tutor_name', 'block_ai_assistant'),
-            'shortname' => 'my_tutor',
-            'description' => get_string('tutorial_tutor_description', 'block_ai_assistant'),
-            'prompt' => get_string('tutorial_tutor_prompt', 'block_ai_assistant'),
-            'enabled' => 1,
-            'timecreated' => time(),
-            'timemodified' => time(),
-        ];
-
-        $DB->insert_record('block_aia_tutorials', (object)$tutor_params);
-
-        $quiz_params = [
-            'courseid' => 1,
-            'name' => get_string('tutorial_quiz_name', 'block_ai_assistant'),
-            'shortname' => 'quiz_me_on',
-            'description' => get_string('tutorial_quiz_description', 'block_ai_assistant'),
-            'prompt' => get_string('tutorial_quiz_prompt', 'block_ai_assistant'),
-            'enabled' => 1,
-            'timecreated' => time(),
-            'timemodified' => time(),
-        ];
-        $DB->insert_record('block_aia_tutorials', (object)$quiz_params);
-
         // Ai_assistant savepoint reached.
         upgrade_block_savepoint(true, 2025072905, 'ai_assistant');
     }
@@ -260,13 +234,10 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
             $dbman->create_table($table);
         }
 
-
         // Ai_assistant savepoint reached.
         upgrade_block_savepoint(true, 2025080501, 'ai_assistant');
     }
 
-
-
     return true;
-
 }
+
