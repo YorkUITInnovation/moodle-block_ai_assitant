@@ -89,6 +89,12 @@ abstract class module_training
         if (!mb_detect_encoding($content, 'UTF-8', true)) {
             $content = mb_convert_encoding($content, 'UTF-8');
         }
+        // Convert base64 images to files and update HTML
+        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
+        $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
+        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+
+        // Convert content to base64
         $content = base64_encode($content);
 
         $cria_file_id = cria::upload_content_to_bot($this->mod[0]->course, $this->file_name, $content);
@@ -128,6 +134,11 @@ abstract class module_training
         if (!mb_detect_encoding($content, 'UTF-8', true)) {
             $content = mb_convert_encoding($content, 'UTF-8');
         }
+        // Convert base64 images to files and update HTML
+        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
+        $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
+        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+
         $content = base64_encode($content);
 
         $cria_file_id = cria::upload_content_to_bot($this->mod[0]->course, $this->file_name, $content);
@@ -178,6 +189,12 @@ abstract class module_training
         if (!mb_detect_encoding($content, 'UTF-8', true)) {
             $content = mb_convert_encoding($content, 'UTF-8');
         }
+        // Convert base64 images to files and update HTML
+        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
+        $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
+        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+
+        // Convert content to base64
         $content = base64_encode($content);
         // Upload content to Cria
         $cria_file_id = cria::upload_content_to_bot($this->mod[0]->course, $this->file_name, $content);
@@ -226,11 +243,16 @@ abstract class module_training
             $content .= '<br><br>';
         }
 
-        // Make sure $html is UTF-8 encoded
+        // Make sure $content is UTF-8 encoded
         if (!mb_detect_encoding($content, 'UTF-8', true)) {
-            $html = mb_convert_encoding($content, 'UTF-8');
+            $content = mb_convert_encoding($content, 'UTF-8');
         }
-        $content = base64_encode($html);
+        // Convert base64 images to files and update HTML
+        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
+        $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
+        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+        // Convert content to base64
+        $content = base64_encode($content);
         // Upload content to Cria
         $cria_file_id = cria::upload_content_to_bot($this->mod[0]->course, $this->file_name, $content);
         if (!$cria_file_id) {
@@ -292,6 +314,11 @@ abstract class module_training
         if (!mb_detect_encoding($content, 'UTF-8', true)) {
             $content = mb_convert_encoding($content, 'UTF-8');
         }
+        // Convert base64 images to files and update HTML
+        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
+        $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
+        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+        // Convert content to base64
         $content = base64_encode($content);
         // Upload content to Cria
         $cria_file_id = cria::upload_content_to_bot($this->mod[0]->course, $this->file_name, $content);
@@ -466,84 +493,77 @@ abstract class module_training
     public function folder()
     {
         global $CFG, $DB;
+        $config = get_config('block_ai_assistant');
         // if $this->bacmid is false, it means that the module is not registered in the block_aia_course_modules table
         if ($this->bacmid === false) {
             return false; // If the module is not registered, return false
         }
-        // Get the course module ID
+        // Set module URL
         $mod_url = $CFG->wwwroot . '/mod/folder/view.php?id=' . $this->cmid;
-        // We will need to get files from the folder
         $fs = get_file_storage();
-
-        // Get files for this entry
         $files = $fs->get_area_files($this->context->id, 'mod_folder', 'content', 0);
-        $folder_files = [];
-        $i = 0;
         foreach ($files as $file) {
-            if (!$file->is_directory()
-            ) {
-                // Only accept the following file formats: docx, pdf, txt, html, htm, pptx, ppt, odt, rtf, md
-                if (!in_array($file->get_mimetype(), course_modules::get_accepted_file_types())) {
-                    continue; // Skip unsupported file types
-                }
-                $path = $CFG->dataroot . '/temp/ai_assistant/';
-                if (!file_exists($path)) {
-                    mkdir($path, 0777, true);
-                }
-                $path .= 'folder/';
-                if (!file_exists($path)) {
-                    mkdir($path, 0777, true);
-                }
-                $path .= $this->mod[1]->id . '/';
-                if (!file_exists($path)) {
-                    mkdir($path, 0777, true);
-                }
-                // Set the file name
-                $file_name = $file->get_filename();
-                $file_name_for_saving = $file_name;
-                // Save a copy of the file
-                $file->copy_content_to($path . $file_name);
-                // Using maritdown to convert the content to HTML
-                $converted_file = (object)markitdown::execute($path . $file_name, $file->get_mimetype());
-                // If the file is a directory, we will not convert it
-                if ($file->is_directory()) {
-                    $content = '';
-                }
-                // If the file is not a directory, we will convert it
-                // If there was an error converting the file, we will skip it
-                // If there was an error converting the file
-                if (isset($converted_file->error)) {
-                    // If there is an error, set the content to an empty string
-                    $content = '';
+            if ($file->is_directory() || !in_array($file->get_mimetype(), course_modules::get_accepted_file_types())) {
+                continue;
+            }
+            // Prepare temp path and save a copy
+            $tempdir = $CFG->dataroot . '/temp/ai_assistant/folder/' . $this->mod[1]->id . '/';
+            if (!file_exists($tempdir)) {
+                mkdir($tempdir, 0777, true);
+            }
+            $origname = $file->get_filename();
+            $file->copy_content_to($tempdir . $origname);
+            $mime = $file->get_mimetype();
+            // Prepare images path
+            $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
+            if (!file_exists($images_path)) {
+                mkdir($images_path, 0777, true);
+            }
+            // Convert file to HTML
+            if ($mime === 'application/pdf') {
+                \ConvertApi\ConvertApi::setApiCredentials($config->convert_api_key);
+                $result = \ConvertApi\ConvertApi::convert('html', ['File' => $tempdir . $origname], 'pdf');
+                $content = $result->getFile()->getContents();
+                $finalname = str_replace('.pdf', '.html', $origname);
+                $base = 'folder_' . $this->cmid . '_' . pathinfo($origname, PATHINFO_FILENAME);
+                $content = $this->convert_base64_images_to_files($content, $images_path, $base);
+            } elseif ($mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                \ConvertApi\ConvertApi::setApiCredentials($config->convert_api_key);
+                $result = \ConvertApi\ConvertApi::convert('html', ['File' => $tempdir . $origname], 'docx');
+                $content = $result->getFile()->getContents();
+                $finalname = str_replace('.docx', '.html', $origname);
+                $base = 'folder_' . $this->cmid . '_' . pathinfo($origname, PATHINFO_FILENAME);
+                $content = $this->convert_base64_images_to_files($content, $images_path, $base);
+            } else {
+                $converted = markitdown::execute($tempdir . $origname, false);
+                if (empty($converted->error)) {
+                    $content = markdown_to_html($converted->content);
+                    $finalname = 'folder_' . $this->cmid . '_' . str_replace(' ', '_', $converted->file_name) . '.html';
+                    $base = 'folder_' . $this->cmid . '_' . pathinfo($origname, PATHINFO_FILENAME);
+                    $content = $this->convert_base64_images_to_files($content, $images_path, $base);
                 } else {
-                    unlink($path . $file_name);
-                    // Add module URL to content
-                    $content = get_string('content_found_at', 'block_ai_assistant')
-                        . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>';
-                    // Set the content to the converted file content
-                    $content .= markdown_to_html($converted_file->content);
-                    $file_name = 'folder_' . $this->cmid . '_' . str_replace(' ', '_', $converted_file->filename) . '.html';
-                    // Make sure the content is UTF-8 encoded
-                    if (!mb_detect_encoding($content, 'UTF-8', true)) {
-                        $content = mb_convert_encoding($content, 'UTF-8');
-                    }
-                    $content = base64_encode($content);
-                    // Upload content to Cria
-                    $cria_file_id = cria::upload_content_to_bot($this->mod[0]->course, $file_name, $content);
-                    if (!$cria_file_id) {
-                        continue; // If there was an error uploading the content
-                    } else {
-                        // Insert record into block_aia_course_mod_files
-                        $DB->insert_record('block_aia_course_mod_files', [
-                            'bacmid' => $this->bacmid,
-                            'cria_fileid' => $cria_file_id,
-                            'name' => $file_name_for_saving
-                        ]);
-                    }
-                    // Wait 2 seconds before moving to the next file
-                    sleep(2);
+                    continue;
                 }
             }
+            // Prefix module URL
+            $content = get_string('content_found_at', 'block_ai_assistant')
+                . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>'
+                . $content;
+            // Ensure UTF-8 and encode
+            if (!mb_detect_encoding($content, 'UTF-8', true)) {
+                $content = mb_convert_encoding($content, 'UTF-8');
+            }
+            $encoded = base64_encode($content);
+            // Upload and record
+            $cria_id = cria::upload_content_to_bot($this->mod[0]->course, $finalname, $encoded);
+            if ($cria_id) {
+                $DB->insert_record('block_aia_course_mod_files', [
+                    'bacmid' => $this->bacmid,
+                    'cria_fileid' => $cria_id,
+                    'name' => $origname,
+                ]);
+            }
+            sleep(2);
         }
 
         return true;
@@ -583,6 +603,11 @@ abstract class module_training
         if (!mb_detect_encoding($content, 'UTF-8', true)) {
             $content = mb_convert_encoding($content, 'UTF-8');
         }
+        // Convert base64 images to files and update HTML
+        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
+        $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
+        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+        // Convert content to base64
         $content = base64_encode($content);
         // Upload content to Cria
         $cria_file_id = cria::upload_content_to_bot($this->mod[0]->course, $this->file_name, $content);
