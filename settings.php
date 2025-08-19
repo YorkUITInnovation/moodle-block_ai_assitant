@@ -321,10 +321,25 @@ if ($hassiteconfig) {
         50
     ));
 
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new admin_setting_configpasswordunmask(
         'block_ai_assistant/markitdown_api_key',
         get_string('markitdown_api_key', 'block_ai_assistant'),
         get_string('markitdown_api_key_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT,
+        50
+    ));
+
+    // Add ConvertApi - ApiKey
+    $settings->add(new admin_setting_heading(
+        'block_ai_assistant/convert_api',
+        get_string('convert_api', 'block_ai_assistant'),
+        get_string('convert_api_desc', 'block_ai_assistant')
+    ));
+    $settings->add(new admin_setting_configpasswordunmask(
+        'block_ai_assistant/convert_api_key',
+        get_string('convert_api_key', 'block_ai_assistant'),
+        get_string('convert_api_key_help', 'block_ai_assistant'),
         '',
         PARAM_TEXT,
         50
