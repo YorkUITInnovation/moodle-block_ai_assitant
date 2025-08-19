@@ -433,8 +433,8 @@ abstract class module_training
                         continue;
                     } else {
                         // Set the content to the converted file content using markdown_to_html
-                        $content = markdown_to_html($converted_file->content);
-                        $file_name = str_replace(' ', '_', $converted_file->file_name) . '.html';
+                        $content = markdown_to_html($converted_file['content'] );
+                        $file_name = str_replace(' ', '_', $converted_file['filename']) . '.html';
 
                         // Create images directory for this resource
                         $base_filename = 'resource_' . $this->cmid . '_' . pathinfo($file_name_for_saving, PATHINFO_FILENAME);
@@ -542,8 +542,8 @@ abstract class module_training
                     continue;
                 } else {
                     // Set the content to the converted file content using markdown_to_html
-                    $content = markdown_to_html($converted_file->content);
-                    $finalname = str_replace(' ', '_', $converted_file->filename) . '.html';
+                    $content = markdown_to_html($converted_file['content']);
+                    $finalname = str_replace(' ', '_', $converted_file['filename']) . '.html';
 
                     // Create images directory for this folder
                     $base = 'folder_' . $this->cmid . '_' . pathinfo($origname, PATHINFO_FILENAME);
