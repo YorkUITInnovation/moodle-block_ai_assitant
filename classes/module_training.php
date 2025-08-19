@@ -535,34 +535,57 @@ abstract class module_training
                 $base = 'folder_' . $this->cmid . '_' . pathinfo($origname, PATHINFO_FILENAME);
                 $content = $this->convert_base64_images_to_files($content, $images_path, $base);
             } else {
-                $converted = markitdown::execute($tempdir . $origname, false);
-                if (empty($converted->error)) {
-                    $content = markdown_to_html($converted->content);
-                    $finalname = 'folder_' . $this->cmid . '_' . str_replace(' ', '_', $converted->file_name) . '.html';
-                    $base = 'folder_' . $this->cmid . '_' . pathinfo($origname, PATHINFO_FILENAME);
-                    $content = $this->convert_base64_images_to_files($content, $images_path, $base);
-                } else {
+                // For all other file types, use markitdown to convert
+                $converted_file = markitdown::execute($tempdir . $origname, false);
+                if (isset($converted_file->error) && $converted_file->error) {
+                    // If there is an error, skip this file
                     continue;
+                } else {
+                    // Set the content to the converted file content using markdown_to_html
+                    $content = markdown_to_html($converted_file->content);
+                    $finalname = str_replace(' ', '_', $converted_file->filename) . '.html';
+
+                    // Create images directory for this folder
+                    $base = 'folder_' . $this->cmid . '_' . pathinfo($origname, PATHINFO_FILENAME);
+
+                    // Convert base64 images to physical files and update HTML
+                    $content = $this->convert_base64_images_to_files($content, $images_path, $base);
                 }
             }
-            // Prefix module URL
+
+            // Clean up temp file
+            unlink($tempdir . $origname);
+
+            // Add module URL to content
             $content = get_string('content_found_at', 'block_ai_assistant')
                 . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>'
                 . $content;
-            // Ensure UTF-8 and encode
+
+            // Make sure the content is UTF-8 encoded
             if (!mb_detect_encoding($content, 'UTF-8', true)) {
                 $content = mb_convert_encoding($content, 'UTF-8');
             }
-            $encoded = base64_encode($content);
-            // Upload and record
-            $cria_id = cria::upload_content_to_bot($this->mod[0]->course, $finalname, $encoded);
-            if ($cria_id) {
+
+            // Convert content to base64
+            $content = base64_encode($content);
+
+            // Create final filename with folder prefix
+            $final_file_name = 'folder_' . $this->cmid . '_' . $finalname;
+
+            // Upload content to Cria
+            $cria_file_id = cria::upload_content_to_bot($this->mod[0]->course, $final_file_name, $content);
+            if (!$cria_file_id) {
+                continue; // If there was an error uploading the content
+            } else {
+                // Insert record into block_aia_course_mod_files
                 $DB->insert_record('block_aia_course_mod_files', [
                     'bacmid' => $this->bacmid,
-                    'cria_fileid' => $cria_id,
-                    'name' => $origname,
+                    'cria_fileid' => $cria_file_id,
+                    'name' => $origname
                 ]);
             }
+
+            // Wait 2 seconds before moving to the next file
             sleep(2);
         }
 
