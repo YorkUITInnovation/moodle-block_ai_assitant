@@ -16,10 +16,11 @@ abstract class module_training
     private $bacmid;
     private $context;
     private $mod_type; // Name of the module type (e.g., page, book, glossary, forum, resource, folder)
+    private $images_path;
 
     public function __construct(int $cmid, bool $retrain = false)
     {
-        global $DB;
+        global $CFG, $DB;
         $this->cmid = $cmid;
         $this->context = \context_module::instance($cmid);
         $this->mod = course_modules::get_module_from_cmid($cmid);
@@ -39,6 +40,15 @@ abstract class module_training
         if ($this->bacmid !== false && $retrain == true) {
             course_modules::delete_course_module_files($this->bacmid);
         }
+        $images_path = $CFG->dataroot . '/temp/ai_assistant/';
+        if (!file_exists($images_path)) {
+            mkdir($images_path, 0777, true);
+        }
+        $images_path .= $this->cmid . '/';
+        if (!file_exists($images_path)) {
+            mkdir($images_path, 0777, true);
+        }
+        $this->images_path = $images_path;
     }
 
     /**
@@ -90,9 +100,9 @@ abstract class module_training
             $content = mb_convert_encoding($content, 'UTF-8');
         }
         // Convert base64 images to files and update HTML
-        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
+        $this->images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
         $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
-        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+        $content = $this->convert_base64_images_to_files($content, $this->images_path, $base_filename);
 
         // Convert content to base64
         $content = base64_encode($content);
@@ -134,9 +144,8 @@ abstract class module_training
             $content = mb_convert_encoding($content, 'UTF-8');
         }
         // Convert base64 images to files and update HTML
-        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
         $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
-        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+        $content = $this->convert_base64_images_to_files($content, $this->images_path, $base_filename);
 
         $content = base64_encode($content);
 
@@ -189,9 +198,8 @@ abstract class module_training
             $content = mb_convert_encoding($content, 'UTF-8');
         }
         // Convert base64 images to files and update HTML
-        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
         $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
-        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+        $content = $this->convert_base64_images_to_files($content, $this->images_path, $base_filename);
 
         // Convert content to base64
         $content = base64_encode($content);
@@ -247,9 +255,8 @@ abstract class module_training
             $content = mb_convert_encoding($content, 'UTF-8');
         }
         // Convert base64 images to files and update HTML
-        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
         $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
-        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+        $content = $this->convert_base64_images_to_files($content, $this->images_path, $base_filename);
         // Convert content to base64
         $content = base64_encode($content);
         // Upload content to Cria
@@ -314,9 +321,8 @@ abstract class module_training
             $content = mb_convert_encoding($content, 'UTF-8');
         }
         // Convert base64 images to files and update HTML
-        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
         $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
-        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+        $content = $this->convert_base64_images_to_files($content, $this->images_path, $base_filename);
         // Convert content to base64
         $content = base64_encode($content);
         // Upload content to Cria
@@ -381,11 +387,9 @@ abstract class module_training
 
                 // Get the MIME type to determine processing method
                 $mime_type = $file->get_mimetype();
-                // Use the original path structure with CFG->dirroot
-                $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/'. $this->mod[1]->id . '/';
 
-                if (!file_exists($images_path)) {
-                    mkdir($images_path, 0777, true);
+                if (!file_exists($this->images_path)) {
+                    mkdir($this->images_path, 0777, true);
                 }
 
                 // Check if file is PDF or DOCX
@@ -405,7 +409,7 @@ abstract class module_training
                     $base_filename = 'resource_' . $this->cmid . '_' . pathinfo($file_name_for_saving, PATHINFO_FILENAME);
 
                     // Convert base64 images to physical files and update HTML
-                    $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+                    $content = $this->convert_base64_images_to_files($content, $this->images_path, $base_filename);
 
                 } elseif ($mime_type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
                     // Use convertapi to convert the file to HTML
@@ -422,7 +426,7 @@ abstract class module_training
                     $base_filename = 'resource_' . $this->cmid . '_' . pathinfo($file_name_for_saving, PATHINFO_FILENAME);
 
                     // Convert base64 images to physical files and update HTML
-                    $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+                    $content = $this->convert_base64_images_to_files($content, $this->images_path, $base_filename);
 
                 } else {
                     // For all other file types, use markitdown to convert
@@ -439,7 +443,7 @@ abstract class module_training
                         $base_filename = 'resource_' . $this->cmid . '_' . pathinfo($file_name_for_saving, PATHINFO_FILENAME);
 
                         // Convert base64 images to physical files and update HTML
-                        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+                        $content = $this->convert_base64_images_to_files($content, $this->images_path, $base_filename);
                     }
                 }
 
@@ -513,10 +517,8 @@ abstract class module_training
             $origname = $file->get_filename();
             $file->copy_content_to($tempdir . $origname);
             $mime = $file->get_mimetype();
-            // Prepare images path
-            $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
-            if (!file_exists($images_path)) {
-                mkdir($images_path, 0777, true);
+            if (!file_exists($this->images_path)) {
+                mkdir($this->images_path, 0777, true);
             }
             // Convert file to HTML
             if ($mime === 'application/pdf') {
@@ -525,14 +527,14 @@ abstract class module_training
                 $content = $result->getFile()->getContents();
                 $finalname = str_replace('.pdf', '.html', $origname);
                 $base = 'folder_' . $this->cmid . '_' . pathinfo($origname, PATHINFO_FILENAME);
-                $content = $this->convert_base64_images_to_files($content, $images_path, $base);
+                $content = $this->convert_base64_images_to_files($content, $this->images_path, $base);
             } elseif ($mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
                 \ConvertApi\ConvertApi::setApiCredentials($config->convert_api_key);
                 $result = \ConvertApi\ConvertApi::convert('html', ['File' => $tempdir . $origname], 'docx');
                 $content = $result->getFile()->getContents();
                 $finalname = str_replace('.docx', '.html', $origname);
                 $base = 'folder_' . $this->cmid . '_' . pathinfo($origname, PATHINFO_FILENAME);
-                $content = $this->convert_base64_images_to_files($content, $images_path, $base);
+                $content = $this->convert_base64_images_to_files($content, $this->images_path, $base);
             } else {
                 // For all other file types, use markitdown to convert
                 $converted_file = markitdown::execute($tempdir . $origname, false);
@@ -548,7 +550,7 @@ abstract class module_training
                     $base = 'folder_' . $this->cmid . '_' . pathinfo($origname, PATHINFO_FILENAME);
 
                     // Convert base64 images to physical files and update HTML
-                    $content = $this->convert_base64_images_to_files($content, $images_path, $base);
+                    $content = $this->convert_base64_images_to_files($content, $this->images_path, $base);
                 }
             }
 
@@ -626,9 +628,8 @@ abstract class module_training
             $content = mb_convert_encoding($content, 'UTF-8');
         }
         // Convert base64 images to files and update HTML
-        $images_path = $CFG->dirroot . '/blocks/ai_assistant/temp_images/' . $this->mod[1]->id . '/';
         $base_filename = pathinfo($this->file_name, PATHINFO_FILENAME);
-        $content = $this->convert_base64_images_to_files($content, $images_path, $base_filename);
+        $content = $this->convert_base64_images_to_files($content, $this->images_path, $base_filename);
         // Convert content to base64
         $content = base64_encode($content);
         // Upload content to Cria
@@ -648,7 +649,7 @@ abstract class module_training
     /**
      * Convert base64 images in HTML content to physical files and update HTML references
      * @param string $html_content The HTML content containing base64 images
-     * @param string $images_path The path where images should be saved
+     * @param string $this->images_path The path where images should be saved
      * @param string $base_filename The base filename for generating unique image names
      * @return string The updated HTML content with file references instead of base64
      */
@@ -657,7 +658,7 @@ abstract class module_training
         global $CFG;
 
         // Debug: Log the function call
-        error_log("convert_base64_images_to_files called with images_path: " . $images_path);
+        error_log("convert_base64_images_to_files called with images_path: " . $this->images_path);
         error_log("CFG->dirroot: " . $CFG->dirroot);
         error_log("CFG->wwwroot: " . $CFG->wwwroot);
 
@@ -710,7 +711,7 @@ abstract class module_training
             $image_counter++;
 
             // Full path for the image file
-            $image_file_path = $images_path . $image_filename;
+            $image_file_path = $this->images_path . $image_filename;
 
             error_log("Attempting to save image to: " . $image_file_path);
             error_log("Image data size: " . strlen($image_data) . " bytes");
@@ -729,7 +730,7 @@ abstract class module_training
                 }
                 // Create web-accessible URL for the image
                 // Convert from dirroot path to wwwroot URL
-                $web_path = str_replace($CFG->dirroot, $CFG->wwwroot, $image_file_path);
+                $web_path = $CFG->wwwroot . '/blocks/ai_assistant/imagefile.php?cmid=' . $this->cmid . '&filename=' . $image_filename;
                 error_log("Generated web path: " . $web_path);
                 return 'src="' . $web_path . '"';
             } else {

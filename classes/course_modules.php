@@ -71,10 +71,10 @@ class course_modules
                     $mod = self::get_module_from_cmid($cmid);
                     // Only get the modules that are accepted
                     if ((
-                        $mod[1]->modname !== 'forum' && in_array($mod[1]->modname, $accepted_modules)
-                    ) || (
-                        $mod[1]->modname === 'forum' && !empty($mod[0]->type) && $mod[0]->type === 'news'
-                    )) {
+                            $mod[1]->modname !== 'forum' && in_array($mod[1]->modname, $accepted_modules)
+                        ) || (
+                            $mod[1]->modname === 'forum' && !empty($mod[0]->type) && $mod[0]->type === 'news'
+                        )) {
                         if ($only_visible && !$mod[1]->visible) {
                             continue; // Skip if the module is not visible
                         }
@@ -784,22 +784,19 @@ class course_modules
             }
             // If already trained, skip
             if ($file->trained != 1) {
-                // If the trained status is 0, check the status on Cria
-                if ($file->trained == 0 || $file->trained == 3) {
-                    // Use cria to check the status of the file
-                    $status = cria::get_content_training_status($file->cria_fileid);
-                    if ($status->training_status_id != 0) {
-                        $DB->set_field(
-                            'block_aia_course_mod_files',
-                            'trained',
-                            $status->training_status_id,
-                            ['id' => $file->id]
-                        );
-                        $module_status[] = $status->training_status_id; // Collect the trained status
-                    }
-                } else {
-                    $module_status[] = $file->trained; // Collect the trained status
+
+                // Use cria to check the status of the file
+                $status = cria::get_content_training_status($file->cria_fileid);
+                if ($status->training_status_id != 0) {
+                    $DB->set_field(
+                        'block_aia_course_mod_files',
+                        'trained',
+                        $status->training_status_id,
+                        ['id' => $file->id]
+                    );
+                    $module_status[] = $status->training_status_id; // Collect the trained status
                 }
+
             } else {
                 $trained_files++;
             }
