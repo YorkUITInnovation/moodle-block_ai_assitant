@@ -126,10 +126,9 @@ abstract class module_training
         $content = get_string('content_found_at', 'block_ai_assistant')
             . ' <a href="' . $mod_url . '" title="' . $name . '">' . $name . '</a><br><br>';
 
-        if (isset($this->mod[0]->content)) {
-            $content .= $this->mod[0]->content;
+        if (isset($this->mod[0]->intro)) {
+            $content .= $this->mod[0]->intro;
         }
-
         // Make sure $module_content is UTF-8 encoded
         if (!mb_detect_encoding($content, 'UTF-8', true)) {
             $content = mb_convert_encoding($content, 'UTF-8');
