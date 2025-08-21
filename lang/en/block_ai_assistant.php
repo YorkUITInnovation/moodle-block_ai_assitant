@@ -267,6 +267,31 @@ $string['markitdown_api_url'] = 'MarkItDown API URL';
 $string['markitdown_api_url_help'] = 'Enter the URL of the MarkItDown API service endpoint for document processing';
 $string['markitdown_api_key'] = 'MarkItDown API Key';
 $string['markitdown_api_key_help'] = 'Enter the API key for authentication with the MarkItDown service';
+
+// Allowed file types setting
+$string['allowed_file_types'] = 'Allowed File Types';
+$string['allowed_file_types_desc'] = 'Select which file types are allowed for processing and upload';
+$string['allowed_file_types_help'] = 'Choose the MIME types that users can upload and process. Only selected file types will be accepted by the system.';
+
+// File type options
+$string['filetype_msword'] = 'Microsoft Word (.doc)';
+$string['filetype_docx'] = 'Microsoft Word (.docx)';
+$string['filetype_pdf'] = 'PDF Documents (.pdf)';
+$string['filetype_text_plain'] = 'Plain Text (.txt)';
+$string['filetype_text_html'] = 'HTML Files (.html)';
+$string['filetype_text_rtf'] = 'Rich Text Format (.rtf)';
+$string['filetype_text_markdown'] = 'Markdown Files (.md)';
+$string['filetype_odt'] = 'OpenDocument Text (.odt)';
+$string['filetype_ppt'] = 'Microsoft PowerPoint (.ppt)';
+$string['filetype_pptx'] = 'Microsoft PowerPoint (.pptx)';
+$string['filetype_xlsx'] = 'Microsoft Excel (.xlsx)';
+$string['filetype_xls'] = 'Microsoft Excel (.xls)';
+$string['filetype_csv'] = 'CSV Files (.csv)';
+$string['filetype_audio_mpeg'] = 'MPEG Audio (.mp3)';
+$string['filetype_audio_wav'] = 'WAV Audio (.wav)';
+$string['filetype_audio_m4a'] = 'M4A Audio (.m4a)';
+$string['filetype_video_mp4'] = 'MP4 Video (.mp4)';
+
 $string['welcome_message'] = 'Welcome Message';
 $string['welcome_message_help'] = 'Enter a custom welcome message that will be displayed to users when they first interact with the AI Assistant';
 
@@ -546,4 +571,3 @@ $string['userpolicy'] = '<h4><strong>Welcome to the new AI feature!</strong></h4
 <p>This AI feature uses external Large Language Models (LLM). If you use this feature, any information or personal data you share will be handled according to the privacy policy of those LLMs. We recommend that you read their privacy policy to understand how they will handle your data. Additionally, a record of your interactions with the AI features may be saved in this site.</p>
 <p>If you have questions about how your data is processed, please check with your teachers or learning organisation.</p>
 <p>By continuing, you acknowledge that you understand and agree to this policy.</p>';
-

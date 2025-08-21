@@ -9,6 +9,7 @@ use block_ai_assistant\course_module_training;
 use block_ai_assistant\course_modules;
 use block_ai_assistant\cria;
 use block_ai_assistant\chat;
+use block_ai_assistant\markitdown;
 
 
 
@@ -24,6 +25,6 @@ $context = context_course::instance($courseid);
 
 echo $OUTPUT->header();
 
-print_object(cria::copy_file_to_temp_folder($context->id, $courseid));
+print_object(markitdown::supported_mime_types());
 
 echo $OUTPUT->footer();

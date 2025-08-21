@@ -345,6 +345,45 @@ if ($hassiteconfig) {
         50
     ));
 
+    // Add Allowed File Types settings header
+    $settings->add(new admin_setting_heading(
+        'block_ai_assistant/allowed_file_types_heading',
+        get_string('allowed_file_types', 'block_ai_assistant'),
+        get_string('allowed_file_types_desc', 'block_ai_assistant')
+    ));
+
+    // Define the file type options with their MIME types and display names
+    $file_type_options = array(
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => get_string('filetype_docx', 'block_ai_assistant'),
+        'application/pdf' => get_string('filetype_pdf', 'block_ai_assistant'),
+        'text/plain' => get_string('filetype_text_plain', 'block_ai_assistant'),
+        'text/html' => get_string('filetype_text_html', 'block_ai_assistant'),
+        'text/rtf' => get_string('filetype_text_rtf', 'block_ai_assistant'),
+        'text/markdown' => get_string('filetype_text_markdown', 'block_ai_assistant'),
+        'application/vnd.oasis.opendocument.text' => get_string('filetype_odt', 'block_ai_assistant'),
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation' => get_string('filetype_pptx', 'block_ai_assistant'),
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => get_string('filetype_xlsx', 'block_ai_assistant'),
+        'text/csv' => get_string('filetype_csv', 'block_ai_assistant'),
+        'audio/mp3' => get_string('filetype_audio_mpeg', 'block_ai_assistant'),
+        'audio/wav' => get_string('filetype_audio_wav', 'block_ai_assistant'),
+        'video/mp4' => get_string('filetype_video_mp4', 'block_ai_assistant'),
+    );
+
+    // Set default selected file types (most commonly used ones)
+    $default_selected = array(
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/pdf',
+        'text/plain',
+        'text/html'
+    );
+
+    $settings->add(new admin_setting_configmulticheckbox(
+        'block_ai_assistant/allowed_file_types',
+        get_string('allowed_file_types', 'block_ai_assistant'),
+        get_string('allowed_file_types_help', 'block_ai_assistant'),
+        $default_selected,
+        $file_type_options
+    ));
 
     // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
 //    if ($ADMIN->fulltree) {
@@ -370,4 +409,3 @@ set_config('bot_locale', 'en-US', 'block_ai_assistant');
 set_config('child_bots', '', 'block_ai_assistant');
 // Accepted modules
 set_config('blockAiAssistant', 'book,forum,glossary,page,resource', 'block_ai_assistant');
-

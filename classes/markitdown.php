@@ -73,33 +73,28 @@ class markitdown
     }
 
     /**
+     * Get supported MIME types based on plugin settings
      *
      * @return string[]
      */
     public static function supported_mime_types() {
-        return [
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/pdf',
-            'text/plain',
-            'text/html',
-            'text/rtf',
-            'text/markdown',
-            'application/vnd.oasis.opendocument.text',
-            'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-excel',
-            'text/csv',
-            'audio/mpeg',
-            'audio/mp3',
-            'audio/x-mpeg-3',
-            'audio/x-mp3',
-            'audio/x-wav',
-            'audio/wav',
-            'audio/x-m4a',
-            'audio/m4a',
-            'video/mp4',
-        ];
+        // Get the allowed file types from plugin settings
+        $allowed_types = get_config('block_ai_assistant', 'allowed_file_types');
+
+        // If no settings are configured, return empty array for safety
+        if (empty($allowed_types)) {
+            return [];
+        }
+
+        // The setting returns a comma-separated string, so we need to split it
+        if (is_string($allowed_types)) {
+            // Split by comma and trim whitespace from each element
+            $types_array = array_map('trim', explode(',', $allowed_types));
+            // Remove any empty elements
+            return array_filter($types_array);
+        }
+
+        // Fallback in case it's already an array (shouldn't happen with Moodle settings)
+        return is_array($allowed_types) ? $allowed_types : [];
     }
 }

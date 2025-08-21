@@ -353,6 +353,13 @@ abstract class module_training
         if ($this->bacmid === false) {
             return false; // If the module is not registered, return false
         }
+
+        // Get supported file types from settings
+        $supported_mime_types = markitdown::supported_mime_types();
+        if (empty($supported_mime_types)) {
+            return false; // No file types are allowed, skip processing
+        }
+
         // Set URL to the module
         $mod_url = $CFG->wwwroot . '/mod/forum/view.php?id=' . $this->cmid;
         // Get files from the resource
@@ -361,8 +368,8 @@ abstract class module_training
         // Loop through the files
         foreach ($files as $file) {
             if (!$file->is_directory() && $file->get_sortorder() == 1) {
-                // Only accept the following file formats: docx, pdf, txt, html, htm, pptx, ppt, odt, rtf, md, excel,csv, xlsx, mp3, mp4
-                if (!in_array($file->get_mimetype(), course_modules::get_accepted_file_types())) {
+                // Check if file type is supported based on admin settings
+                if (!in_array($file->get_mimetype(), $supported_mime_types)) {
                     continue; // Skip unsupported file types
                 }
 
@@ -501,14 +508,27 @@ abstract class module_training
         if ($this->bacmid === false) {
             return false; // If the module is not registered, return false
         }
+
+        // Get supported file types from settings
+        $supported_mime_types = markitdown::supported_mime_types();
+        if (empty($supported_mime_types)) {
+            return false; // No file types are allowed, skip processing
+        }
+
         // Set module URL
         $mod_url = $CFG->wwwroot . '/mod/folder/view.php?id=' . $this->cmid;
         $fs = get_file_storage();
         $files = $fs->get_area_files($this->context->id, 'mod_folder', 'content', 0);
         foreach ($files as $file) {
-            if ($file->is_directory() || !in_array($file->get_mimetype(), course_modules::get_accepted_file_types())) {
+            if ($file->is_directory()) {
                 continue;
             }
+
+            // Check if file type is supported based on admin settings
+            if (!in_array($file->get_mimetype(), $supported_mime_types)) {
+                continue; // Skip unsupported file types
+            }
+
             // Prepare temp path and save a copy
             $tempdir = $CFG->dataroot . '/temp/ai_assistant/folder/' . $this->mod[1]->id . '/';
             if (!file_exists($tempdir)) {
