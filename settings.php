@@ -363,6 +363,7 @@ if ($hassiteconfig) {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => get_string('filetype_xlsx', 'block_ai_assistant'),
         'text/csv' => get_string('filetype_csv', 'block_ai_assistant'),
         'audio/mp3' => get_string('filetype_audio_mpeg', 'block_ai_assistant'),
+        'audio/m4a' => get_string('filetype_audio_m4a', 'block_ai_assistant'),
         'audio/wav' => get_string('filetype_audio_wav', 'block_ai_assistant'),
         'video/mp4' => get_string('filetype_video_mp4', 'block_ai_assistant'),
     );
