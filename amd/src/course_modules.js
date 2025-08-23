@@ -65,9 +65,26 @@ function display_modules() {
                         }
 
                     }]);
-                    insert_modules[0].done(function () {
+                    insert_modules[0].done(function (data) {
                         if (currentNumberChecked === checkedCount) {
-                            alert("Successfully added content to the course assistant");
+                            // Fetch localized strings for messages
+                            Str.get_strings([
+                                {key: 'train_success_message', component: 'block_ai_assistant'},
+                                {key: 'unsupported_files_notice', component: 'block_ai_assistant'}
+                            ]).then(function(strings) {
+                                var successMsg = strings[0];
+                                var unsupportedNotice = strings[1];
+                                var msg = successMsg;
+                                if (data && data.unsupported && data.unsupported.length) {
+                                    var list = [];
+                                    data.unsupported.forEach(function (item) {
+                                        var prefix = item.modname ? (item.modname + ': ') : '';
+                                        list.push(prefix + item.files.join(', '));
+                                    });
+                                    msg += '\n\n' + unsupportedNotice + '\n' + list.join('\n');
+                                }
+                                alert(msg);
+                            });
                         }
                         // You can now use the data variable for further processing
                     }).fail(function (error) {
@@ -157,5 +174,3 @@ function display_modules() {
 
     });
 }
-
-

@@ -197,6 +197,10 @@ $string['supported_formats'] = '<p>Note: Unsupported file formats will not be pr
     . 'Audio files (.mp3, .wav, .m4a)</li><li>Video files (.mp4)</li></ul></p>';
 $string['supported_formats_title'] = 'Supported File Formats';
 
+// Messages for training alerts
+$string['train_success_message'] = 'Successfully added content to the course assistant';
+$string['unsupported_files_notice'] = 'Some files were not trained (unsupported type):';
+
 $string['syllabus_instructions'] = 'To ensure optimal performance from the AI Course Assistant, it is <b>essential</b> '
     . 'that you use the <a href="/blocks/ai_assistant/doc_templates/syllabus_template.docx" title="SYllabus Template Download">provided syllabus template</a>. '
     . 'Following these guidelines will significantly improve the accuracy and relevance of responses to student questions.';

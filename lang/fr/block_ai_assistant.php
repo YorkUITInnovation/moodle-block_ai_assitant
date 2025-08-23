@@ -138,6 +138,11 @@ $string['supported_modules'] = '<p>Note : L’Assistant IA peut être entraîné
 $string['supported_modules_title'] = 'Modules pris en charge';
 $string['supported_formats'] = '<p>Note : Les formats non pris en charge ne seront pas traités ni accessibles via l’Assistant IA.</p><p>Formats pris en charge : <ul><li>Documents Word (.docx)</li><li>Fichiers PDF (.pdf)</li><li>Fichiers texte (.txt)</li><li>Fichiers HTML (.html)</li><li>RTF (.rtf)</li><li>Markdown (.md)</li><li>OpenDocument Text (.odt)</li><li>Présentations PowerPoint (.pptx)</li><li>Feuilles Excel (.xlsx)</li><li>CSV (.csv)</li><li>Audio (.mp3, .wav, .m4a)</li><li>Vidéo (.mp4)</li></ul></p>';
 $string['supported_formats_title'] = 'Formats de fichiers pris en charge';
+
+// Messages for training alerts
+$string['train_success_message'] = 'Contenu ajouté avec succès à l’assistant du cours';
+$string['unsupported_files_notice'] = 'Certains fichiers n’ont pas été entraînés (type non pris en charge) :';
+
 $string['syllabus_instructions'] = 'Pour des performances optimales de l’Assistant de cours IA, il est <b>essentiel</b> d’utiliser le <a href="/blocks/ai_assistant/doc_templates/syllabus_template.docx" title="Télécharger le modèle de syllabus">modèle de syllabus fourni</a>. Cela améliore l’exactitude et la pertinence des réponses.';
 $string['syllabus_instructions_title'] = 'Important : Instructions du syllabus';
 $string['syllabus_instructions_more'] = 'En savoir plus';
@@ -242,4 +247,3 @@ $string['declineaipolicy'] = 'Refuser';
 $string['userpolicy'] = '<h4><strong>Bienvenue dans la nouvelle fonctionnalité IA !</strong></h4><p>Cette fonctionnalité s\'appuie sur des modèles de langage externes. Vérifiez toujours les informations. Consultez la politique de confidentialité des services tiers. En continuant vous acceptez cette politique.</p>';
 
 ?>
-

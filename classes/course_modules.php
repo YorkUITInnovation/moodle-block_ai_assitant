@@ -871,4 +871,18 @@ class course_modules
 
         return $modules ?: [];
     }
+
+    /**
+     * Delete course module by cmid (cmid is unique in block_aia_course_modules)
+     * @param int $cmid
+     * @return void
+     * @throws \dml_exception
+     */
+    public static function delete_course_module_by_cmid(int $cmid): void
+    {
+        global $DB;
+        if ($bacmid = $DB->get_field('block_aia_course_modules', 'id', ['cmid' => $cmid])) {
+            self::delete_course_module((int)$bacmid);
+        }
+    }
 }

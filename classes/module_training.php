@@ -17,6 +17,8 @@ abstract class module_training
     private $context;
     private $mod_type; // Name of the module type (e.g., page, book, glossary, forum, resource, folder)
     private $images_path;
+    // Collect names of files that were skipped because the type isn't supported
+    private $unsupported_files = [];
 
     public function __construct(int $cmid, bool $retrain = false)
     {
@@ -58,6 +60,15 @@ abstract class module_training
     public function get_module_type(): string
     {
         return $this->mod_type;
+    }
+
+    /**
+     * List files skipped due to unsupported type
+     * @return string[]
+     */
+    public function get_unsupported_files(): array
+    {
+        return $this->unsupported_files;
     }
 
     /**
@@ -340,7 +351,7 @@ abstract class module_training
     }
 
     /**
-     * @return true
+     * @return bool
      * @throws \coding_exception
      * @throws \dml_exception
      * @throws \moodle_exception
@@ -349,28 +360,38 @@ abstract class module_training
     {
         global $CFG, $DB;
         $config = get_config('block_ai_assistant');
-        // if $this->bacmid is false, it means that the module is not registered in the block_aia_course_modules table
         if ($this->bacmid === false) {
-            return false; // If the module is not registered, return false
+            return false;
         }
-
-        // Get supported file types from settings
         $supported_mime_types = markitdown::supported_mime_types();
-        if (empty($supported_mime_types)) {
-            return false; // No file types are allowed, skip processing
-        }
-
-        // Set URL to the module
         $mod_url = $CFG->wwwroot . '/mod/forum/view.php?id=' . $this->cmid;
-        // Get files from the resource
         $fs = get_file_storage();
         $files = $fs->get_area_files($this->context->id, 'mod_resource', 'content');
-        // Loop through the files
+
+        // Determine if there is exactly one non-directory file and, if so, whether it is unsupported
+        $nonDir = [];
+        foreach ($files as $f) {
+            if (!$f->is_directory()) {
+                $nonDir[] = $f;
+            }
+        }
+        if (count($nonDir) === 1) {
+            $single = $nonDir[0];
+            $isUnsupported = empty($supported_mime_types) || !in_array($single->get_mimetype(), $supported_mime_types);
+            if ($isUnsupported) {
+                // Track and delete the module entry, since the only file cannot be trained
+                $this->unsupported_files[] = $single->get_filename();
+                course_modules::delete_course_module_by_cmid($this->cmid);
+                return false;
+            }
+        }
+
+        // Loop through files and process supported ones
         foreach ($files as $file) {
             if (!$file->is_directory() && $file->get_sortorder() == 1) {
-                // Check if file type is supported based on admin settings
-                if (!in_array($file->get_mimetype(), $supported_mime_types)) {
-                    continue; // Skip unsupported file types
+                if (empty($supported_mime_types) || !in_array($file->get_mimetype(), $supported_mime_types)) {
+                    $this->unsupported_files[] = $file->get_filename();
+                    continue;
                 }
 
                 $path = $CFG->dataroot . '/temp/ai_assistant/';
@@ -497,7 +518,7 @@ abstract class module_training
      * @param int $id
      * @param string $name
      * @param string $intro
-     * @return true
+     * @return bool
      * @throws \coding_exception
      */
     public function folder()
@@ -511,22 +532,38 @@ abstract class module_training
 
         // Get supported file types from settings
         $supported_mime_types = markitdown::supported_mime_types();
-        if (empty($supported_mime_types)) {
-            return false; // No file types are allowed, skip processing
-        }
+        // If empty, we'll treat all files as unsupported rather than returning early
 
         // Set module URL
         $mod_url = $CFG->wwwroot . '/mod/folder/view.php?id=' . $this->cmid;
         $fs = get_file_storage();
         $files = $fs->get_area_files($this->context->id, 'mod_folder', 'content', 0);
+
+        // Determine if there is exactly one non-directory file and, if so, whether it is unsupported
+        $nonDir = [];
+        foreach ($files as $f) {
+            if (!$f->is_directory()) {
+                $nonDir[] = $f;
+            }
+        }
+        if (count($nonDir) === 1) {
+            $single = $nonDir[0];
+            $isUnsupported = empty($supported_mime_types) || !in_array($single->get_mimetype(), $supported_mime_types);
+            if ($isUnsupported) {
+                // Track and delete the module entry, since the only file cannot be trained
+                $this->unsupported_files[] = $single->get_filename();
+                course_modules::delete_course_module_by_cmid($this->cmid);
+                return false;
+            }
+        }
+
         foreach ($files as $file) {
             if ($file->is_directory()) {
                 continue;
             }
-
-            // Check if file type is supported based on admin settings
-            if (!in_array($file->get_mimetype(), $supported_mime_types)) {
-                continue; // Skip unsupported file types
+            if (empty($supported_mime_types) || !in_array($file->get_mimetype(), $supported_mime_types)) {
+                $this->unsupported_files[] = $file->get_filename();
+                continue;
             }
 
             // Prepare temp path and save a copy

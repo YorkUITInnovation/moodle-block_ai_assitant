@@ -7,7 +7,8 @@
  * @copyright  2011 Moodle Pty Ltd (http://moodle.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-require_once("$CFG->libdir/externallib.php");
+global $CFG;
+require_once($CFG->libdir . "/externallib.php");
 require_once("$CFG->dirroot/config.php");
 
 use block_ai_assistant\course_modules;
@@ -151,7 +152,7 @@ class block_ai_assistant_course_modules_ws extends external_api
      * inserts course modules
      * @param int $courseid
      * @param array $selected_modules
-     * @return bool
+     * @return array
      * @throws dml_exception
      * @throws invalid_parameter_exception
      * @throws restricted_context_exception
@@ -171,13 +172,25 @@ class block_ai_assistant_course_modules_ws extends external_api
 
         $context = \context_course::instance($courseid);
         self::validate_context($context);
+
+        $unsupported = [];
+
         foreach ($selected_modules as $key => $module) {
             if (isset($module['cmid']) && isset($module['courseid'])) {
                 $file_id = course_modules::insert_record((object)$module); // Ensure the data is cast to an object
                 // If there is a file id, send the content to cria
                 if ($file_id > 0) {
                     // Train the module
-                    $trained = self::train_module($module['cmid']);
+                    $result = self::train_module($module['cmid']);
+                    $trained = is_array($result) ? ($result['trained'] ?? false) : (bool)$result;
+                    $unsup = is_array($result) ? ($result['unsupported_files'] ?? []) : [];
+                    if (!empty($unsup)) {
+                        $unsupported[] = [
+                            'cmid' => (int)$module['cmid'],
+                            'modname' => (string)$module['modname'],
+                            'files' => array_values($unsup)
+                        ];
+                    }
                     if ($trained) {
                         // Delete the module from the array
                         unset($selected_modules[$key]);
@@ -185,7 +198,10 @@ class block_ai_assistant_course_modules_ws extends external_api
                 }
             }
         }
-        return true;
+        return [
+            'success' => true,
+            'unsupported' => $unsupported
+        ];
     }
 
     /**
@@ -194,7 +210,19 @@ class block_ai_assistant_course_modules_ws extends external_api
      */
     public static function insert_returns()
     {
-        return new external_value(PARAM_BOOL, 'True or false');
+        return new external_single_structure([
+            'success' => new external_value(PARAM_BOOL, 'True if processing succeeded'),
+            'unsupported' => new external_multiple_structure(
+                new external_single_structure([
+                    'cmid' => new external_value(PARAM_INT, 'Course module id'),
+                    'modname' => new external_value(PARAM_TEXT, 'Module name'),
+                    'files' => new external_multiple_structure(
+                        new external_value(PARAM_RAW, 'Unsupported filename')
+                    )
+                ]),
+                'Modules with unsupported files', VALUE_DEFAULT, []
+            )
+        ]);
     }
 
 
@@ -250,7 +278,7 @@ class block_ai_assistant_course_modules_ws extends external_api
     /**
      * Trains the module based on its type.
      * @param int $cmid
-     * @return void
+     * @return array
      * @throws coding_exception
      * @throws dml_exception
      * @throws moodle_exception
@@ -283,9 +311,15 @@ class block_ai_assistant_course_modules_ws extends external_api
             case 'glossary':
                 $trained = $TRAINING->glossary();
                 break;
+            default:
+                $trained = false;
+                break;
         }
 
-        return $trained;
+        return [
+            'trained' => (bool)$trained,
+            'unsupported_files' => method_exists($TRAINING, 'get_unsupported_files') ? $TRAINING->get_unsupported_files() : []
+        ];
     }
 
 }
