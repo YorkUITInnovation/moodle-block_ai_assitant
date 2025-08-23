@@ -741,16 +741,15 @@ class course_modules
         }
 
         foreach ($modules as $module) {
-            // Check if the module has a valid Cria file ID
-            if (empty($module->cria_fileid) || $module->cria_fileid == 0) {
-                // Use cria to check the status of the module
+            // Only check status if the module has a valid Cria file ID
+            if (!empty($module->cria_fileid) && (int)$module->cria_fileid !== 0) {
                 $status = cria::get_content_training_status($module->cria_fileid);
-                if ($status->training_status_id != 0) {
-                    // Update the record with the new Cria file ID
+                if (isset($status->training_status_id)) {
+                    // Update the trained status for this module
                     $DB->set_field(
                         'block_aia_course_modules',
                         'trained',
-                        $status->training_status_id,
+                        (int)$status->training_status_id,
                         ['id' => $module->id]
                     );
                 }
@@ -762,8 +761,10 @@ class course_modules
 
     /**
      * Get the training status of all files in a course module.
+     * Aggregates per-file statuses into a single module status with the following precedence:
+     * 1 -> All files trained; 2 -> Any file has error; 3 -> Any file is training; 0 -> Otherwise pending.
      * @param int $bacmid
-     * @return int|void
+     * @return int
      * @throws \dml_exception
      */
     public static function get_training_status(int $bacmid)
@@ -774,50 +775,62 @@ class course_modules
         if (empty($files)) {
             return 0; // No files found
         }
-        $module_status = []; // Default status
-        $count = count($files);
-        $trained_files = 0;
-        foreach ($files as $file) {
-            // Check if the file has a valid Cria file ID
-            if (empty($file->cria_fileid) || $file->cria_fileid == 0) {
-                continue; // Skip files without a valid Cria file ID
-            }
-            // If already trained, skip
-            if ($file->trained != 1) {
 
-                // Use cria to check the status of the file
+        $statuses = [];
+
+        foreach ($files as $file) {
+            $effectiveStatus = (int)($file->trained ?? 0);
+
+            // Query Cria only if we have a valid file id and the file is not already trained
+            if (!empty($file->cria_fileid) && (int)$file->cria_fileid !== 0 && (int)$file->trained !== 1) {
                 $status = cria::get_content_training_status($file->cria_fileid);
-                if ($status->training_status_id != 0) {
+                if (isset($status->training_status_id)) {
+                    $effectiveStatus = (int)$status->training_status_id;
+                    // Persist the refreshed status for this file
                     $DB->set_field(
                         'block_aia_course_mod_files',
                         'trained',
-                        $status->training_status_id,
+                        $effectiveStatus,
                         ['id' => $file->id]
                     );
-                    $module_status[] = $status->training_status_id; // Collect the trained status
                 }
-
-            } else {
-                $trained_files++;
             }
 
-            if ($trained_files == $count) {
-                return 1; // All files are trained
-            } else {
-                // count how many files are training (2)
-                if (in_array(2, $module_status)) {
-                    return 2; // Some files are training
-                }
-                // count how many files have errors (3)
-                if (in_array(3, $module_status)) {
-                    return 3; // Some files have errors
-                }
-                // If no files are trained, return 0
-                if (in_array(0, $module_status)) {
-                    return 0; // No files are trained
-                }
+            // If already trained, ensure the status reflects that
+            if ((int)$file->trained === 1) {
+                $effectiveStatus = 1;
+            }
+
+            $statuses[] = $effectiveStatus;
+        }
+
+        // Aggregation with clear precedence
+        $total = count($statuses);
+        $trainedCount = 0;
+        $hasError = false;
+        $hasTraining = false;
+
+        foreach ($statuses as $s) {
+            if ($s === 1) {
+                $trainedCount++;
+            } elseif ($s === 2) {
+                $hasError = true;
+            } elseif ($s === 3) {
+                $hasTraining = true;
             }
         }
+
+        if ($trainedCount === $total) {
+            return 1; // All files trained
+        }
+        if ($hasError) {
+            return 2; // At least one file has an error
+        }
+        if ($hasTraining) {
+            return 3; // At least one file is training
+        }
+
+        return 0; // Pending/not started
     }
 
     /**
