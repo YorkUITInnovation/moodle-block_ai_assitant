@@ -568,11 +568,22 @@ $string['help_intro'] = '<h3>AI Assistant Help</h3>' .
 $string['acceptai'] = 'Accept and continue';
 $string['aipolicyacceptance'] = 'AI policy acceptance';
 $string['declineaipolicy'] = 'Decline';
-$string['userpolicy'] = '<h4><strong>Welcome to the new AI feature!</strong></h4>
-<p>This Artificial Intelligence (AI) feature is based solely on external Large Language Models (LLM) to improve your learning and teaching experience. Before you start using these AI services, please read this usage policy.</p>
-<h4><strong>Accuracy of AI-generated content</strong></h4>
-<p>AI can give useful suggestions and information, but its accuracy may vary. You should always double-check the information provided to make sure it\'s accurate, complete, and suitable for your specific situation.</p>
-<h4><strong>How your data is processed</strong></h4>
-<p>This AI feature uses external Large Language Models (LLM). If you use this feature, any information or personal data you share will be handled according to the privacy policy of those LLMs. We recommend that you read their privacy policy to understand how they will handle your data. Additionally, a record of your interactions with the AI features may be saved in this site.</p>
-<p>If you have questions about how your data is processed, please check with your teachers or learning organisation.</p>
-<p>By continuing, you acknowledge that you understand and agree to this policy.</p>';
+$string['userpolicy'] = "<h4><strong>Welcome to the new AI feature in eClass!</strong></h4>
+    <p>This AI feature is powered by <strong>YU AURA</strong>, York University's Retrieval-Augmented Generation (RAG) system.
+It is designed to enhance your learning and teaching experience by providing intelligent support based primarily on course-specific
+        content selected by the instructor. While YU AURA may use external Large Language Models (LLMs) to supplement responses, it always 
+        prioritizes the materials provided within your course.</p>
+
+    <h4><strong>Accuracy of AI-generated content</strong></h4>
+    <p>YU AURA aims to provide helpful and relevant information. However, the accuracy of AI-generated responses may vary. Always verify the 
+        information provided to ensure it is accurate, complete, and appropriate for your specific academic context.</p>
+
+    <h4><strong>How your data is processed</strong></h4>
+    <p>All user data and interactions with YU AURA remain securely on <strong>York University servers</strong>. While external Large Language Models 
+        may be used to generate responses, <strong>no data is stored or retained by third-party providers</strong>. The system is designed to 
+        ensure that your information is processed securely and in compliance with York University’s privacy standards.</p>
+    <p>A record of your interactions with the AI feature may be stored within YU AURA to support learning analytics and system improvement.
+This data is handled in accordance with York University’s privacy and data governance policies.</p>
+    <p>If you have questions about how your data is used, please contact the York University eClass support team.</p>
+
+    <h4><strong>By continuing, you acknowledge that you understand and agree to this policy.</strong></h4>";

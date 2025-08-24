@@ -244,6 +244,28 @@ $string['help_intro'] = '<h3>Aide de l\'Assistant IA</h3>Formatez correctement v
 $string['acceptai'] = 'Accepter et continuer';
 $string['aipolicyacceptance'] = 'Acceptation de la politique IA';
 $string['declineaipolicy'] = 'Refuser';
-$string['userpolicy'] = '<h4><strong>Bienvenue dans la nouvelle fonctionnalité IA !</strong></h4><p>Cette fonctionnalité s\'appuie sur des modèles de langage externes. Vérifiez toujours les informations. Consultez la politique de confidentialité des services tiers. En continuant vous acceptez cette politique.</p>';
+$string['userpolicy'] = "<h4><strong>Bienvenue dans la nouvelle fonctionnalité d’IA sur eClass&nbsp;!</strong></h4>
+<p>Cette fonctionnalité d’intelligence artificielle est propulsée par <strong>YU AURA</strong>, le système de génération augmentée 
+    par récupération (RAG) de l’Université York. Elle est conçue pour enrichir votre expérience d’apprentissage et d’enseignement 
+    en fournissant un soutien intelligent basé principalement sur le contenu spécifique au cours sélectionné par l’enseignant. 
+    Bien que YU AURA puisse utiliser des modèles de langage étendus (LLM) externes pour compléter ses réponses, elle donne toujours 
+    la priorité au matériel fourni dans le cadre du cours.</p>
+
+<h4><strong>Exactitude du contenu généré par l’IA</strong></h4>
+<p>YU AURA vise à fournir des informations utiles et pertinentes. Toutefois, l’exactitude des réponses générées par l’IA peut varier. 
+    Il est important de toujours vérifier les informations fournies afin de s’assurer qu’elles sont exactes, complètes et adaptées à votre 
+    contexte académique spécifique.</p>
+
+<h4><strong>Traitement de vos données</strong></h4>
+<p>Toutes les données des utilisateurs et les interactions avec YU AURA demeurent en toute sécurité sur 
+    les <strong>serveurs de l’Université York</strong>. Bien que des modèles de langage étendus externes puissent être utilisés pour générer 
+    des réponses, <strong>aucune donnée n’est stockée ni conservée par des fournisseurs tiers</strong>. Le système est conçu pour garantir que 
+    vos informations sont traitées de manière sécurisée et conforme aux normes de confidentialité de l’Université York.</p>
+<p>Un enregistrement de vos interactions avec la fonctionnalité d’IA peut être conservé dans YU AURA afin de soutenir l’analyse de l’apprentissage 
+    et l’amélioration du système. Ces données sont traitées conformément aux politiques de confidentialité et de gouvernance des données de 
+    l’Université York.</p>
+<p>Si vous avez des questions concernant l’utilisation de vos données, veuillez contacter l’équipe de soutien eClass de l’Université York.</p>
+
+<h4><strong>En continuant, vous reconnaissez avoir compris et accepté cette politique.</strong></h4>";
 
 ?>
