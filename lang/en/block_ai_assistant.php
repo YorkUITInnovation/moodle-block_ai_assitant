@@ -33,7 +33,7 @@ $string['add'] = 'Add';
 $string['ai_assistant'] = 'AI Assistant';
 $string['ai_assistant_instructions'] = 'To get the best results from the AI Assistant, please use the syllabus template provided in the Help section. '
     . 'To make the AI Assistant available to students, click to Enable AI Assistant button below.';
-$string['ai_learning_assistant'] = 'AI Learning Assistant';
+$string['ai_learning_assistant'] = 'AI Learning Companion';
 $string['ai_policy_not_accepted'] = 'You must accept the AI policy to use this feature.';
 $string['answer'] = 'Answer';
 $string['autotest'] = 'AutoTest';;
@@ -113,7 +113,7 @@ $string['enabled'] = 'Enabled';
 $string['enabled_help'] = 'Enable or disable the Tutorial option for this course. When enabled, the Tutorial will be available to students.';
 $string['enable_assistant'] = 'Enable AI Assistant for students';
 $string['enable_ai_assistant'] = 'Enable AI Assistant for students';
-$string['enable_tutorials'] = 'Enable AI Learning Assistant for Students';
+$string['enable_tutorials'] = 'Enable My Learning Companion for Students';
 $string['error'] = 'Error';
 $string['error_required_field'] = 'This field is required.';
 $string['error_required_file'] = 'You must upload a file.';
@@ -134,7 +134,7 @@ $string['learning_assistant_help'] = "Select the content you would like to get l
 $string['learning_tutorials'] = "My Learning Companion";
 $string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
 $string['manage_saved_chats'] = "Manage Saved Chats";
-$string['manage_tutorials'] = "Manage AI Learning Assistant";
+$string['manage_tutorials'] = "Manage AI Learning Companion";
 $string['modules'] = "Modules";
 $string['name'] = "Name";
 $string['no_context_message'] = 'No Context Message';
@@ -230,7 +230,7 @@ $string['training_visibility_warning'] = 'Important: Once content is trained by 
 $string['syllabus'] = 'Syllabus';
 $string['tutorial'] = 'Tutorial';
 $string['tutorials'] = 'Tutorials';
-$string['tutorials_instructions'] = '<strong></strong>Note:</strong> Site-wide AI Learning Assistant Tutorials are centrally managed and cannot be modified or deleted at the course level.';
+$string['tutorials_instructions'] = '<strong></strong>Note:</strong> Site-wide AI Learning Companion Tutorials are centrally managed and cannot be modified or deleted at the course level.';
 $string['syllabus_template'] = 'Syllabus Template';
 $string['syllabus_uploaded'] = 'Syllabus successfully uploaded';
 $string['system_message'] = 'System Message';
@@ -328,7 +328,7 @@ $string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when n
 $string['embed_position'] = 'Embed Position';
 
 // Default Tutorials
-$string['learning_assistant_tutorials'] = 'AI Learning Assistant Tutorials';
+$string['learning_assistant_tutorials'] = 'AI Learning Companion Tutorials';
 $string['shortname'] = 'Short Name';
 $string['shortname_exists'] = 'Shortname already exist. Please choose a different shortname.';
 $string['tutorial_tutor_name'] = 'My Tutor';
@@ -385,19 +385,20 @@ $string['syllabus_template_instructions'] = '<h3>Instructions for Using the Syll
 
 <h4>Step 3: Replace Placeholders</h4>
 <ol start="3">
-    <li>Replace each placeholder with the appropriate information. For example:
+    <li>Replace each placeholder, including the angle brackets (< >) with the appropriate information. For example:
+    If the course you are teaching is "Introduction to Psychology" and the course code is PHYSC_1000 and the instructor is "Dr. Smith", you would replace:
         <ul>
             <li><code>
                 &lt;Course Code&gt;
-            </code>: Enter the code for the course.
+            </code>: PHYSC_1000
             </li>
             <li><code>
                 &lt;Course Title&gt;
-            </code>: Enter the title of the course.
+            </code>: Introduction to Psychology
             </li>
             <li><code>
                 &lt;Instructor Name&gt;
-            </code>: Enter the name of the instructor.
+            </code>: Dr. Smith
             </li>
             <li><code>
                 &lt;Course Description&gt;
