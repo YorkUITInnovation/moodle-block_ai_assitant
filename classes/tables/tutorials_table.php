@@ -63,11 +63,18 @@ class tutorials_table extends table_sql
         if ($this->is_downloading()) {
             return '';
         } else {
+            $context = \context_system::instance();
             $html = '';
             if ($values->courseid != 1) {
                 $html .= '<a href="' . $CFG->wwwroot . '/blocks/ai_assistant/edit_tutorial.php?id=' . $values->id . '&courseid=' . $values->courseid . '"><i class="fa fa-pencil"></i></a>';
                 $html .= '<button class="btn btn-link btn-sm block-ai-assistant-delete-tutorial" data-id="' . $values->id . '" data-courseid="' . $values->courseid . '"><i class="fa fa-trash"></i></button>';
+            } else {
+                if (has_capability('block/ai_assistant:edit_site_tutorials', $context)) {
+                    $html .= '<a href="' . $CFG->wwwroot . '/blocks/ai_assistant/edit_tutorial.php?id=' . $values->id . '&courseid=' . $values->courseid . '"><i class="fa fa-pencil"></i></a>';
+                    $html .= '<button class="btn btn-link btn-sm block-ai-assistant-delete-tutorial" data-id="' . $values->id . '" data-courseid="' . $values->courseid . '"><i class="fa fa-trash"></i></button>';
+                }
             }
+
             return $html;
         }
     }

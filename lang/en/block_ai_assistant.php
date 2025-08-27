@@ -301,6 +301,7 @@ $string['welcome_message_help'] = 'Enter a custom welcome message that will be d
 
 // Capabilites
 $string['ai_assistant:addinstance'] = 'Add Block to course';
+$string['ai_assistant:edit_site_tutorials'] = 'Edit Site Tutorials';
 $string['ai_assistant:view_autotest'] = 'View/Run AutoTest';
 $string['ai_assistant:student'] = 'Available to students';
 $string['ai_assistant:teacher'] = 'Available to teachers';
@@ -360,8 +361,8 @@ $string['tutorial_quiz_description'] = 'This activity is designed to help studen
     . ' The format is intended to be interactive, self-paced, and supportive of independent learning.';
 $string['tutorial_quiz_prompt'] = "- Please prepare a multiple-choice quiz on topic: [topic] with 10 questions with four possible choices, labelled A, B, C, and D.
 - Create all questions from your knowledge base on the topic [topic] 
-- Wait for me to respond with a letter A, B, C or D. Never expect the bracket ) in my answer. After each question, provide feedback on my answer, and then ask the next question. 
-- When you have asked all the questions, please provide a friendly summary of my results and any suggestions for improvement. Also, ask me if I would like to try another set of questions. Wait for me to respond. If yes, restart a new quiz session with another ten questions. 
+- Wait for me to respond with a label. Never expect the bracket ) in my answer. After each question, provide feedback on my answer, and then ask the next question. 
+- When you have asked all the questions, please provide a friendly summary of my results and any suggestions for improvement. Also, ask me if I would like to try another set of questions. Wait for me to respond.  If yes, restart a new quiz session with ten additional questions. 
 - If you are continuing a previous session, continue asking questions. Start at the last number plus 1.
 - If a student starts asking questions instead of answering the quiz questions, tell the student that you only do quizzes.";
 

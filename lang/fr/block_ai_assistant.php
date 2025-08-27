@@ -193,6 +193,7 @@ $string['welcome_message_help'] = 'Message d’accueil affiché lors de la premi
 
 // Capacités
 $string['ai_assistant:addinstance'] = 'Ajouter le bloc au cours';
+$string['ai_assistant:edit_site_tutorials'] = 'Gérer les tutoriels au niveau site';
 $string['ai_assistant:view_autotest'] = 'Voir / exécuter AutoTest';
 $string['ai_assistant:student'] = 'Disponible pour les étudiants';
 $string['ai_assistant:teacher'] = 'Disponible pour les enseignants';
