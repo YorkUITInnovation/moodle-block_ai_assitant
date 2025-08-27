@@ -570,16 +570,14 @@ $string['aipolicyacceptance'] = 'AI policy acceptance';
 $string['declineaipolicy'] = 'Decline';
 $string['userpolicy'] = "<h4><strong>Welcome to the new AI feature in eClass!</strong></h4>
     <p>This AI feature is powered by <strong>YU AURA</strong>, York University's Retrieval-Augmented Generation (RAG) system.
-It is designed to enhance your learning and teaching experience by providing intelligent support based primarily on course-specific
-        content selected by the instructor. While YU AURA may use external Large Language Models (LLMs) to supplement responses, it always 
-        prioritizes the materials provided within your course.</p>
+It is designed to enhance your learning and teaching experience by providing intelligent support.</p>
 
     <h4><strong>Accuracy of AI-generated content</strong></h4>
     <p>YU AURA aims to provide helpful and relevant information. However, the accuracy of AI-generated responses may vary. Always verify the 
         information provided to ensure it is accurate, complete, and appropriate for your specific academic context.</p>
 
     <h4><strong>How your data is processed</strong></h4>
-    <p>All user data and interactions with YU AURA remain securely on <strong>York University servers</strong>. While external Large Language Models 
+    <p>All user data and interactions with YU AURA remain securely on <strong>York University servers</strong>. While external LLMs 
         may be used to generate responses, <strong>no data is stored or retained by third-party providers</strong>. The system is designed to 
         ensure that your information is processed securely and in compliance with York University’s privacy standards.</p>
     <p>A record of your interactions with the AI feature may be stored within YU AURA to support learning analytics and system improvement.

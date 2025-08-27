@@ -247,9 +247,7 @@ $string['declineaipolicy'] = 'Refuser';
 $string['userpolicy'] = "<h4><strong>Bienvenue dans la nouvelle fonctionnalité d’IA sur eClass&nbsp;!</strong></h4>
 <p>Cette fonctionnalité d’intelligence artificielle est propulsée par <strong>YU AURA</strong>, le système de génération augmentée 
     par récupération (RAG) de l’Université York. Elle est conçue pour enrichir votre expérience d’apprentissage et d’enseignement 
-    en fournissant un soutien intelligent basé principalement sur le contenu spécifique au cours sélectionné par l’enseignant. 
-    Bien que YU AURA puisse utiliser des modèles de langage étendus (LLM) externes pour compléter ses réponses, elle donne toujours 
-    la priorité au matériel fourni dans le cadre du cours.</p>
+    en fournissant un soutien intelligent.</p>
 
 <h4><strong>Exactitude du contenu généré par l’IA</strong></h4>
 <p>YU AURA vise à fournir des informations utiles et pertinentes. Toutefois, l’exactitude des réponses générées par l’IA peut varier. 
