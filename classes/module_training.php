@@ -364,7 +364,7 @@ abstract class module_training
             return false;
         }
         $supported_mime_types = markitdown::supported_mime_types();
-        $mod_url = $CFG->wwwroot . '/mod/forum/view.php?id=' . $this->cmid;
+        $mod_url = $CFG->wwwroot . '/mod/resource/view.php?id=' . $this->cmid;
         $fs = get_file_storage();
         $files = $fs->get_area_files($this->context->id, 'mod_resource', 'content');
 
@@ -426,6 +426,7 @@ abstract class module_training
                     \ConvertApi\ConvertApi::setApiCredentials($config->convert_api_key);
                     $result = \ConvertApi\ConvertApi::convert('html', [
                         'File' => $path . $file_name,
+                        'Wysiwyg' => 'false'
                     ], 'pdf'
                     );
                     // Change $file_name to the converted file name

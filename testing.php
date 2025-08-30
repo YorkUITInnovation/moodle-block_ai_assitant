@@ -25,6 +25,6 @@ $context = context_course::instance($courseid);
 
 echo $OUTPUT->header();
 
-print_object(markitdown::supported_mime_types());
+print_object(cria::get_availability());
 
 echo $OUTPUT->footer();
