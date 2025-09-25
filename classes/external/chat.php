@@ -132,7 +132,7 @@ class block_ai_assistant_chat_ws extends external_api
                 'cmid' => new external_value(PARAM_INT, 'Moodle Course Module ID', VALUE_REQUIRED),
                 'name' => new external_value(PARAM_RAW, 'Name of selected course module file', VALUE_REQUIRED),
                 'userid' => new external_value(PARAM_INT, 'User ID', VALUE_REQUIRED),
-                'chatid' => new external_value(PARAM_TEXT, 'Chat ID', VALUE_OPTIONAL, ''),
+                'chatid' => new external_value(PARAM_RAW, 'Chat ID', VALUE_DEFAULT, ''),
             )
         );
     }
