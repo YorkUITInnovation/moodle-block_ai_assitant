@@ -128,7 +128,7 @@ $functions = array(
     ),
     'block_ai_assistant_chat_start' => array(
         'classname' => 'block_ai_assistant_chat_ws',
-        'methodname' => 'start ',
+        'methodname' => 'start',
         'classpath' => 'blocks/ai_assistant/classes/external/chat.php',
         'description' => 'Start a new chat session with Cria. Returns chat ID.',
         'type' => 'read',
