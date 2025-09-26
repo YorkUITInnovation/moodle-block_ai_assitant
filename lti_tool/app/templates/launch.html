@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LTI Launch</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 2rem; }
+    pre { background: #f5f5f5; padding: 1rem; overflow:auto; }
+    .meta { font-size: 0.9rem; color: #555; }
+    .badge { display:inline-block; padding:2px 6px; border-radius:4px; background:#eee; margin-right:4px; }
+  </style>
+</head>
+<body>
+  <h1>LTI Launch Received</h1>
+  <p class="meta">
+    <span class="badge">Demo Mode: {{ 'ON (signature NOT verified)' if demo_mode else 'OFF (signatures verified)' }}</span>
+    <span class="badge">Persistence: {{ 'ENABLED' if persist_enabled else 'DISABLED' }}</span>
+    {% if launch_id is not none %}<span class="badge">Launch ID #{{ launch_id }}</span>{% endif %}
+  </p>
+  <h2>User</h2>
+  <ul>
+    <li>Sub: {{ launch.user.sub }}</li>
+    <li>Name: {{ launch.user.name }}</li>
+    <li>Email: {{ launch.user.email }}</li>
+    <li>Roles: {{ ', '.join(launch.user.roles) }}</li>
+  </ul>
+  {% if launch.context %}
+  <h2>Context</h2>
+  <ul>
+    <li>ID: {{ launch.context.id }}</li>
+    <li>Title: {{ launch.context.title }}</li>
+  </ul>
+  {% endif %}
+  <h2>Raw Claims</h2>
+  <pre>{{ launch.raw_claims | tojson(indent=2) }}</pre>
+  <hr />
+  <p>This page is a placeholder. In production you would establish a session and redirect to a single-page application (chat, syllabus parser, etc.).</p>
+</body>
+</html>

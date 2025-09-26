@@ -1,0 +1,10 @@
+{
+  "issuer": "https://canvas.example.edu",
+  "client_id": "10000000000001",
+  "deployment_id": "deploy-1234",
+  "authorization_endpoint": "https://canvas.example.edu/api/lti/authorize_redirect",
+  "jwks_uri": "https://canvas.example.edu/api/lti/security/jwks",
+  "token_endpoint": "https://canvas.example.edu/login/oauth2/token",
+  "name": "Sample Canvas Tenant"
+}
+
