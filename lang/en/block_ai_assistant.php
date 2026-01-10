@@ -238,6 +238,7 @@ $string['ai_assistant:addinstance'] = 'Add Block to course';
 $string['ai_assistant:view_autotest'] = 'View/Run AutoTest';
 $string['ai_assistant:student'] = 'Available to students';
 $string['ai_assistant:teacher'] = 'Available to teachers';
+$string['ai_assistant:edit_site_tutorials'] = 'Edit site tutorials';
 
 
 // Bot tuning
