@@ -15,6 +15,28 @@
     background-color: #fff;
 }
 
+/* Dark mode support */
+body.moove-darkmode .blockAiAssistant {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+}
+
+body.moove-darkmode .blockAiAssistant:hover {
+    background-color: #3a3a3a;
+}
+
+body.moove-darkmode .blockAiAssistantContent label {
+    color: #e0e0e0;
+}
+
+body.moove-darkmode .blockAiAssistantFolderIcon {
+    color: #e0e0e0;
+}
+
+body.moove-darkmode .activityname {
+    color: #e0e0e0;
+}
+
 .blockAiAssistantContent {
     display: none;
     margin-left: 20px;
