@@ -352,7 +352,6 @@ abstract class module_training
                 // Using maritdown to convert the content to HTML
                 // This is a workaround to avoid issues with file_get_contents and large files
                 $converted_file = markitdown::execute($path . $file_name, $file->get_mimetype());
-                file_put_contents('/var/www/moodledata/temp/converted_file.md', $converted_file['content']);
                 if ($converted_file->error) {
                     // If there is an error, set the content to an empty string
                     $content = '';
@@ -458,7 +457,7 @@ abstract class module_training
                     $content = get_string('content_found_at', 'block_ai_assistant')
                         . ' <a href="' . $mod_url . '" title="' . $this->mod[0]->name . '">' . $this->mod[0]->name . '</a><br><br>';
                     // Set the content to the converted file content
-                    $content .= markdown_to_html($converted_file->content);
+                    $content .= markdown_to_html($converted_file['content']);
                     $file_name = 'folder_' . $this->cmid . '_' . str_replace(' ', '_', $converted_file->filename) . '.html';
                     // Make sure the content is UTF-8 encoded
                     if (!mb_detect_encoding($content, 'UTF-8', true)) {
