@@ -213,45 +213,6 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         // Ai_assistant savepoint reached.
         upgrade_block_savepoint(true, 2025072905, 'ai_assistant');
     }
-
-    if ($oldversion < 2025080501) {
-
-        // Define table ai_policy_register to be created.
-        $table = new xmldb_table('ai_policy_register');
-
-        // Adding fields to table ai_policy_register.
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('contextid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('timeaccepted', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-
-        // Adding keys to table ai_policy_register.
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-        $table->add_key('userid', XMLDB_KEY_FOREIGN_UNIQUE, ['userid'], 'user', ['id']);
-
-        // Conditionally launch create table for ai_policy_register.
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2025080501, 'ai_assistant');
-    }
-
-    if ($oldversion < 2025082600) {
-
-        // Define field embed_position to be added to block_aia_settings.
-        $table = new xmldb_table('block_aia_settings');
-        $field = new xmldb_field('embed_position', XMLDB_TYPE_INTEGER, '1', null, null, null, '1', 'no_context_message');
-
-        // Conditionally launch add field embed_position.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        // Ai_assistant savepoint reached.
-        upgrade_block_savepoint(true, 2025082600, 'ai_assistant');
-    }
     return true;
 }
 

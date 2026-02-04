@@ -169,17 +169,5 @@
         <INDEX NAME="tutorialchatid_x" UNIQUE="false" FIELDS="tutorialchatid"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="ai_policy_register" COMMENT="Copy of the Moodle 4.5+ ai_policy_register table. Register of users who have accepted this sites AI usage policy">
-      <FIELDS>
-        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The id of the user that has accepted the policy"/>
-        <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The context id that the policy was accepted in"/>
-        <FIELD NAME="timeaccepted" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Timestamp of when the policy was accepted"/>
-      </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="userid" TYPE="foreign-unique" FIELDS="userid" REFTABLE="user" REFFIELDS="id" COMMENT="Foreign key to user table"/>
-      </KEYS>
-    </TABLE>
   </TABLES>
 </XMLDB>
