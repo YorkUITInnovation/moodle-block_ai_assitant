@@ -258,10 +258,13 @@ class block_ai_assistant_chat_ws extends external_api
     }
 
 
-    public static function start_details()
+    public static function start_details(): external_single_structure
     {
         $fields = array(
             'chat_id' => new external_value(PARAM_RAW, 'Cria chat id', VALUE_REQUIRED),
+            'tutorial_name' => new external_value(PARAM_RAW, 'Tutorial title', VALUE_REQUIRED),
+            'name' => new external_value(PARAM_RAW, 'Selected module/file name', VALUE_REQUIRED),
+            'bot_name' => new external_value(PARAM_RAW, 'Cria bot name', VALUE_REQUIRED),
             'messages' => new external_value(PARAM_RAW, 'JSON message', VALUE_REQUIRED),
         );
         return new external_single_structure($fields);
@@ -272,9 +275,9 @@ class block_ai_assistant_chat_ws extends external_api
      * Returns method result value
      * @return external_single_structure
      */
-    public static function start_returns(): external_single_structure
+    public static function start_returns(): external_multiple_structure
     {
-        return new external_value(PARAM_RAW, 'JSON Formated data');
+        return new external_multiple_structure(self::start_details());
     }
 
     /**
