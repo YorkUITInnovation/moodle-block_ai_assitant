@@ -37,6 +37,31 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
 
     $dbman = $DB->get_manager();
 
+    if ($oldversion < 2026031600) {
+        $table = new xmldb_table('block_aia_settings');
+
+        $field = new xmldb_field('bot_name', XMLDB_TYPE_CHAR, '255', null, null, null, '0', 'publish_tutorials');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->change_field_type($table, $field);
+        }
+
+        $field = new xmldb_field('bot_id', XMLDB_TYPE_INTEGER, '10', null, null, null, '0', 'bot_name');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('syllabus_document_name', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'cria_file_id');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('syllabus_trained', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'syllabus_document_name');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_block_savepoint(true, 2026031600, 'ai_assistant');
+    }
 
     if ($oldversion < 2025072905) {
 

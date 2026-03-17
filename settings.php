@@ -69,6 +69,33 @@ if ($hassiteconfig) {
     ));
 
     $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/criabot_url',
+        get_string('criabot_url', 'block_ai_assistant'),
+        get_string('criabot_url_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT,
+        50
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/criaparse_url',
+        get_string('criaparse_url', 'block_ai_assistant'),
+        get_string('criaparse_url_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT,
+        50
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'block_ai_assistant/criadex_api_key',
+        get_string('cria_api_key', 'block_ai_assistant'),
+        get_string('cria_api_key_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT,
+        50
+    ));
+
+    $settings->add(new admin_setting_configtext(
         'block_ai_assistant/cria_embed_url',
         get_string('cria_embed_url', 'block_ai_assistant'),
         get_string('cria_embed_url_help', 'block_ai_assistant'),

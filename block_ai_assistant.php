@@ -55,7 +55,23 @@ class block_ai_assistant extends block_base
                 $record = new stdClass();
                 $record->courseid = $this->page->course->id;
                 $record->blockid = $this->instance->id;
-                $record->bot_name = cria::create_bot_instance($this->page->course->id);
+                $created = cria::create_bot_instance($this->page->course->id);
+                $bot_name = $created;
+                $bot_id = 0;
+                $bot_api_key = '';
+                $decoded = json_decode((string)$created, true);
+                if (is_array($decoded) && isset($decoded['name'])) {
+                    $bot_name = (string)$decoded['name'];
+                    $bot_id = (int)($decoded['bot_id'] ?? 0);
+                    $bot_api_key = (string)($decoded['bot_api_key'] ?? '');
+                }
+                $record->bot_name = $bot_name;
+                if ($bot_id > 0) {
+                    $record->bot_id = $bot_id;
+                }
+                if ($bot_api_key !== '') {
+                    $record->bot_api_key = $bot_api_key;
+                }
                 $record->no_context_message = $config->no_context_message;
                 $record->subtitle = $config->subtitle;
                 $record->welcome_message = $config->welcome_message;
@@ -86,15 +102,18 @@ class block_ai_assistant extends block_base
 
         $bot_api_key_exists = false;
         if ($availability->exception == 'success') {
-            // Update $course_record->bot_api_key if empty
-            if (empty($course_record->bot_api_key)) {
+            $blockcfg = get_config('block_ai_assistant');
+            $localcfg = get_config('local_cria');
+            $has_criabot = (!empty($blockcfg->criabot_url) || !empty($localcfg->criabot_url));
+
+            if (!empty($course_record->bot_api_key)) {
+                $bot_api_key_exists = true;
+            } else if (!$has_criabot) {
                 $course_record->bot_api_key = cria::get_api_key(cria::get_bot_id($this->page->course->id));
                 if (!empty($course_record->bot_api_key)) {
                     $DB->set_field('block_aia_settings', 'bot_api_key', $course_record->bot_api_key, ['courseid' => $this->page->course->id]);
                     $bot_api_key_exists = true;
                 }
-            } else {
-                $bot_api_key_exists = true;
             }
         }
 
@@ -246,10 +265,10 @@ class block_ai_assistant extends block_base
         // Get training status
         $show_bot = false;
         if ($availability->exception == 'success') {
-            if ($course_record->cria_file_id) {
-                $results = cria::get_content_training_status($course_record->cria_file_id);
-                $training_status_id = $results->training_status_id;
-                $training_status = $results->training_status;
+            if (!empty($course_record->syllabus_trained)) {
+                $training_status_id = 1;
+                $training_status = '<div class="badge badge-success">'
+                    . get_string('trained', 'block_ai_assistant') . '</div>';
                 $show_bot = true;
             } else {
                 $training_status_id = 4;
@@ -312,6 +331,9 @@ class block_ai_assistant extends block_base
         }
 
         $tutorials = '';
+        if (!property_exists($course_record, 'publish_tutorials')) {
+            $course_record->publish_tutorials = 0;
+        }
         if (has_capability('block/ai_assistant:teacher', $course_context)) {
             $tutorials = tutorials::get_tutorials($this->page->course->id);
         } else {

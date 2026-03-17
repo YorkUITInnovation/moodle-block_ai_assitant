@@ -10,18 +10,108 @@ class cria
 {
 
     /**
-     * Create bot instance and returns bot_name
+     * Create bot instance and returns bot metadata.
      * @param int $course_id
-     * @return string bot_name
+     * @return string bot_name or JSON payload with name/bot_id/bot_api_key for Criabot
      */
     public static function create_bot_instance($course_id)
     {
-        $method = 'cria_create_bot';
         $data = self::get_create_cria_bot_config($course_id);
+        $bot_name = (string)($data['name'] ?? '');
 
+        $block = get_config('block_ai_assistant');
+        $local = get_config('local_cria');
+
+        $get = static function ($obj, string $key): string {
+            if (is_object($obj) && isset($obj->{$key}) && (string)$obj->{$key} !== '') {
+                return (string)$obj->{$key};
+            }
+            return '';
+        };
+
+        $criabot_url = rtrim($get($local, 'criabot_url') ?: $get($block, 'criabot_url'), '/');
+        $api_key = $get($local, 'criadex_api_key') ?: $get($block, 'criadex_api_key');
+
+        if ($criabot_url !== '' && $api_key !== '' && $bot_name !== '') {
+            $create_body = [
+                'llm_model_id' => (int)($data['model_id'] ?? 0),
+                'embedding_model_id' => (int)($data['embedding_id'] ?? 0),
+                'rerank_model_id' => (int)($data['rerank_model_id'] ?? 0),
+                'parent_bot_names' => array_values(array_filter(array_map('trim', explode(',', (string)($data['child_bots'] ?? ''))))),
+            ];
+
+            $headers = [
+                'Accept: application/json',
+                'Content-Type: application/json',
+                'X-API-Key: ' . $api_key,
+            ];
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/create');
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($create_body));
+            $create_raw = curl_exec($ch);
+            curl_close($ch);
+
+            $created = json_decode((string)$create_raw, true);
+            $bot_api_key = is_array($created) ? (string)($created['bot_api_key'] ?? '') : '';
+
+            $update_body = [
+                'max_input_tokens' => (int)($data['max_context'] ?? 2000),
+                'max_reply_tokens' => (int)($data['max_tokens'] ?? 1024),
+                'temperature' => (float)($data['temperature'] ?? 0.9),
+                'top_p' => (float)($data['top_p'] ?? 0),
+                'top_k' => (int)($data['top_k'] ?? 10),
+                'min_k' => (float)($data['min_k'] ?? 0.5),
+                'top_n' => (int)($data['top_n'] ?? 3),
+                'min_n' => (float)($data['min_relevance'] ?? 0.7),
+                'no_context_message' => (string)($data['no_context_message'] ?? ''),
+                'no_context_use_message' => (bool)($data['no_context_use_message'] ?? false),
+                'no_context_llm_guess' => (bool)($data['no_context_llm_guess'] ?? false),
+                'system_message' => (string)($data['bot_system_message'] ?? ''),
+            ];
+
+            $uch = curl_init();
+            curl_setopt($uch, CURLOPT_URL, $criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/update');
+            curl_setopt($uch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($uch, CURLOPT_CUSTOMREQUEST, 'PATCH');
+            curl_setopt($uch, CURLOPT_TIMEOUT, 60);
+            curl_setopt($uch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($uch, CURLOPT_POSTFIELDS, json_encode($update_body));
+            curl_exec($uch);
+            curl_close($uch);
+
+            $ach = curl_init();
+            curl_setopt($ach, CURLOPT_URL, $criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/about');
+            curl_setopt($ach, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ach, CURLOPT_CUSTOMREQUEST, 'GET');
+            curl_setopt($ach, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ach, CURLOPT_HTTPHEADER, [
+                'Accept: application/json',
+                'X-API-Key: ' . $api_key,
+            ]);
+            $about_raw = curl_exec($ach);
+            curl_close($ach);
+
+            $about = json_decode((string)$about_raw, true);
+            $bot_id = 0;
+            if (is_array($about)) {
+                $bot_id = (int)($about['about']['info']['id'] ?? 0);
+            }
+
+            return json_encode([
+                'name' => $bot_name,
+                'bot_id' => $bot_id,
+                'bot_api_key' => $bot_api_key,
+            ]);
+        }
+
+        $method = 'cria_create_bot';
         $bot = webservice::exec($method, $data);
-        $bot_name = str_replace('"', '', self::get_bot_name_intent_id($bot));
-        return $bot_name;
+        return str_replace('"', '', self::get_bot_name_intent_id($bot));
     }
 
 
@@ -213,6 +303,125 @@ class cria
      */
     public static function upload_content_to_bot($course_id, $file_name, $file_content, $parsing_strategy = '')
     {
+        global $CFG, $DB;
+        require_once($CFG->libdir . '/filelib.php');
+
+        $block = get_config('block_ai_assistant');
+        $local = get_config('local_cria');
+
+        $get = static function ($obj, string $key): string {
+            if (is_object($obj) && isset($obj->{$key}) && (string)$obj->{$key} !== '') {
+                return (string)$obj->{$key};
+            }
+            return '';
+        };
+
+        $criabot_url = rtrim($get($local, 'criabot_url') ?: $get($block, 'criabot_url'), '/');
+        $criaparse_url = rtrim($get($local, 'criaparse_url') ?: $get($block, 'criaparse_url'), '/');
+        $api_key = $get($local, 'criadex_api_key') ?: $get($block, 'criadex_api_key');
+
+        if ($criabot_url !== '' && $criaparse_url !== '' && $api_key !== '') {
+            $bot_name = $DB->get_field('block_aia_settings', 'bot_name', ['courseid' => $course_id]);
+            if (!$bot_name) {
+                return '';
+            }
+
+            $tmp_dir = make_temp_directory('block_ai_assistant/' . $course_id);
+            $tmp_path = $tmp_dir . '/' . $file_name;
+            file_put_contents($tmp_path, base64_decode($file_content));
+
+            $strategy = $parsing_strategy ?: 'GENERIC';
+            $queue_url = $criaparse_url . '/parser/queue?strategy=' . rawurlencode($strategy);
+
+            $curl = new \curl();
+            $queue_opts = [
+                'CURLOPT_TIMEOUT' => 120,
+                'CURLOPT_HTTPHEADER' => [
+                    'Accept: application/json',
+                    'x-api-key: ' . $api_key
+                ]
+            ];
+            $queue_params = [
+                'file' => new \CURLFile($tmp_path)
+            ];
+
+            $queue_raw = (string)$curl->post($queue_url, $queue_params, $queue_opts);
+            $queued = json_decode($queue_raw, true);
+            $job_id = is_array($queued) ? (string)($queued['job']['job_id'] ?? '') : '';
+            if ($job_id === '') {
+                return '';
+            }
+
+            $poll_url = $criaparse_url . '/parser/poll?job_id=' . rawurlencode($job_id);
+            $poll_opts = [
+                'CURLOPT_TIMEOUT' => 30,
+                'CURLOPT_HTTPHEADER' => [
+                    'Accept: application/json',
+                    'x-api-key: ' . $api_key
+                ]
+            ];
+
+            $nodes = [];
+            $assets = [];
+            $deadline = time() + 180;
+            while (time() < $deadline) {
+                $poll_raw = (string)$curl->get($poll_url, [], $poll_opts);
+                $polled = json_decode($poll_raw, true);
+                $job = is_array($polled) ? ($polled['job'] ?? null) : null;
+                if (!is_array($job)) {
+                    sleep(1);
+                    continue;
+                }
+
+                if (!empty($job['finished'])) {
+                    $response = $job['response'] ?? null;
+                    if (is_array($response)) {
+                        $nodes = $response['elements'] ?? [];
+                        $assets = $response['assets'] ?? [];
+                    }
+                    break;
+                }
+                sleep(1);
+            }
+
+            if (empty($nodes) && empty($assets)) {
+                return '';
+            }
+
+            $upload_body = [
+                'file_name' => $file_name,
+                'file_contents' => [
+                    'nodes' => $nodes,
+                    'assets' => $assets
+                ],
+                'file_metadata' => new \stdClass()
+            ];
+
+            $upload_url = $criabot_url . '/bots/' . rawurlencode($bot_name) . '/documents/upload';
+            $upload_opts = [
+                'CURLOPT_TIMEOUT' => 120,
+                'CURLOPT_HTTPHEADER' => [
+                    'Accept: application/json',
+                    'Content-Type: application/json',
+                    'X-API-Key: ' . $api_key
+                ]
+            ];
+            $upload_raw = (string)$curl->post($upload_url, json_encode($upload_body), $upload_opts);
+
+            $uploaded = json_decode((string)$upload_raw, true);
+            if (!is_array($uploaded) || ($uploaded['status'] ?? null) !== 200) {
+                return '';
+            }
+
+            $document_name = (string)($uploaded['document_name'] ?? '');
+            if ($document_name !== '') {
+                $DB->set_field('block_aia_settings', 'syllabus_document_name', $document_name, ['courseid' => $course_id]);
+                $DB->set_field('block_aia_settings', 'syllabus_trained', 1, ['courseid' => $course_id]);
+            }
+
+            return $document_name;
+        }
+
         $method = 'cria_content_upload';
         $data = [
             "intentid" => (int)self::get_intent_id($course_id),
@@ -220,8 +429,7 @@ class cria
             "filecontent" => $file_content,
             "parsingstrategy" => $parsing_strategy
         ];
-        $file_id = webservice::exec($method, $data);
-        return $file_id;
+        return webservice::exec($method, $data);
     }
 
     /**
@@ -806,7 +1014,11 @@ class cria
         $method = 'cria_chat_start';
         $data = array();
         $chat_id = webservice::exec($method, $data);
-        return json_decode($chat_id);
+        $resp = json_decode($chat_id, true);
+        if (is_array($resp) && isset($resp['chat_id'])) {
+            return (string)$resp['chat_id'];
+        }
+        return '';
     }
 
     /**
@@ -825,11 +1037,26 @@ class cria
             'prompt' => $prompt
         );
         $response = webservice::exec($method, $data);
-        $response = (object)json_decode($response, true);
-        if ($response->status == 200) {
-            return $response->content ?? ''; // Return content or empty string if not set
+        $decoded = json_decode($response, true);
+        if (!is_array($decoded)) {
+            return '';
         }
-        return $response->status . ' ' . $response->code ?? ''; // Return content or empty string if not set
+
+        if (($decoded['status'] ?? null) === 200) {
+            $reply = $decoded['reply'] ?? null;
+            if (is_array($reply) && isset($reply['message'])) {
+                return (string)$reply['message'];
+            }
+            if (is_string($reply)) {
+                return $reply;
+            }
+            return '';
+        }
+
+        $status = (string)($decoded['status'] ?? '');
+        $code = (string)($decoded['code'] ?? '');
+        $message = (string)($decoded['message'] ?? '');
+        return trim($status . ' ' . ($code ?: $message));
     }
 
     /**
@@ -860,7 +1087,7 @@ class cria
             'chat_id' => trim($chat_id)
         );
         $response = webservice::exec($method, $data);
-        return $response;
+        return json_decode($response);
     }
 
     /**
@@ -906,9 +1133,8 @@ class cria
         global $DB;
         $block_settings = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
         $bot_info = new \stdClass();
-        $bot_name = explode('-', $block_settings->bot_name);
-        $bot_info->bot_id = str_replace('"', '', $bot_name[0]);
-        $bot_info->intent_id = str_replace('"', '', $bot_name[1]);
+        $bot_info->bot_id = (int)($block_settings->bot_id ?? 0);
+        $bot_info->intent_id = 0;
         return $bot_info;
     }
 
