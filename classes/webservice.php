@@ -63,8 +63,15 @@ class webservice
             $raw = (string)$curl->get($url, [], $options);
         } else if ($method === 'POST') {
             $raw = (string)$curl->post($url, $body ?? '', $options);
+        } else if ($method === 'DELETE') {
+            $options['CURLOPT_CUSTOMREQUEST'] = 'DELETE';
+            $raw = (string)$curl->post($url, '', $options);
+        } else if ($method === 'PATCH') {
+            $options['CURLOPT_CUSTOMREQUEST'] = 'PATCH';
+            $raw = (string)$curl->post($url, $body ?? '', $options);
         } else {
-            $raw = (string)$curl->request($method, $url, $body ?? '', $options);
+            $options['CURLOPT_CUSTOMREQUEST'] = $method;
+            $raw = (string)$curl->post($url, $body ?? '', $options);
         }
 
         $curl_err = $curl->error ? (string)$curl->error : '';

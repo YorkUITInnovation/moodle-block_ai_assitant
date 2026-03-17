@@ -59,11 +59,17 @@ class block_ai_assistant extends block_base
                 $bot_name = $created;
                 $bot_id = 0;
                 $bot_api_key = '';
+                $create_status = 0;
+                $create_code = '';
+                $create_message = '';
                 $decoded = json_decode((string)$created, true);
                 if (is_array($decoded) && isset($decoded['name'])) {
                     $bot_name = (string)$decoded['name'];
                     $bot_id = (int)($decoded['bot_id'] ?? 0);
                     $bot_api_key = (string)($decoded['bot_api_key'] ?? '');
+                    $create_status = (int)($decoded['status'] ?? 0);
+                    $create_code = (string)($decoded['code'] ?? '');
+                    $create_message = (string)($decoded['message'] ?? '');
                 }
                 $record->bot_name = $bot_name;
                 if ($bot_id > 0) {
@@ -72,11 +78,15 @@ class block_ai_assistant extends block_base
                 if ($bot_api_key !== '') {
                     $record->bot_api_key = $bot_api_key;
                 }
+                if ($bot_api_key === '' && $create_status && ($create_code || $create_message)) {
+                    $record->published = 0;
+                }
                 $record->no_context_message = $config->no_context_message;
                 $record->subtitle = $config->subtitle;
                 $record->welcome_message = $config->welcome_message;
                 $record->lang = $config->default_language;
                 $record->published = 0;
+                $record->publish_tutorials = 0;
                 $record->usermodified = $USER->id;
                 $record->timecreated = time();
                 $record->timemodified = time();
@@ -320,8 +330,15 @@ class block_ai_assistant extends block_base
         }
 
         if ($bot_api_key_exists == false) {
-            $error_code = get_string('invalid_token', 'block_ai_assistant');
-            $error_message = get_string('bot_api_key_not_found', 'block_ai_assistant');
+            $localcfg = get_config('local_cria');
+            $has_criabot = (!empty($config->criabot_url) || !empty($localcfg->criabot_url));
+            if ($has_criabot) {
+                $error_code = 'BOT_API_KEY_MISSING';
+                $error_message = 'Bot API key was not returned by Criabot. Check Criabot create response and API key configuration.';
+            } else {
+                $error_code = get_string('invalid_token', 'block_ai_assistant');
+                $error_message = get_string('bot_api_key_not_found', 'block_ai_assistant');
+            }
         }
 
         // Set question file id
@@ -392,7 +409,7 @@ class block_ai_assistant extends block_base
     public function applicable_formats()
     {
         return array(
-            'course-view' => true,
+            'course-view-*' => true,
             'site-index' => false,
             'my' => false,
             'mod' => false,
@@ -430,12 +447,30 @@ class block_ai_assistant extends block_base
                 $record = new stdClass();
                 $record->courseid = $this->page->course->id;
                 $record->blockid = $this->instance->id;
-                $record->bot_name = cria::create_bot_instance($this->page->course->id);
+                $created = cria::create_bot_instance($this->page->course->id);
+                $bot_name = $created;
+                $bot_id = 0;
+                $bot_api_key = '';
+                $decoded = json_decode((string)$created, true);
+                if (is_array($decoded) && isset($decoded['name'])) {
+                    $bot_name = (string)$decoded['name'];
+                    $bot_id = (int)($decoded['bot_id'] ?? 0);
+                    $bot_api_key = (string)($decoded['bot_api_key'] ?? '');
+                }
+
+                $record->bot_name = $bot_name;
+                if ($bot_id > 0) {
+                    $record->bot_id = $bot_id;
+                }
+                if ($bot_api_key !== '') {
+                    $record->bot_api_key = $bot_api_key;
+                }
                 $record->no_context_message = $config->no_context_message;
                 $record->subtitle = $config->subtitle;
                 $record->welcome_message = $config->welcome_message;
                 $record->lang = $config->default_language;
                 $record->published = 0;
+                $record->publish_tutorials = 0;
                 $record->usermodified = $USER->id;
                 $record->timecreated = time();
                 $record->timemodified = time();
@@ -450,11 +485,36 @@ class block_ai_assistant extends block_base
         global $COURSE, $DB;
         // Get settings record
         $settings = $DB->get_record('block_aia_settings', array('courseid' => $COURSE->id));
-        // get bot id
-        $bot_name = explode('-', $settings->bot_name);
-        $bot_id = str_replace('"', '', $bot_name[0]);
-        // Delete bot from Cria
-        $results = cria::delete_bot_instance($bot_id);
+        if (!empty($settings->bot_name)) {
+            $blockcfg = get_config('block_ai_assistant');
+            $localcfg = get_config('local_cria');
+            $has_criabot = (!empty($blockcfg->criabot_url) || !empty($localcfg->criabot_url));
+
+            if ($has_criabot) {
+                $bot_name = (string)$settings->bot_name;
+                $decoded = json_decode($bot_name, true);
+                if (is_array($decoded) && isset($decoded['name'])) {
+                    $bot_name = (string)$decoded['name'];
+                }
+                $api_key = !empty($localcfg->criadex_api_key) ? (string)$localcfg->criadex_api_key : (string)($blockcfg->criadex_api_key ?? '');
+                $criabot_url = !empty($localcfg->criabot_url) ? rtrim((string)$localcfg->criabot_url, '/') : rtrim((string)($blockcfg->criabot_url ?? ''), '/');
+
+                if ($api_key !== '' && $criabot_url !== '') {
+                    require_once($GLOBALS['CFG']->libdir . '/filelib.php');
+                    $curl = new \curl();
+                    $curl->post($criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/delete', '', [
+                        'CURLOPT_TIMEOUT' => 60,
+                        'CURLOPT_CUSTOMREQUEST' => 'DELETE',
+                        'CURLOPT_HTTPHEADER' => [
+                            'Accept: application/json',
+                            'X-API-Key: ' . $api_key,
+                        ],
+                    ]);
+                }
+            } else if (!empty($settings->bot_id)) {
+                cria::delete_bot_instance((int)$settings->bot_id);
+            }
+        }
 
         // Delete all settings for this course
         $DB->delete_records('block_aia_settings', array('courseid' => $COURSE->id));

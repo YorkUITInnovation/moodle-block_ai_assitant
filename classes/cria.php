@@ -16,6 +16,9 @@ class cria
      */
     public static function create_bot_instance($course_id)
     {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
         $data = self::get_create_cria_bot_config($course_id);
         $bot_name = (string)($data['name'] ?? '');
 
@@ -40,24 +43,42 @@ class cria
                 'parent_bot_names' => array_values(array_filter(array_map('trim', explode(',', (string)($data['child_bots'] ?? ''))))),
             ];
 
-            $headers = [
+            $curl = new \curl();
+            $common_headers = [
                 'Accept: application/json',
                 'Content-Type: application/json',
                 'X-API-Key: ' . $api_key,
             ];
 
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/create');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-            curl_setopt($ch, CURLOPT_TIMEOUT, 60);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($create_body));
-            $create_raw = curl_exec($ch);
-            curl_close($ch);
+            $create_url = $criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/create';
+            $create_raw = (string)$curl->post($create_url, json_encode($create_body), [
+                'CURLOPT_TIMEOUT' => 60,
+                'CURLOPT_HTTPHEADER' => $common_headers,
+            ]);
+            $created = json_decode($create_raw, true);
 
-            $created = json_decode((string)$create_raw, true);
+            if (is_array($created) && (int)($created['status'] ?? 0) === 409) {
+                $delete_url = $criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/delete';
+                $curl->post($delete_url, '', [
+                    'CURLOPT_TIMEOUT' => 60,
+                    'CURLOPT_CUSTOMREQUEST' => 'DELETE',
+                    'CURLOPT_HTTPHEADER' => [
+                        'Accept: application/json',
+                        'X-API-Key: ' . $api_key,
+                    ],
+                ]);
+
+                $create_raw = (string)$curl->post($create_url, json_encode($create_body), [
+                    'CURLOPT_TIMEOUT' => 60,
+                    'CURLOPT_HTTPHEADER' => $common_headers,
+                ]);
+                $created = json_decode($create_raw, true);
+            }
+
             $bot_api_key = is_array($created) ? (string)($created['bot_api_key'] ?? '') : '';
+            $create_status = is_array($created) ? (int)($created['status'] ?? 0) : 0;
+            $create_code = is_array($created) ? (string)($created['code'] ?? '') : '';
+            $create_message = is_array($created) ? (string)($created['message'] ?? '') : '';
 
             $update_body = [
                 'max_input_tokens' => (int)($data['max_context'] ?? 2000),
@@ -74,27 +95,19 @@ class cria
                 'system_message' => (string)($data['bot_system_message'] ?? ''),
             ];
 
-            $uch = curl_init();
-            curl_setopt($uch, CURLOPT_URL, $criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/update');
-            curl_setopt($uch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($uch, CURLOPT_CUSTOMREQUEST, 'PATCH');
-            curl_setopt($uch, CURLOPT_TIMEOUT, 60);
-            curl_setopt($uch, CURLOPT_HTTPHEADER, $headers);
-            curl_setopt($uch, CURLOPT_POSTFIELDS, json_encode($update_body));
-            curl_exec($uch);
-            curl_close($uch);
-
-            $ach = curl_init();
-            curl_setopt($ach, CURLOPT_URL, $criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/about');
-            curl_setopt($ach, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ach, CURLOPT_CUSTOMREQUEST, 'GET');
-            curl_setopt($ach, CURLOPT_TIMEOUT, 30);
-            curl_setopt($ach, CURLOPT_HTTPHEADER, [
-                'Accept: application/json',
-                'X-API-Key: ' . $api_key,
+            $curl->post($criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/update', json_encode($update_body), [
+                'CURLOPT_TIMEOUT' => 60,
+                'CURLOPT_CUSTOMREQUEST' => 'PATCH',
+                'CURLOPT_HTTPHEADER' => $common_headers,
             ]);
-            $about_raw = curl_exec($ach);
-            curl_close($ach);
+
+            $about_raw = (string)$curl->get($criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/about', [], [
+                'CURLOPT_TIMEOUT' => 30,
+                'CURLOPT_HTTPHEADER' => [
+                    'Accept: application/json',
+                    'X-API-Key: ' . $api_key,
+                ],
+            ]);
 
             $about = json_decode((string)$about_raw, true);
             $bot_id = 0;
@@ -106,6 +119,9 @@ class cria
                 'name' => $bot_name,
                 'bot_id' => $bot_id,
                 'bot_api_key' => $bot_api_key,
+                'status' => $create_status,
+                'code' => $create_code,
+                'message' => $create_message,
             ]);
         }
 
