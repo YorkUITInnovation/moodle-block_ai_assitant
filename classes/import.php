@@ -136,15 +136,15 @@ class import
         global $CFG, $DB, $USER;
         // Make sure the columns exist
         if (!in_array('section', $columns)) {
-            \core\notification::error(get_string('column_name_must_exist', 'local_cria', ['section']));
+            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', ['section']));
             redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
         }
         if (!in_array('questions', $columns)) {
-            \core\notification::error(get_string('column_name_must_exist', 'local_cria', ['questions']));
+            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', ['questions']));
             redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
         }
         if (!in_array('answer', $columns)) {
-            \core\notification::error(get_string('column_name_must_exist', 'local_cria', ['answer']));
+            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', ['answer']));
             redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
         }
 

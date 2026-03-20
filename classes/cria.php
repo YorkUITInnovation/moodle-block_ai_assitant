@@ -335,6 +335,10 @@ class cria
         $criabot_url = rtrim($get($local, 'criabot_url') ?: $get($block, 'criabot_url'), '/');
         $criaparse_url = rtrim($get($local, 'criaparse_url') ?: $get($block, 'criaparse_url'), '/');
         $api_key = $get($local, 'criadex_api_key') ?: $get($block, 'criadex_api_key');
+        $llm_model_id = (int)($get($local, 'criadex_model_id') ?: $get($block, 'criadex_model_id'));
+        $embedding_model_id = (int)($get($local, 'criadex_embed_id') ?: $get($block, 'criadex_embed_id'));
+        $rerank_model_id = (int)($get($local, 'criadex_rerank_id') ?: $get($block, 'criadex_rerank_id'));
+        $criadex_url = rtrim($get($local, 'criadex_url') ?: $get($block, 'criadex_url'), '/');
 
         if ($criabot_url !== '' && $criaparse_url !== '' && $api_key !== '') {
             $bot_name = $DB->get_field('block_aia_settings', 'bot_name', ['courseid' => $course_id]);
@@ -347,7 +351,75 @@ class cria
             file_put_contents($tmp_path, base64_decode($file_content));
 
             $strategy = $parsing_strategy ?: 'GENERIC';
-            $queue_url = $criaparse_url . '/parser/queue?strategy=' . rawurlencode($strategy);
+            // CriaParse expects a valid string `dataset_id` for SemanticDocumentParser.
+            // Using `course_id` keeps it stable and avoids invalid dataset/index names.
+            $dataset_id = (string)$course_id;
+
+            // Ensure the Criadex/Ragflow group exists before queuing parsing.
+            // CriaParse uploads parsed content into this group; if missing, the job fails with GROUP_NOT_FOUND.
+            if ($criadex_url !== '' && $llm_model_id > 0 && $embedding_model_id > 0) {
+                $curl = new \curl();
+
+                $group_name = rawurlencode($dataset_id);
+                $create_group_url = $criadex_url . '/groups/' . $group_name . '/create';
+                $create_group_body = [
+                    'type' => 'DOCUMENT',
+                    'llm_model_id' => $llm_model_id,
+                    'embedding_model_id' => $embedding_model_id,
+                    'rerank_model_id' => $rerank_model_id,
+                ];
+
+                $create_opts = [
+                    'CURLOPT_TIMEOUT' => 30,
+                    'CURLOPT_HTTPHEADER' => [
+                        'Accept: application/json',
+                        'Content-Type: application/json',
+                        'X-API-Key: ' . $api_key,
+                    ],
+                ];
+                try {
+                    $curl->post($create_group_url, json_encode($create_group_body), $create_opts);
+                    $info = $curl->get_info();
+                    $status = isset($info['http_code']) ? (int)$info['http_code'] : 0;
+                    if ($status !== 200 && $status !== 409) {
+                        // If group creation fails for reasons other than "already exists", stop early.
+                        return '';
+                    }
+                } catch (\Throwable $e) {
+                    return '';
+                }
+
+                // Best-effort: authorize current API key against the created group.
+                // (If the key is master this is effectively redundant, but safe.)
+                $group_auth_url = $criadex_url . '/group_auth/' . $group_name . '/create?api_key=' . rawurlencode($api_key);
+                $auth_opts = [
+                    'CURLOPT_TIMEOUT' => 30,
+                    'CURLOPT_HTTPHEADER' => [
+                        'Accept: application/json',
+                        'Content-Type: application/json',
+                        'X-API-Key: ' . $api_key,
+                    ],
+                ];
+                try {
+                    $curl->post($group_auth_url, '', $auth_opts);
+                    $info = $curl->get_info();
+                    $status = isset($info['http_code']) ? (int)$info['http_code'] : 0;
+                    // Accept 200/409; ignore other failures.
+                    if ($status !== 200 && $status !== 409) {
+                        // Don't fail hard; parsing may still succeed if master key bypasses auth.
+                    }
+                } catch (\Throwable $e) {
+                    // ignore
+                }
+            }
+
+            $queue_url = $criaparse_url . '/parser/queue?strategy=' . rawurlencode($strategy) . '&dataset_id=' . rawurlencode($dataset_id);
+            if ($llm_model_id > 0) {
+                $queue_url .= '&llm_model_id=' . rawurlencode((string)$llm_model_id);
+            }
+            if ($embedding_model_id > 0) {
+                $queue_url .= '&embedding_model_id=' . rawurlencode((string)$embedding_model_id);
+            }
 
             $curl = new \curl();
             $queue_opts = [
