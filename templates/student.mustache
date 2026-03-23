@@ -1,4 +1,6 @@
 {{^error_code}}
+    <input type="hidden" id="ai-policy-status" value="{{#ai_policy_status}}1{{/ai_policy_status}}{{^ai_policy_status}}0{{/ai_policy_status}}">
+    <input type="hidden" id="block-ai-assistant-context-id" value="{{contextid}}">
     {{{embed_code}}}
     {{#syllabus_url}}
         <input type="hidden" id="block-ai-assistant-course-id" value="{{courseid}}">

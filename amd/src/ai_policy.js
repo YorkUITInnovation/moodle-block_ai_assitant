@@ -7,6 +7,9 @@ export const init = async () => {
     // Get element with id ai-policy-status
     const policyStatus = document.getElementById('ai-policy-status');
     // Show modal pop-up for policy acceptance if policyStatus is empty
+    if (!policyStatus) {
+        return;
+    }
     if (policyStatus.value === '0') {
         // Get strings for modal
         const strings = await Promise.all([
