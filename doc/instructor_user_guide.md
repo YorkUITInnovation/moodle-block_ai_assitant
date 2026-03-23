@@ -2,16 +2,24 @@
 
 ## Table of Contents
 1. [Overview](#overview)
+   - [Key Instructor Benefits](#key-instructor-benefits)
 2. [Getting Started](#getting-started)
-3. [Configuration & Settings](#configuration--settings)
-4. [Content Training](#content-training)
-5. [Question Management](#question-management)
+   - [Adding the AI Assistant to Your Course](#adding-the-ai-assistant-to-your-course)
+3. [Content Training](#content-training)
+   - [Syllabus Upload](#syllabus-upload)
+4. [Question Management](#question-management)
+   - [Creating Q&A Collections](#creating-qa-collections)
+   - [Course Module Training](#course-module-training)
+   - [Training Best Practices](#training-best-practices)
+5. [Configuration & Settings](#configuration--settings)
+   - [Bot Display Settings](#bot-display-settings)
 6. [Autotest & Quality Control](#autotest--quality-control)
-7. [Tutorial Creation](#tutorial-creation)
-8. [Chat Management](#chat-management)
-9. [Monitoring & Analytics](#monitoring--analytics)
-10. [Best Practices](#best-practices)
-11. [Troubleshooting](#troubleshooting)
+7. [Learning Assistant Tutorial Creation](#learning-assistant-tutorial-creation)
+   - [Learning Assistant Tutorials](#learning-assistant-tutorials)
+8. [Chat Features](#chat-features)
+   - [Chat Summarization](#chat-summarization)
+   - [Download Chat](#download-chat)
+9. [Best Practices](#best-practices)
 
 ---
 
@@ -133,6 +141,7 @@ Train your AI on existing Moodle content:
 - **Quality content**: Ensure uploaded materials are current and accurate
 - **Regular updates**: When ever you update a module that is already trained, the system automatically retrains the AI assistant to include the latest information
 
+> **Note**: If the trained file has an error badge (red), delete the file and reselect it to retrain. If the error persists, check the file format and content for issues.ß
 ---
 
 ## Configuration & Settings
@@ -246,6 +255,7 @@ Create guided learning experiences for students:
 #### Training Problems
 - **File format errors**: Ensure .docx format for documents
 - **Large file issues**: Break large documents into smaller sections
+- **Training error**: If there is an error message on a trained file, delete the selected file and retrain it.
 
 #### Response Quality Issues
 - **Inaccurate answers**: Add more specific training content

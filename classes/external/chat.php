@@ -159,7 +159,7 @@ class block_ai_assistant_chat_ws extends external_api
     ): array
     {
         global $CFG, $DB;
-        // Curretnly not using as a webservice or ajax call, so we can skip the webservice validation.
+        // Currently not using as a webservice or ajax call, so we can skip the webservice validation.
 //        self::validate_parameters(
 //            self::start_parameters(),
 //            [
@@ -340,13 +340,13 @@ class block_ai_assistant_chat_ws extends external_api
 
     /**
      * @param int $courseid
+     * @param int $cmid
+     * @param string $name
      * @param int $tutorialid
      * @param int $userid
-     * @param string $chat_header
      * @param string $bot_name
-     * @param string $initial_prompt
-     * @return stdClass
-     * @throws dml_exception
+     * @return \stdClass
+     * @throws \dml_exception
      */
     private static function start_cria_session(
         int    $courseid,
@@ -363,10 +363,11 @@ class block_ai_assistant_chat_ws extends external_api
 
         $chat_id = cria::chat_start();
 
-        $curent_lang = current_language();
-        $topic_prompt = 'Give me oly a topic title for ' . $name . ' in ' . $curent_lang . ' language. Nothing else!';
+        $current_lang = current_language();
+        $topic_prompt = 'Give me only a topic title for ' . $name . ' in ' . $current_lang . ' language. Nothing else!';
         $topic_title = cria::chat_send($chat_id, $topic_prompt, $bot_name);
-        $initial_prompt = str_replace(
+        $initial_prompt = 'The students\' name is ' . $USER->firstname . '. ';
+        $initial_prompt .= str_replace(
             '[topic]',
             $topic_title,
             $tutorial->prompt
@@ -394,7 +395,7 @@ class block_ai_assistant_chat_ws extends external_api
         $DB->insert_record('block_aia_chat_history', $params);
         // Get message from Cria
         $message = cria::chat_send($chat_id, $initial_prompt, $bot_name);
-        // INsert new message to chat history.
+        // Insert new message to chat history.
         $new_message_params = [
             'tutorialchatid' => $tutorialchatid,
             'userid' => $USER->id,

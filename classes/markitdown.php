@@ -73,33 +73,22 @@ class markitdown
     }
 
     /**
+     * Get supported MIME types based on plugin settings.
+     * Reads from the 'allowed_file_types' config stored as a comma-separated string
+     * (set via admin_setting_configtextarea in settings.php).
      *
      * @return string[]
      */
-    public static function supported_mime_types() {
-        return [
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/pdf',
-            'text/plain',
-            'text/html',
-            'text/rtf',
-            'text/markdown',
-            'application/vnd.oasis.opendocument.text',
-            'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-excel',
-            'text/csv',
-            'audio/mpeg',
-            'audio/mp3',
-            'audio/x-mpeg-3',
-            'audio/x-mp3',
-            'audio/x-wav',
-            'audio/wav',
-            'audio/x-m4a',
-            'audio/m4a',
-            'video/mp4',
-        ];
+    public static function supported_mime_types(): array {
+        $allowed_types = get_config('block_ai_assistant', 'allowed_file_types');
+
+        // If no settings are configured, return empty array - no files will be processed
+        if (empty($allowed_types)) {
+            return [];
+        }
+
+        // Split on comma or newline (configtextarea may use either), trim whitespace, remove empty entries
+        $types_array = preg_split('/[\s,]+/', $allowed_types, -1, PREG_SPLIT_NO_EMPTY);
+        return array_values(array_map('trim', $types_array));
     }
 }

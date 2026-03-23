@@ -294,8 +294,6 @@ if ($hassiteconfig) {
         array(
             1 => get_string('bottom_left', 'block_ai_assistant'),
             2 => get_string('bottom_right', 'block_ai_assistant'),
-            3 => get_string('top_right', 'block_ai_assistant'),
-            4 => get_string('top_left', 'block_ai_assistant'),
         )
     ));
 
@@ -321,7 +319,7 @@ if ($hassiteconfig) {
         50
     ));
 
-    $settings->add(new admin_setting_configtext(
+    $settings->add(new admin_setting_configpasswordunmask(
         'block_ai_assistant/markitdown_api_key',
         get_string('markitdown_api_key', 'block_ai_assistant'),
         get_string('markitdown_api_key_help', 'block_ai_assistant'),
@@ -330,6 +328,54 @@ if ($hassiteconfig) {
         50
     ));
 
+    // Add ConvertApi - ApiKey
+    $settings->add(new admin_setting_heading(
+        'block_ai_assistant/convert_api',
+        get_string('convert_api', 'block_ai_assistant'),
+        get_string('convert_api_desc', 'block_ai_assistant')
+    ));
+    $settings->add(new admin_setting_configpasswordunmask(
+        'block_ai_assistant/convert_api_key',
+        get_string('convert_api_key', 'block_ai_assistant'),
+        get_string('convert_api_key_help', 'block_ai_assistant'),
+        '',
+        PARAM_TEXT,
+        50
+    ));
+
+    // Add Allowed File Types settings header
+    $settings->add(new admin_setting_heading(
+        'block_ai_assistant/allowed_file_types_heading',
+        get_string('allowed_file_types', 'block_ai_assistant'),
+        get_string('allowed_file_types_desc', 'block_ai_assistant')
+    ));
+
+    // Define the default allowed file types as a comma-separated MIME string.
+    // This is read by markitdown::supported_mime_types() via get_config('block_ai_assistant', 'allowed_file_types').
+    $default_allowed_file_types = implode(',', [
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/pdf',
+        'text/plain',
+        'text/html',
+        'text/rtf',
+        'text/markdown',
+        'application/vnd.oasis.opendocument.text',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/csv',
+        'audio/mp3',
+        'audio/m4a',
+        'audio/wav',
+        'video/mp4',
+    ]);
+
+    $settings->add(new admin_setting_configtextarea(
+        'block_ai_assistant/allowed_file_types',
+        get_string('allowed_file_types', 'block_ai_assistant'),
+        get_string('allowed_file_types_help', 'block_ai_assistant'),
+        $default_allowed_file_types,
+        PARAM_TEXT
+    ));
 
     // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedIf
 //    if ($ADMIN->fulltree) {
@@ -355,4 +401,3 @@ set_config('bot_locale', 'en-US', 'block_ai_assistant');
 set_config('child_bots', '', 'block_ai_assistant');
 // Accepted modules
 set_config('blockAiAssistant', 'book,forum,glossary,page,resource', 'block_ai_assistant');
-

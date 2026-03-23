@@ -18,35 +18,29 @@ function display_modules() {
         // get data-courseid from current element
         var courseid = this.getAttribute('data-courseid');
 
-        var display_modules = ajax.call([{
+        var display_modules_ajax = ajax.call([{
             methodname: 'block_ai_assistant_display_course_modules',
             args: {
                 'courseid': courseid
             }
         }]);
 
-        display_modules[0].done(function (results) {
-            // Pop up notificaiton to confirm delete
-            notification.confirm(Str.get_string('train_course_assistant', 'block_ai_assistant'),
-                results,
-                Str.get_string('train_selected_modules', 'block_ai_assistant'),
-                Str.get_string('cancel', 'block_ai_assistant'), function () {
+        display_modules_ajax[0].done(function (results) {
+            // Fetch all strings needed for the confirm dialog before showing it
+            Str.get_strings([
+                {key: 'train_course_assistant', component: 'block_ai_assistant'},
+                {key: 'train_selected_modules', component: 'block_ai_assistant'},
+                {key: 'cancel', component: 'block_ai_assistant'},
+            ]).then(function(strings) {
+                // Pop up notification to confirm training
+                notification.confirm(strings[0], results, strings[1], strings[2], function () {
                     // Get all checkboxes with class courseModuleCheckbox and store the attribute data-filename,
                     // data-content, datacourseid for each checked checkbox
                     var checkboxes = document.querySelectorAll('.courseModuleCheckbox');
                     // Get the number of boxes checked
-                    var checkedCount = 0;
-                    checkboxes.forEach(function (checkbox) {
-                        if (checkbox.checked) {
-                            checkedCount++;
-                        }
-                    });
-
                     var selected_modules = [];
-                    var currentNumberChecked = 0;
                     checkboxes.forEach(function (checkbox) {
                         if (checkbox.checked) {
-                            currentNumberChecked++;
                             selected_modules.push({
                                 'courseid': checkbox.getAttribute('data-courseid'),
                                 'cmid': checkbox.getAttribute('data-cmid'),
@@ -65,15 +59,34 @@ function display_modules() {
                         }
 
                     }]);
-                    insert_modules[0].done(function () {
-                        if (currentNumberChecked === checkedCount) {
-                            alert("Successfully added content to the course assistant");
-                        }
-                        // You can now use the data variable for further processing
+                    insert_modules[0].done(function (data) {
+                        // Fetch localized strings for messages
+                        Str.get_strings([
+                            {key: 'train_success_message', component: 'block_ai_assistant'},
+                            {key: 'unsupported_files_notice', component: 'block_ai_assistant'}
+                        ]).then(function(strings) {
+                            var successMsg = strings[0];
+                            var unsupportedNotice = strings[1];
+                            var msg = successMsg;
+                            if (data && data.unsupported && data.unsupported.length) {
+                                var list = [];
+                                data.unsupported.forEach(function (item) {
+                                    var prefix = item.modname ? (item.modname + ': ') : '';
+                                    list.push(prefix + item.files.join(', '));
+                                });
+                                msg += '\n\n' + unsupportedNotice + '\n' + list.join('\n');
+                            }
+                            alert(msg);
+                        }).catch(function(err) {
+                            notification.exception(err);
+                        });
                     }).fail(function (error) {
-                        alert("error in ajax call of insert modules" + error);
+                        notification.exception(error);
                     });
                 });
+            }).catch(function(err) {
+                notification.exception(err);
+            });
 
             // Time out required so that components can be discovered
             setTimeout(function () {
@@ -85,10 +98,12 @@ function display_modules() {
                         var dataBlockAiaCmid = this.getAttribute('data-block_aia_cmid');
                         var uniqueCmid = this.getAttribute('data-cmid');
                         // Add a notification pop up to confirm delete
-                        notification.confirm(Str.get_string('delete', 'block_ai_assistant'),
-                            Str.get_string('confirm_delete_trained_module', 'block_ai_assistant'),
-                            Str.get_string('delete', 'block_ai_assistant'),
-                            Str.get_string('no', 'block_ai_assistant'), function () {
+                        Str.get_strings([
+                            {key: 'delete', component: 'block_ai_assistant'},
+                            {key: 'confirm_delete_trained_module', component: 'block_ai_assistant'},
+                            {key: 'no', component: 'block_ai_assistant'},
+                        ]).then(function(strings) {
+                            notification.confirm(strings[0], strings[1], strings[0], strings[2], function () {
 
                                 // Perform ajax call to delete the content
                                 var delete_content = ajax.call([{
@@ -110,9 +125,12 @@ function display_modules() {
                                         var blockAiaUniqueCmid = document.getElementById('block-aia-' + uniqueCmid);
                                         blockAiaUniqueCmid.removeAttribute('disabled');
                                 }).fail(function (error) {
-                                    alert("error in ajax call of delete modules" + error);
+                                    notification.exception(error);
                                 });
                             });
+                        }).catch(function(err) {
+                            notification.exception(err);
+                        });
                     });
                 });
 
@@ -151,8 +169,8 @@ function display_modules() {
 
             }, 1000);
 
-        }).fail(function () {
-            alert('An error has occurred. Cannot display data');
+        }).fail(function (error) {
+            notification.exception(error);
         });
 
     });

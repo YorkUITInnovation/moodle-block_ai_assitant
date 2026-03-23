@@ -34,6 +34,7 @@ $string['ai_assistant'] = 'Assistant IA';
 $string['ai_assistant_instructions'] = 'Pour obtenir les meilleurs résultats de l\'Assistant IA, veuillez utiliser le modèle de plan de cours fourni dans la section Aide. '
     . 'Pour rendre l\'Assistant IA disponible aux étudiants, cliquez sur le bouton Activer l\'Assistant IA ci-dessous.';
 $string['ai_learning_assistant'] = 'Assistant d\'apprentissage IA';
+$string['ai_policy_not_accepted'] = 'Vous devez accepter la politique IA pour utiliser cette fonctionnalité.';
 $string['answer'] = 'Réponse';
 $string['autotest'] = 'AutoTest';
 $string['Autotest'] = 'AutoTest';
@@ -53,6 +54,7 @@ $string['bottom_right'] = 'En bas à droite';
 $string['chat_help'] = 'Pour de meilleurs résultats, veuillez poser des questions claires et spécifiques.'
     . 'Il est important d\'utiliser des phrases complètes avec une ponctuation appropriée. ';
 $string['chat_summary'] = 'Résumé de la discussion';
+$string['chat_warning'] = '<strong>Note :</strong> Mon compagnon d’apprentissage est un outil d’étude complémentaire. Il peut fournir de l’information au‑delà de votre matériel de cours; vérifiez toujours les détails avec votre syllabus officiel, vos cours magistraux et lectures assignées. Utilisez‑le pour soutenir votre apprentissage, et non comme substitut à votre enseignant ou aux ressources du cours.';
 $string['close'] = 'Fermer';
 $string['column_name_must_exist'] = 'La colonne {$a} doit exister';
 $string['confirm_delete_trained_module'] = 'Êtes-vous sûr de vouloir supprimer le module entraîné ?';
@@ -137,18 +139,17 @@ $string['pluginname'] = 'Al Assistant de cours';
 $string['pluginname_help'] = 'Cela peut prendre jusqu\'à une minute. Merci de votre patience.';
 $string['preparing_tutorial'] = 'Préparation de votre tutoriel. Un moment s\'il vous plaît...';
 $string['prompt'] = 'Invite';
+$string['prompt_help'] = 'Incluez toujours l’espace réservé [topic] dans votre prompt pour que le tutoriel s’adapte dynamiquement au sujet choisi par l’étudiant. Exemple : <i>"Vous êtes un tuteur expert aidant un étudiant universitaire à comprendre [topic]."</i>';
 $string['question'] = 'Question';
 $string['question_template'] = 'Modèle de question';
 $string['question_updated_successfully'] = 'Question mise à jour avec succès';
 $string['questions'] = 'Questions';
-$string['questions_instructions'] = 'Note : Le temps requis pour le téléversement peut varier selon le nombre de lignes (questions) dans le fichier. '
-    . 'Les fichiers plus volumineux avec plus de lignes prendront plus de temps à traiter. Ne fermez pas ou n\'actualisez pas votre fenêtre de navigateur. '
-    . 'Vous serez redirigé vers la page du cours une fois le téléversement terminé.';
-$string['required'] = 'Ce champ est requis';
-$string['related_question'] = "Questions connexes";
-$string['save'] = 'Enregistrer les modifications ';
-$string['save_chat'] = 'Télécharger la discussion';
-$string['section'] = 'Section';
+$string['questions_instructions'] = '<p>Note : Le temps de téléversement varie selon le nombre de lignes (questions). Les fichiers plus volumineux prennent plus de temps. Ne fermez pas votre navigateur. Vous serez redirigé vers la page du cours une fois terminé.</p><p><strong>Consultez la section Aide</strong> ci‑dessous pour des instructions détaillées sur la création du modèle de questions.</p>';
+$string['required'] = 'Ce champ est obligatoire';
+$string['related_question'] = 'Questions liées';
+$string['save'] = 'Enregistrer les modifications';
+$string['save_chat'] = 'Télécharger le clavardage';
+$string['saved_chats'] = 'Clavardages enregistrés';
 $string['section'] = 'Section';
 $string['student'] = 'Étudiant';
 $string['student_and_name'] = 'Je suis un étudiant et mon nom est {$a}.';
@@ -190,8 +191,9 @@ $string['training_visibility_warning'] = 'Important : Une fois que le contenu es
 $string['syllabus'] = 'Plan de cours';
 $string['tutorial'] = 'Tutoriel';
 $string['tutorials'] = 'Tutoriels';
-$string['syllabus_template'] = 'Modèle de plan de cours';
-$string['syllabus_uploaded'] = 'Plan de cours téléversé avec succès';
+$string['tutorials_instructions'] = '<strong>Note :</strong> Les tutoriels IA de niveau site sont gérés centralement et ne peuvent être modifiés ou supprimés au niveau du cours.';
+$string['syllabus_template'] = 'Modèle de syllabus';
+$string['syllabus_uploaded'] = 'Syllabus téléversé avec succès';
 $string['system_message'] = 'Message système';
 $string['system_message_default'] = "Vous êtes un assistant utile pour ce cours, [course_number] ([course_title]), à l\'Université York.
 - Répondez à la question aussi fidèlement que possible en utilisant le contexte fourni.
@@ -230,19 +232,23 @@ $string['markitdown_api_url'] = 'URL de l\'API MarkItDown';
 $string['markitdown_api_url_help'] = 'Entrez l\'URL du point de terminaison du service API MarkItDown pour le traitement de documents';
 $string['markitdown_api_key'] = 'Clé de l\'API MarkItDown';
 $string['markitdown_api_key_help'] = 'Entrez la clé API pour l\'authentification avec le service MarkItDown';
+$string['convert_api'] = 'ConvertApi';
+$string['convert_api_desc'] = 'ConvertApi est un service qui convertit les documents PDF et DOCX en HTML. Il est utilisé pour convertir les fichiers de ressources et de dossiers.';
+$string['convert_api_key'] = 'Clé API ConvertApi';
+$string['convert_api_key_help'] = 'Entrez la clé pour le service ConvertApi. Ce service est requis pour convertir les fichiers PDF et DOCX.';
 $string['welcome_message'] = 'Message de bienvenue';
 $string['welcome_message_help'] = 'Entrez un message de bienvenue personnalisé qui sera affiché aux utilisateurs lors de leur première interaction avec l\'Assistant IA';
 
-// Capabilites
-$string['ai_assistant:addinstance'] = 'Ajouter un bloc au cours';
-$string['ai_assistant:view_autotest'] = 'Voir/Exécuter AutoTest';
+// Capacités
+$string['ai_assistant:addinstance'] = 'Ajouter le bloc au cours';
+$string['ai_assistant:edit_site_tutorials'] = 'Gérer les tutoriels au niveau site';
+$string['ai_assistant:view_autotest'] = 'Voir / exécuter AutoTest';
 $string['ai_assistant:student'] = 'Disponible pour les étudiants';
 $string['ai_assistant:teacher'] = 'Disponible pour les enseignants';
 $string['ai_assistant:edit_site_tutorials'] = 'Modifier les tutoriels du site';
 
-
-// Bot tuning
-$string['max_tokens'] = 'Jetons maximum';
+// Paramètres de réglage du bot
+$string['max_tokens'] = 'Jetons max';
 $string['max_tokens_help'] = '4000 pour GPT-4o';
 $string['temperature'] = 'Température';
 $string['temperature_help'] = '0.1 Précis 0.5 Créatif 1.0 Sauvage';
@@ -254,15 +260,19 @@ $string['top_n'] = 'Top N';
 $string['top_n_help'] = '10 pour GPT-4o';
 $string['min_k'] = 'Min K';
 $string['min_k_help'] = '0.6 pour GPT-4o';
-$string['min_relevance'] = 'Pertinence minimale';
+$string['min_relevance'] = 'Pertinence min';
 $string['min_relevance_help'] = '0.8 pour GPT-4o';
-$string['max_context'] = 'Contexte maximum';
+$string['max_context'] = 'Contexte max';
 $string['max_context_help'] = '120000 pour GPT-4o';
 $string['no_context_llm_guess'] = 'Supposition LLM sans contexte';
 $string['no_context_llm_guess_help'] = 'Permettre au LLM de retourner une réponse lorsqu\'aucun contexte n\'est disponible';
 $string['embed_position'] = 'Position d\'intégration';
 
 // Default Tutorials
+// Tutoriels par défaut
+$string['learning_assistant_tutorials'] = 'Tutoriels Assistant d’apprentissage IA';
+$string['shortname'] = 'Nom court';
+$string['shortname_exists'] = 'Ce nom court existe déjà. Choisissez-en un autre.';
 $string['tutorial_tutor_name'] = 'Mon tuteur';
 $string['tutorial_tutor_description'] = 'L\'invite est conçue pour guider un Tuteur-IA dans l\'aide aux étudiants universitaires'
     . ' à apprendre activement et comprendre un sujet en les engageant dans une conversation personnalisée, interactive et soutenante.';
@@ -302,19 +312,16 @@ $string['syllabus_template_instructions'] = '<h3>Instructions pour utiliser le m
 <p>Le modèle de plan de cours est conçu pour assurer l\'exactitude et la cohérence lors de l\'entraînement du bot IA, AL l\'Assistant de cours
     . Le modèle consiste en des espaces réservés qui commencent par <code><</code> et se terminent par <code>></code>. Suivez
     ces étapes pour utiliser efficacement le modèle :</p>
-
 <h4>Étape 1 : Ouvrir le modèle</h4>
 <ol>
     <li>Ouvrez le fichier de modèle de plan de cours dans votre éditeur de texte ou traitement de texte préféré.</li>
 </ol>
-
 <h4>Étape 2 : Identifier les espaces réservés</h4>
 <ol start="2">
     <li>Recherchez les espaces réservés dans le modèle. Ces espaces réservés sont entourés de crochets angulaires, tels que 
         <code>&lt;CourseTitle&gt;</code>, <code>&lt;InstructorName>InstructorName&gt;</code>, etc.
     </li>
 </ol>
-
 <h4>Étape 3 : Remplacer les espaces réservés</h4>
 <ol start="3">
     <li>Remplacez chaque espace réservé par l\'information appropriée. Par exemple :
@@ -349,7 +356,6 @@ $string['syllabus_template_instructions'] = '<h3>Instructions pour utiliser le m
         <p>Si vous ajoutez de nouveaux sujets/sections, assurez-vous de les formater avec des titres (Titre 1, Titre 2 etc.)</p>
         <p>Si vous ajoutez de nouveaux tableaux, assurez-vous que la première ligne est un en-tête et que toutes les cellules ont du contenu. (Pas de cellules vides)</p>
 </div>
-
 <h4>Étape 4 : Réviser et sauvegarder</h4>
 <ol start="4">
     <li>Révisez soigneusement le modèle rempli pour vous assurer que tous les espaces réservés ont été remplacés par des
@@ -357,14 +363,12 @@ $string['syllabus_template_instructions'] = '<h3>Instructions pour utiliser le m
     </li>
     <li>Sauvegardez le fichier de plan de cours mis à jour avec un nouveau nom pour éviter d\'écraser le modèle original.</li>
 </ol>
-
 <h4>Étape 5 : Utiliser le plan de cours</h4>
 <ol start="6">
     <li>Utilisez le plan de cours complété pour votre cours. Ce document aidera à s\'assurer qu\'AL l\'Assistant de cours a
         des informations exactes et cohérentes pour aider efficacement les étudiants.
     </li>
 </ol>
-
 <p>En suivant ces instructions, vous pouvez vous assurer que le plan de cours est exact et prêt à être utilisé pour entraîner AL
     l\'Assistant de cours.</p>';
 // Question template instructions
@@ -493,3 +497,31 @@ $string['help_intro'] = '<h3>Aide de l\'Assistant IA</h3>' .
     'Pour vous aider à obtenir les meilleurs résultats de l\'Assistant IA, nous avons fourni des modèles pour les plans de cours et les questions. ' .
     'Ces modèles sont conçus pour s\'assurer que l\'Assistant IA reçoit des informations précises et cohérentes. ' .
     'Suivez les instructions ci-dessous pour utiliser efficacement les modèles.';
+
+// Politiques IA
+$string['acceptai'] = 'Accepter et continuer';
+$string['aipolicyacceptance'] = 'Acceptation de la politique IA';
+$string['declineaipolicy'] = 'Refuser';
+$string['userpolicy'] = "<h4><strong>Bienvenue dans la nouvelle fonctionnalité d’IA sur eClass&nbsp;!</strong></h4>
+<p>Cette fonctionnalité d’intelligence artificielle est propulsée par <strong>YU AURA</strong>, le système de génération augmentée 
+    par récupération (RAG) de l’Université York. Elle est conçue pour enrichir votre expérience d’apprentissage et d’enseignement 
+    en fournissant un soutien intelligent.</p>
+
+<h4><strong>Exactitude du contenu généré par l’IA</strong></h4>
+<p>YU AURA vise à fournir des informations utiles et pertinentes. Toutefois, l’exactitude des réponses générées par l’IA peut varier. 
+    Il est important de toujours vérifier les informations fournies afin de s’assurer qu’elles sont exactes, complètes et adaptées à votre 
+    contexte académique spécifique.</p>
+
+<h4><strong>Traitement de vos données</strong></h4>
+<p>Toutes les données des utilisateurs et les interactions avec YU AURA demeurent en toute sécurité sur 
+    les <strong>serveurs de l’Université York</strong>. Bien que des modèles de langage étendus externes puissent être utilisés pour générer 
+    des réponses, <strong>aucune donnée n’est stockée ni conservée par des fournisseurs tiers</strong>. Le système est conçu pour garantir que 
+    vos informations sont traitées de manière sécurisée et conforme aux normes de confidentialité de l’Université York.</p>
+<p>Un enregistrement de vos interactions avec la fonctionnalité d’IA peut être conservé dans YU AURA afin de soutenir l’analyse de l’apprentissage 
+    et l’amélioration du système. Ces données sont traitées conformément aux politiques de confidentialité et de gouvernance des données de 
+    l’Université York.</p>
+<p>Si vous avez des questions concernant l’utilisation de vos données, veuillez contacter l’équipe de soutien eClass de l’Université York.</p>
+
+<h4><strong>En continuant, vous reconnaissez avoir compris et accepté cette politique.</strong></h4>";
+
+?>

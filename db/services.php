@@ -63,7 +63,7 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
-    'blcok_block_ai_assistant_delete_autotest_question' => array(
+    'block_ai_assistant_delete_autotest_question' => array(
         'classname' => 'block_ai_assistant_autotest_ws',
         'methodname' => 'delete',
         'classpath' => 'blocks/ai_assistant/classes/external/autotest_ws.php',
@@ -117,6 +117,15 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_ai_policy' => array(
+        'classname'    => 'block_ai_assistant_ai_policy_ws',
+        'methodname'   => 'execute',
+        'classpath'    => 'blocks/ai_assistant/classes/external/ai_policy.php',
+        'description'  => 'Register user acceptance of the AI usage policy',
+        'type'         => 'write',
+        'capabilities' => '',
+        'ajax'         => true
+    ),
     'block_ai_assistant_chat' => array(
         'classname' => 'block_ai_assistant_chat_ws',
         'methodname' => 'chat',
@@ -128,7 +137,7 @@ $functions = array(
     ),
     'block_ai_assistant_chat_start' => array(
         'classname' => 'block_ai_assistant_chat_ws',
-        'methodname' => 'start ',
+        'methodname' => 'start',
         'classpath' => 'blocks/ai_assistant/classes/external/chat.php',
         'description' => 'Start a new chat session with Cria. Returns chat ID.',
         'type' => 'read',

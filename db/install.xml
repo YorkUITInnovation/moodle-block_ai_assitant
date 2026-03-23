@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="blocks/ai_assistant/db" VERSION="20250730" COMMENT="XMLDB file for Moodle blocks/ai_assistant"
+<XMLDB PATH="blocks/ai_assistant/db" VERSION="20250826" COMMENT="XMLDB file for Moodle blocks/ai_assistant"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -86,7 +86,7 @@
     <TABLE NAME="block_aia_course_mod_files" COMMENT="Default comment for the table, please edit me">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="bacmid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="blocks_aia_course_modules-&amp;gt;id"/>
+        <FIELD NAME="bacmid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="blocks_aia_course_modules-&gt;id"/>
         <FIELD NAME="cria_fileid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="trained" TYPE="int" LENGTH="1" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="0 = pending, 1= trained, 2 = error, 3 = training"/>
         <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"/>
@@ -103,9 +103,10 @@
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="1" SEQUENCE="false" COMMENT="Default courseid 1 (Site)"/>
         <FIELD NAME="blockid" TYPE="int" LENGTH="10" NOTNULL="false" DEFAULT="0" SEQUENCE="false"/>
-        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="shortname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="prompt" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="prompt" TYPE="text" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="enabled" TYPE="int" LENGTH="1" NOTNULL="false" DEFAULT="0" SEQUENCE="false" COMMENT="If enabled, it will show in the list"/>
         <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
@@ -119,6 +120,9 @@
         <INDEX NAME="courseid_x" UNIQUE="false" FIELDS="courseid"/>
         <INDEX NAME="blockid_x" UNIQUE="false" FIELDS="blockid"/>
         <INDEX NAME="enabled_x" UNIQUE="false" FIELDS="enabled"/>
+        <INDEX NAME="course_enabled_x" UNIQUE="false" FIELDS="courseid, enabled"/>
+        <INDEX NAME="shortname_x" UNIQUE="false" FIELDS="shortname"/>
+        <INDEX NAME="course_shortname_x" UNIQUE="true" FIELDS="courseid, shortname"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="block_aia_tutorial_chats" COMMENT="Chats by students">

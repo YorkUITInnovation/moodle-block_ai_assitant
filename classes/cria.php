@@ -4,6 +4,9 @@ namespace block_ai_assistant;
 
 
 use block_ai_assistant\webservice;
+use block_ai_assistant\markitdown;
+use block_ai_assistant\syllabus_parser;
+
 use Exception;
 
 class cria
@@ -192,7 +195,9 @@ class cria
             'child_bots' => $config->child_bots,
             'publish' => 0,
             'bot_contact' => $bot_contact,
-            'bot_help_text' => $bot_help_text
+            'bot_help_text' => $bot_help_text,
+            'variables' => "idNumber\nname\nip\ngrade\ngroups",
+            'preprocess_rules' => "My id number is [idNumber]\nMy name is [name]\nMy IP address is [ip]\nMy grade is [grade]\nI am in the following groups: [groups]",
         );
         return $data;
     }
@@ -296,7 +301,6 @@ class cria
         global $CFG;
         $fs = get_file_storage();
         $files = $fs->get_area_files($contextid, 'block_ai_assistant', 'syllabus', $courseid);
-
         if ($files) {
 //            $file = reset($files);
             $temppath = $CFG->dataroot . '/temp/' . $courseid . '/cria';
@@ -309,10 +313,29 @@ class cria
             }
 
             foreach ($files as $file) {
-                if ($file->get_filesize() > 0) { // Ensures it's not a directory
+                if (!$file->is_directory()) { // Ensures it's not a directory
                     $filepath = $temppath . '/' . $file->get_filename();
                     $file->copy_content_to($filepath);
-                    return $filepath;
+                    // Now convert the file using Markitdown
+                    $converted_data = (object)markitdown::execute($filepath);
+                    // Save the converted content back to a md file
+                    $md_filepath = $temppath . '/' . $converted_data->filename . '.md';
+                    file_put_contents($md_filepath, $converted_data->content);
+                    // Delete original file
+                    unlink($filepath);
+                    // Now parse the md file through the syllabus parser
+                    $parser = new syllabus_parser();
+                    $parsed_file_path = $temppath . '/' . $converted_data->filename . '_parsed.md';
+                    $new_file = $parser->execute_text_only_conversion($md_filepath, $parsed_file_path );
+                    $new_content = file_get_contents($new_file['output_file']);
+                    $html_file_path = $temppath . '/' . $converted_data->filename . '_parsed.html';
+                    file_put_contents($html_file_path, markdown_to_html($new_content));
+
+                    // Delete the original md file
+                    unlink($md_filepath);
+                    unlink($parsed_file_path);
+                    // Return the path of the new file
+                    return $html_file_path;
                 }
             }
         }

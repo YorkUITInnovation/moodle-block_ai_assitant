@@ -1,9 +1,11 @@
 {{^error_code}}
     {{{embed_code}}}
     {{#syllabus_url}}
+        <input type="hidden" id="block-ai-assistant-course-id" value="{{courseid}}">
+    {{{embed_code}}}
+    {{#syllabus_url}}
         <div class="row">
             <div class="col-md-12">
-
                 <label for="syllabus">{{#str}}syllabus, block_ai_assistant{{/str}}</label>
                 <a href="{{syllabus_url}}"
                    class="btn btn-link btn-sm"
@@ -30,7 +32,17 @@
 {{#publish_tutorials}}
     <div class="row mt-4">
         <div class="col-md-12">
+            <h6>{{#str}}learning_tutorials, block_ai_assistant{{/str}}</h6>
             <ul class="list-group mt-2">
+                <li class="list-group-item">
+                    <button type="button"
+                            id="btn-ai-assistant-manage-saved-chats"
+                            data-courseid="{{courseid}}"
+                            class="btn btn-link btn-sm"
+                            title="{{#str}}manage_saved_chats, block_ai_assistant{{/str}}"
+                    >{{#str}}manage_saved_chats, block_ai_assistant{{/str}}
+                    </button>
+                </li>
                 {{#tutorials}}
                     <li class="list-group-item">
                         <button type="button"
@@ -44,3 +56,15 @@
         </div>
     </div>
 {{/publish_tutorials}}
+
+<div class="row mt-2">
+    <div class="col-md-12">
+        <div class="alert alert-info">
+            <a href="{{#str}}student_help_url, block_ai_assistant{{/str}}"
+            title="{{#str}}user_guide, block_ai_assistant{{/str}}"
+            >
+            {{#str}}user_guide, block_ai_assistant{{/str}}
+            </a>
+        </div>
+    </div>
+</div>

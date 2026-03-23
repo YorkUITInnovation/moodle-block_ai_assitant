@@ -11,7 +11,6 @@ function block_ai_assistant_course_module_updated($event)
     $data = (object)$event->get_data();
     $TRAINING = new course_module_training($data->objectid, true);
 
-
     // Only perform if the module is in the aia_course_modules table
     switch ($TRAINING->get_module_type()) {
         case 'forum':
@@ -34,6 +33,9 @@ function block_ai_assistant_course_module_updated($event)
             break;
         case 'glossary':
             $TRAINING->glossary();
+            break;
+        case 'tab':
+            $TRAINING->tab();
             break;
     }
 }

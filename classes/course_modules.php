@@ -9,13 +9,13 @@ class course_modules
     private static function __accepted_modules()
     {
         return [
-            'forum',
             'page',
             'label',
             'book',
             'resource',
             'folder',
-            'glossary'
+            'glossary',
+            'tab'
         ];
     }
 
@@ -68,8 +68,11 @@ class course_modules
                 $section_mods = $modules->sections[$section->section];
                 foreach ($section_mods as $cmid) {
                     $mod = self::get_module_from_cmid($cmid);
-                    // Only get the modules that are accepted
-                    if (in_array($mod[1]->modname, $accepted_modules)) {
+                    // Only get the modules that are accepted (forum is a special case: news forums only)
+                    if (
+                        in_array($mod[1]->modname, $accepted_modules) || (
+                            $mod[1]->modname === 'forum' && !empty($mod[0]->type) && $mod[0]->type === 'news'
+                        )) {
                         if ($only_visible && !$mod[1]->visible) {
                             continue; // Skip if the module is not visible
                         }
@@ -159,6 +162,10 @@ class course_modules
                                 $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'glossary');
                                 $course_structure->sections[$i]->modules[$x]->icontype = 'collaboration';
                                 break;
+                            case 'tab':
+                                $course_structure->sections[$i]->modules[$x]->icon = $OUTPUT->image_url('monologo', 'mod_tab');
+                                $course_structure->sections[$i]->modules[$x]->icontype = 'content';
+                                break;
                         }
                         $x++;
                     }
@@ -227,11 +234,8 @@ class course_modules
         foreach ($file_records as $file_record) {
             // Delete the file from Cria
             $status = cria::delete_content_from_bot($file_record->cria_fileid);
-            if ($status == 200 || $status == 404) {
-                // Delete existing record from block_aia_course_mod_files
-                $DB->delete_records('block_aia_course_mod_files', ['id' => $file_record->id]);
-            }
-
+            // Delete existing record from block_aia_course_mod_files
+            $DB->delete_records('block_aia_course_mod_files', ['id' => $file_record->id]);
         }
     }
 
@@ -604,6 +608,7 @@ class course_modules
                         case 'lti':
                             $sql = "SELECT lti.*, cm.availability FROM {lti} lti 
                                         Inner Join {course_modules} cm ON cm.instance = lti.id WHERE cm.id = ?";
+                            $data = $DB->get_record_sql($sql, [$mod[1]->id]);
                             $content .= '<h3>' . $data->name . '</h3>' . "\n";
                             if ($data->availability) {
                                 $content .= self::get_availability_content($data->name, $data->availability);
@@ -735,16 +740,15 @@ class course_modules
         }
 
         foreach ($modules as $module) {
-            // Check if the module has a valid Cria file ID
-            if (empty($module->cria_fileid) || $module->cria_fileid == 0) {
-                // Use cria to check the status of the module
+            // Only check status if the module has a valid Cria file ID
+            if (!empty($module->cria_fileid) && (int)$module->cria_fileid !== 0) {
                 $status = cria::get_content_training_status($module->cria_fileid);
-                if ($status->training_status_id != 0) {
-                    // Update the record with the new Cria file ID
+                if (isset($status->training_status_id)) {
+                    // Update the trained status for this module
                     $DB->set_field(
                         'block_aia_course_modules',
                         'trained',
-                        $status->training_status_id,
+                        (int)$status->training_status_id,
                         ['id' => $module->id]
                     );
                 }
@@ -756,8 +760,10 @@ class course_modules
 
     /**
      * Get the training status of all files in a course module.
+     * Aggregates per-file statuses into a single module status with the following precedence:
+     * 1 -> All files trained; 2 -> Any file has error; 3 -> Any file is training; 0 -> Otherwise pending.
      * @param int $bacmid
-     * @return int|void
+     * @return int
      * @throws \dml_exception
      */
     public static function get_training_status(int $bacmid)
@@ -768,85 +774,72 @@ class course_modules
         if (empty($files)) {
             return 0; // No files found
         }
-        $module_status = []; // Default status
-        $count = count($files);
-        $trained_files = 0;
+
+        $statuses = [];
+
         foreach ($files as $file) {
-            // Check if the file has a valid Cria file ID
-            if (empty($file->cria_fileid) || $file->cria_fileid == 0) {
-                continue; // Skip files without a valid Cria file ID
-            }
-            // If already trained, skip
-            if ($file->trained != 1) {
-                // If the trained status is 0, check the status on Cria
-                if ($file->trained == 0 || $file->trained == 3) {
-                    // Use cria to check the status of the file
-                    $status = cria::get_content_training_status($file->cria_fileid);
-                        if ($status->training_status_id != 0) {
-                            $DB->set_field(
-                            'block_aia_course_mod_files',
-                            'trained',
-                            $status->training_status_id,
-                            ['id' => $file->id]
-                        );
-                        $module_status[] = $status->training_status_id; // Collect the trained status
-                    }
-                } else {
-                    $module_status[] = $file->trained; // Collect the trained status
+            $effectiveStatus = (int)($file->trained ?? 0);
+
+            // Query Cria only if we have a valid file id and the file is not already trained
+            if (!empty($file->cria_fileid) && (int)$file->cria_fileid !== 0 && (int)$file->trained !== 1) {
+                $status = cria::get_content_training_status($file->cria_fileid);
+                if (isset($status->training_status_id)) {
+                    $effectiveStatus = (int)$status->training_status_id;
+                    // Persist the refreshed status for this file
+                    $DB->set_field(
+                        'block_aia_course_mod_files',
+                        'trained',
+                        $effectiveStatus,
+                        ['id' => $file->id]
+                    );
                 }
-            } else {
-                $trained_files++;
             }
 
-            if ($trained_files == $count) {
-                return 1; // All files are trained
-            } else {
-                // count how many files are training (2)
-                if (in_array(2, $module_status)) {
-                    return 2; // Some files are training
-                }
-                // count how many files have errors (3)
-                if (in_array(3, $module_status)) {
-                    return 3; // Some files have errors
-                }
-                // If no files are trained, return 0
-                if (in_array(0, $module_status)) {
-                    return 0; // No files are trained
-                }
+            // If already trained, ensure the status reflects that
+            if ((int)$file->trained === 1) {
+                $effectiveStatus = 1;
+            }
+
+            $statuses[] = $effectiveStatus;
+        }
+
+        // Aggregation with clear precedence
+        $total = count($statuses);
+        $trainedCount = 0;
+        $hasError = false;
+        $hasTraining = false;
+
+        foreach ($statuses as $s) {
+            if ($s === 1) {
+                $trainedCount++;
+            } elseif ($s === 2) {
+                $hasError = true;
+            } elseif ($s === 3) {
+                $hasTraining = true;
             }
         }
+
+        if ($trainedCount === $total) {
+            return 1; // All files trained
+        }
+        if ($hasError) {
+            return 2; // At least one file has an error
+        }
+        if ($hasTraining) {
+            return 3; // At least one file is training
+        }
+
+        return 0; // Pending/not started
     }
 
     /**
-     * Get the accepted file types for upload
+     * Get the accepted file types for upload.
+     * Delegates to markitdown::supported_mime_types() which reads from plugin config (allowed_file_types setting).
      * @return array
      */
-    public static function get_accepted_file_types()
+    public static function get_accepted_file_types(): array
     {
-        return [
-//            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/pdf',
-            'text/plain',
-            'text/html',
-            'text/rtf',
-            'text/markdown',
-            'application/vnd.oasis.opendocument.text',
-            'application/vnd.ms-powerpoint',
-            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'application/vnd.ms-excel',
-            'text/csv',
-            'audio/mpeg',
-            'audio/mp3',
-            'audio/x-mpeg-3',
-            'audio/x-mp3',
-            'audio/x-wav',
-            'audio/wav',
-            'audio/x-m4a',
-            'audio/m4a',
-            'video/mp4',
-        ];
+        return markitdown::supported_mime_types();
     }
 
     public static function get_course_modules_available_to_students(int $courseid): array
@@ -867,5 +860,19 @@ class course_modules
         $modules = $DB->get_records_sql($sql, [$courseid]);
 
         return $modules ?: [];
+    }
+
+    /**
+     * Delete course module by cmid (cmid is unique in block_aia_course_modules)
+     * @param int $cmid
+     * @return void
+     * @throws \dml_exception
+     */
+    public static function delete_course_module_by_cmid(int $cmid): void
+    {
+        global $DB;
+        if ($bacmid = $DB->get_field('block_aia_course_modules', 'id', ['cmid' => $cmid])) {
+            self::delete_course_module((int)$bacmid);
+        }
     }
 }

@@ -34,8 +34,9 @@ $string['ai_assistant'] = 'AI Assistant';
 $string['ai_assistant_instructions'] = 'To get the best results from the AI Assistant, please use the syllabus template provided in the Help section. '
     . 'To make the AI Assistant available to students, click to Enable AI Assistant button below.';
 $string['ai_learning_assistant'] = 'AI Learning Assistant';
+$string['ai_policy_not_accepted'] = 'You must accept the AI policy to use this feature.';
 $string['answer'] = 'Answer';
-$string['autotest'] = 'AutoTest';
+$string['autotest'] = 'AutoTest';;
 $string['Autotest'] = 'AutoTest';
 $string['autotest_questions'] = 'AutoTest questions';
 $string['autotest_template'] = 'AutoTest Template';
@@ -50,9 +51,11 @@ $string['bot_type_id'] = 'Bot Type ID';
 $string['bot_type_id_help'] = 'Bot Type ID from Cria';
 $string['bottom_left'] = 'Bottom left';
 $string['bottom_right'] = 'Bottom right';
+$string['chat_disclaimer'] = 'AI-generated content. Please verify for accuracy.';
 $string['chat_help'] = 'For best results, please ask clear and specific questions.'
     . 'It is important that you use complete sentences with proper punctuation. ';
 $string['chat_summary'] = 'Chat Summary';
+$string['chat_warning'] = '<strong>Note:</strong> My Learning Assistant is a supplemental study tool. It may provide information beyond your course material, so always verify details against your official syllabus, lectures, and assigned readings. Use it to support your learning, not as a substitute for your instructor’s guidance or course resources.';
 $string['close'] = 'Close';
 $string['column_name_must_exist'] = 'Column {$a} must exist';
 $string['confirm_delete_trained_module'] = 'Are you sure you want to delete the trained module?';
@@ -63,6 +66,12 @@ $string['configure_settings'] = 'Configure Settings';
 $string['content_found_at'] = 'Content can be found at this link: ';
 $string['content_language'] = 'Content language';
 $string['content_language_help'] = 'Chosing the proper content language for your documents will result in better training of the AI Assistant. In return, the AI Assistant will be able to provide more accurate answers.';
+$string['course_module_training_status'] = 'Course Module Training Status';
+$string['course_modules'] = 'Course Modules';
+$string['convert_api'] = 'ConvertApi';
+$string['convert_api_desc'] = 'ConvertApi is a service that converts documents to different formats. It is used to convert documents to a format that the AI Assistant can process.';
+$string['convert_api_key'] = 'ConvertApi API Key';
+$string['convert_api_key_help'] = 'Enter the key for ConvertApi service. This is a required service.';
 $string['course_module_training_status'] = 'Course Module Training Status';
 $string['course_modules'] = 'Course Modules';
 $string['cria_token'] = 'Cria Token';
@@ -122,11 +131,13 @@ $string['import'] = 'Import';
 $string['import_questions'] = 'Import Questions';
 $string['import_successful'] = 'Import successful.';
 $string['invalid_token'] = '498 Invalid Token';
+$string['help_url'] = 'https://lthelp.yorku.ca/ai-tools';
 $string['keywords'] = "Keywords";
 $string['learning_assistant_help'] = "Select the content you would like to get learning assistance on. ";
-
+$string['learning_tutorials'] = "My Learning Assistant";
 $string['letAIGenerate'] = "Let AI generate an answer based on your answer above?";
 $string['manage_tutorials'] = "Manage AI Learning Assistant";
+$string['manage_saved_chats'] = "Manage Saved Chats";
 $string['modules'] = "Modules";
 $string['name'] = "Name";
 $string['no_context_message'] = 'No Context Message';
@@ -137,21 +148,24 @@ $string['pluginname'] = 'Al Course Assistant';
 $string['pluginname_help'] = 'This may take up to a minute. Thanks for your patience.';
 $string['preparing_tutorial'] = 'Preparing your tutorial. One moment please...';
 $string['prompt'] = 'Prompt';
+$string['prompt_help'] = 'Always include the placeholder [topic] in your prompt to ensure the AI Tutorial dynamically adapts to the subject selected by the student. For example: <i>"You are an expert tutor helping a university student understand [topic]."</i> This allows the tutorial to personalize its guidance based on the student\'s chosen area of study while maintaining a consistent instructional format.';
 $string['question'] = 'Question';
 $string['question_template'] = 'Question Template';
 $string['question_updated_successfully'] = 'Question updated successfully';
 $string['questions'] = 'Questions';
-$string['questions_instructions'] = 'Note: The time required for the upload may vary depending on the number of rows (questions) in the file. '
+$string['questions_instructions'] = '<p>Note: The time required for the upload may vary depending on the number of rows (questions) in the file. '
     . 'Larger files with more rows will take longer to process. Do not close or refresh your browser window. '
-    . 'You will be redirected to the course page once the upload is complete.';
+    . 'You will be redirected to the course page once the upload is complete.</p>
+<p><strong>Refer to the Help section</strong> below for detailed instructions on how to create the question template.</p>';
 $string['required'] = 'This field is required';
 $string['related_question'] = "Related Questions";
 $string['save'] = 'Save changes ';
 $string['save_chat'] = 'Download Chat';
-$string['section'] = 'Section';
+$string['saved_chats'] = 'Saved Chats';
 $string['section'] = 'Section';
 $string['student'] = 'Student';
 $string['student_and_name'] = 'I am a student and my name is {$a}.';
+$string['student_help_url'] = 'https://lthelp.yorku.ca/student-guide-to-eclass';
 $string['subtitle'] = 'Subtitle';
 $string['subtitle_help'] = 'Subtitle help text here';
 $string['summarize_chat'] = 'Summarize Chat';
@@ -184,12 +198,39 @@ $string['supported_formats'] = '<p>Note: Unsupported file formats will not be pr
     . 'PowerPoint presentations (.pptx only)</li><li>Excel spreadsheets (.xlsx only)</li><li>CSV files (.csv)</li><li>'
     . 'Audio files (.mp3, .wav, .m4a)</li><li>Video files (.mp4)</li></ul></p>';
 $string['supported_formats_title'] = 'Supported File Formats';
+// Messages for training alerts
+$string['train_success_message'] = 'Successfully added content to the course assistant';
+$string['unsupported_files_notice'] = 'Some files were not trained (unsupported type):';
+
+$string['syllabus_instructions'] = 'To ensure optimal performance from the AI Course Assistant, it is <b>essential</b> '
+    . 'that you use the <a href="/blocks/ai_assistant/doc_templates/syllabus_template.docx" title="SYllabus Template Download">provided syllabus template</a>. '
+    . 'Following these guidelines will significantly improve the accuracy and relevance of responses to student questions.';
+$string['syllabus_instructions_title'] = 'Important: Syllabus Instructions';
+$string['syllabus_instructions_more'] = 'Learn more';
+$string['syllabus_instructions_why'] = '<h5>Why?</h5>Using the provided syllabus template ensures a consistent document structure so the AI Course Assistant can parse and understand course details more accurately. The tool only supports Word documents (.docx) for syllabus uploads.';
+$string['syllabus_instructions_why_word'] = '<h5>Why Only Word Documents?</h5><p><img class="img-thumbnail" style="width:50%; height=auto;" src="/blocks/ai_assistant/pix/pdf_word_structured.png" alt="Image comparing unstructured PDF to structured Word for AI Nodes"></p></p><p>The AI Course Assistant works best with Word documents because they use a structured format called OpenXML. This format organizes content into clear sections (headings, paragraphs, tables), making it easy for the AI to read and retrieve information accurately. Other formats, like PDFs, often lack this structure, which can lead to errors.</p>';
+$string['syllabus_instructions_no_template'] = '<h5>I Prefer Using My Existing Syllabus</h5>
+<p>You can upload your own Word document (<strong>.docx</strong>) syllabus, but please <strong>apply proper heading styles using Word’s built-in “Styles” '
+    . 'feature (e.g., Heading 1, Heading 2, Heading 3)</strong>. This helps the AI understand and organize your content accurately.</p>
+<h6>Important for tables:</h6>
+<ul>
+    <li>Place each table immediately after its related heading</li>
+    <li>The first row must contain clear column headers</li>
+    <li>Avoid using complex column structures. Example: mixing merged and un-merged columns</li>
+    <li>Avoid empty cells.</li>
+</ul>
+
+<p><a href="/blocks/ai_assistant/doc/AI_Course_Assistant_Syllabus_Upload_Guide.docx" title="Syllabus Upload Guide Download">Download the Syllabus Upload Guide</a> for more detailed instructions.</p>
+
+<p>Following these steps ensures the AI can read your syllabus correctly and provide accurate answers to students.</p>';
+
 $string['training_visibility_warning'] = 'Important: Once content is trained by the AI Assistant, it will be available '
     . 'to all students in the course, regardless of whether they have permission to view the original resource '
     . 'or activity. Please consider this when selecting content for training.';
 $string['syllabus'] = 'Syllabus';
 $string['tutorial'] = 'Tutorial';
 $string['tutorials'] = 'Tutorials';
+$string['tutorials_instructions'] = '<strong></strong>Note:</strong> Site-wide AI Learning Companion Tutorials are centrally managed and cannot be modified or deleted at the course level.';
 $string['syllabus_template'] = 'Syllabus Template';
 $string['syllabus_uploaded'] = 'Syllabus successfully uploaded';
 $string['system_message'] = 'System Message';
@@ -230,11 +271,37 @@ $string['markitdown_api_url'] = 'MarkItDown API URL';
 $string['markitdown_api_url_help'] = 'Enter the URL of the MarkItDown API service endpoint for document processing';
 $string['markitdown_api_key'] = 'MarkItDown API Key';
 $string['markitdown_api_key_help'] = 'Enter the API key for authentication with the MarkItDown service';
+
+// Allowed file types setting
+$string['allowed_file_types'] = 'Allowed File Types';
+$string['allowed_file_types_desc'] = 'Select which file types are allowed for processing and upload';
+$string['allowed_file_types_help'] = 'Choose the MIME types that users can upload and process. Only selected file types will be accepted by the system.';
+
+// File type options
+$string['filetype_msword'] = 'Microsoft Word (.doc)';
+$string['filetype_docx'] = 'Microsoft Word (.docx)';
+$string['filetype_pdf'] = 'PDF Documents (.pdf)';
+$string['filetype_text_plain'] = 'Plain Text (.txt)';
+$string['filetype_text_html'] = 'HTML Files (.html)';
+$string['filetype_text_rtf'] = 'Rich Text Format (.rtf)';
+$string['filetype_text_markdown'] = 'Markdown Files (.md)';
+$string['filetype_odt'] = 'OpenDocument Text (.odt)';
+$string['filetype_ppt'] = 'Microsoft PowerPoint (.ppt)';
+$string['filetype_pptx'] = 'Microsoft PowerPoint (.pptx)';
+$string['filetype_xlsx'] = 'Microsoft Excel (.xlsx)';
+$string['filetype_xls'] = 'Microsoft Excel (.xls)';
+$string['filetype_csv'] = 'CSV Files (.csv)';
+$string['filetype_audio_mpeg'] = 'MPEG Audio (.mp3)';
+$string['filetype_audio_wav'] = 'WAV Audio (.wav)';
+$string['filetype_audio_m4a'] = 'M4A Audio (.m4a)';
+$string['filetype_video_mp4'] = 'MP4 Video (.mp4)';
+
 $string['welcome_message'] = 'Welcome Message';
 $string['welcome_message_help'] = 'Enter a custom welcome message that will be displayed to users when they first interact with the AI Assistant';
 
 // Capabilites
 $string['ai_assistant:addinstance'] = 'Add Block to course';
+$string['ai_assistant:edit_site_tutorials'] = 'Edit Site Tutorials';
 $string['ai_assistant:view_autotest'] = 'View/Run AutoTest';
 $string['ai_assistant:student'] = 'Available to students';
 $string['ai_assistant:teacher'] = 'Available to teachers';
@@ -263,6 +330,9 @@ $string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when n
 $string['embed_position'] = 'Embed Position';
 
 // Default Tutorials
+$string['learning_assistant_tutorials'] = 'AI Learning Assistant Tutorials';
+$string['shortname'] = 'Short Name';
+$string['shortname_exists'] = 'Shortname already exist. Please choose a different shortname.';
 $string['tutorial_tutor_name'] = 'My Tutor';
 $string['tutorial_tutor_description'] = 'The prompt is designed to guide an AI-Tutor in helping university students'
     . ' actively learn and understand a topic by engaging them in a personalized, interactive, and supportive conversation.';
@@ -283,17 +353,17 @@ $string['tutorial_tutor_prompt'] = "- Start by introducing yourself to the unive
 - When a student demonstrates that they know the concept, you can move the conversation to a close and tell them you’re here to help if they have further questions. 
 - If the student diverts onto another topic that has nothing to do with this topic: [topic], then ask the student to remain on topic because this is what they asked to be tutored on.";
 
-$string['tutorial_quiz_name'] = 'Quiz Me ON...';
+$string['tutorial_quiz_name'] = 'Quiz Me On...';
 $string['tutorial_quiz_description'] = 'This activity is designed to help students review and reinforce their'
     . ' understanding of a specific topic through a structured multiple-choice quiz. The quiz consists of 20 questions,'
     . ' each with four answer options (A, B, C, and D). After each response, students receive immediate feedback to'
     . ' support learning and reflection. The quiz is delivered one question at a time to encourage focus and'
     . ' engagement. At the end, students receive a summary of their performance along with suggestions for improvement.'
     . ' The format is intended to be interactive, self-paced, and supportive of independent learning.';
-$string['tutorial_quiz_prompt'] = "- Please prepare a multiple-choice quiz on topic: [topic] with 20 questions with four possible choices, labelled A, B, C, and D.
+$string['tutorial_quiz_prompt'] = "- Please prepare a multiple-choice quiz on topic: [topic] with 10 questions with four possible choices, labelled A, B, C, and D.
 - Create all questions from your knowledge base on the topic [topic] 
-- Wait for me to respond with a label after each question, provide feedback on my answer, and then ask the next question. 
-- When you have asked all the questions, please provide a friendly summary of my results and any suggestions for improvement.
+- Wait for me to respond with a label. Never expect the bracket ) in my answer. After each question, provide feedback on my answer, and then ask the next question. 
+- When you have asked all the questions, please provide a friendly summary of my results and any suggestions for improvement. Also, ask me if I would like to try another set of questions. Wait for me to respond.  If yes, restart a new quiz session with ten additional questions. 
 - If you are continuing a previous session, continue asking questions. Start at the last number plus 1.
 - If a student starts asking questions instead of answering the quiz questions, tell the student that you only do quizzes.";
 
@@ -317,19 +387,20 @@ $string['syllabus_template_instructions'] = '<h3>Instructions for Using the Syll
 
 <h4>Step 3: Replace Placeholders</h4>
 <ol start="3">
-    <li>Replace each placeholder with the appropriate information. For example:
+    <li>Replace each placeholder, including the angle brackets (< >) with the appropriate information. For example:
+    If the course you are teaching is "Introduction to Psychology" and the course code is PHYSC_1000 and the instructor is "Dr. Smith", you would replace:
         <ul>
             <li><code>
                 &lt;Course Code&gt;
-            </code>: Enter the code for the course.
+            </code>: PHYSC_1000
             </li>
             <li><code>
                 &lt;Course Title&gt;
-            </code>: Enter the title of the course.
+            </code>: Introduction to Psychology
             </li>
             <li><code>
                 &lt;Instructor Name&gt;
-            </code>: Enter the name of the instructor.
+            </code>: Dr. Smith
             </li>
             <li><code>
                 &lt;Course Description&gt;
@@ -493,3 +564,26 @@ $string['help_intro'] = '<h3>AI Assistant Help</h3>' .
     'To help you get the best results from the AI Assistant, we have provided templates for syllabi and questions. ' .
     'These templates are designed to ensure that the AI Assistant receives accurate and consistent information. ' .
     'Follow the instructions below to use the templates effectively.';
+
+
+// AI Policies
+$string['acceptai'] = 'Accept and continue';
+$string['aipolicyacceptance'] = 'AI policy acceptance';
+$string['declineaipolicy'] = 'Decline';
+$string['userpolicy'] = "<h4><strong>Welcome to the new AI feature in eClass!</strong></h4>
+    <p>This AI feature is powered by <strong>YU AURA</strong>, York University's Retrieval-Augmented Generation (RAG) system.
+It is designed to enhance your learning and teaching experience by providing intelligent support.</p>
+
+    <h4><strong>Accuracy of AI-generated content</strong></h4>
+    <p>YU AURA aims to provide helpful and relevant information. However, the accuracy of AI-generated responses may vary. Always verify the 
+        information provided to ensure it is accurate, complete, and appropriate for your specific academic context.</p>
+
+    <h4><strong>How your data is processed</strong></h4>
+    <p>All user data and interactions with YU AURA remain securely on <strong>York University servers</strong>. While external LLMs 
+        may be used to generate responses, <strong>no data is stored or retained by third-party providers</strong>. The system is designed to 
+        ensure that your information is processed securely and in compliance with York University’s privacy standards.</p>
+    <p>A record of your interactions with the AI feature may be stored within YU AURA to support learning analytics and system improvement.
+This data is handled in accordance with York University’s privacy and data governance policies.</p>
+    <p>If you have questions about how your data is used, please contact the York University eClass support team.</p>
+
+    <h4><strong>By continuing, you acknowledge that you understand and agree to this policy.</strong></h4>";
