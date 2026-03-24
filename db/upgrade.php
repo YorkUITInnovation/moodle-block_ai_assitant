@@ -251,6 +251,20 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         // Ai_assistant savepoint reached.
         upgrade_block_savepoint(true, 2025082600, 'ai_assistant');
     }
+
+    if ($oldversion < 2026032001) {
+
+        // Ensure no_context_use_message and no_context_llm_guess are correctly
+        // set in the plugin config. These were previously hardcoded set_config()
+        // calls outside the admin block in settings.php and may be missing or
+        // incorrect in existing installs.
+        set_config('no_context_use_message', 1, 'block_ai_assistant');
+        set_config('no_context_llm_guess', 0, 'block_ai_assistant');
+
+        // Ai_assistant savepoint reached.
+        upgrade_block_savepoint(true, 2026032001, 'ai_assistant');
+    }
+
     return true;
 }
 
