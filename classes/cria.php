@@ -40,14 +40,6 @@ class cria
         $data = self::get_create_cria_bot_config($course_id);
         $data['id'] = $botid;
 
-        // DEBUG - log payload to check no_context values being sent to CRIA
-        $debug = [
-            'no_context_message'     => $data['no_context_message'],
-            'no_context_use_message' => $data['no_context_use_message'],
-            'no_context_llm_guess'   => $data['no_context_llm_guess'],
-        ];
-        error_log('CRIA update_bot_instance debug: ' . json_encode($debug));
-        // END DEBUG
 
         $updated_bot_name = webservice::exec($method, $data);
 
