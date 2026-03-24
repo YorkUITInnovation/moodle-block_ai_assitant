@@ -9,16 +9,23 @@ export const init = () => {
 
 /**
  * Initialise Bootstrap 5 popovers on the supported modules/formats buttons.
- * Moodle 5 uses Bootstrap 5 which requires explicit popover initialisation.
+ * - data-bs-trigger="focus" dismisses on click away
+ * - active class added on show, removed on hide for depressed/highlighted effect
  */
 function init_popovers() {
     var popoverElements = document.querySelectorAll('[data-bs-toggle="popover"]');
     popoverElements.forEach(function(el) {
         // eslint-disable-next-line no-undef
-        new bootstrap.Popover(el, {
+        var pop = new bootstrap.Popover(el, {
             html: true,
-            trigger: 'click',
+            trigger: 'focus',
             placement: 'bottom'
+        });
+        el.addEventListener('show.bs.popover', function() {
+            el.classList.add('active');
+        });
+        el.addEventListener('hide.bs.popover', function() {
+            el.classList.remove('active');
         });
     });
 }
