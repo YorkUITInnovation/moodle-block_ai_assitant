@@ -280,10 +280,17 @@ if ($hassiteconfig) {
     ));
 
     $settings->add(new admin_setting_configcheckbox(
+        'block_ai_assistant/no_context_use_message',
+        get_string('no_context_use_message', 'block_ai_assistant'),
+        get_string('no_context_use_message_help', 'block_ai_assistant'),
+        1
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
         'block_ai_assistant/no_context_llm_guess',
         get_string('no_context_llm_guess', 'block_ai_assistant'),
-        '',
-        1
+        get_string('no_context_llm_guess_help', 'block_ai_assistant'),
+        0
     ));
 
     $settings->add(new admin_setting_configselect(
@@ -390,8 +397,6 @@ set_config('requires_user_prompt', 1, 'block_ai_assistant');
 set_config('user_prompt', 'Today\'s date is [current_date]. q:', 'block_ai_assistant');
 set_config('theme_color', '#e31837', 'block_ai_assistant');
 set_config('max_context', 120000, 'block_ai_assistant');
-set_config('no_context_use_message', 1, 'block_ai_assistant');
-set_config('no_context_llm_guess', 0, 'block_ai_assistant');
 set_config('email', '', 'block_ai_assistant');
 set_config('available_child', 0, 'block_ai_assistant');
 set_config('parse_strategy', 'GENERIC', 'block_ai_assistant');
