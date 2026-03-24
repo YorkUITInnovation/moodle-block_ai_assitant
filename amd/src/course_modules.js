@@ -4,7 +4,24 @@ import * as Str from 'core/str';
 
 export const init = () => {
     display_modules();
+    init_popovers();
 };
+
+/**
+ * Initialise Bootstrap 5 popovers on the supported modules/formats buttons.
+ * Moodle 5 uses Bootstrap 5 which requires explicit popover initialisation.
+ */
+function init_popovers() {
+    var popoverElements = document.querySelectorAll('[data-bs-toggle="popover"]');
+    popoverElements.forEach(function(el) {
+        // eslint-disable-next-line no-undef
+        new bootstrap.Popover(el, {
+            html: true,
+            trigger: 'click',
+            placement: 'bottom'
+        });
+    });
+}
 
 /**
  * Display course modules
