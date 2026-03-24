@@ -16,7 +16,7 @@ function init_popovers() {
     var popoverElements = document.querySelectorAll('[data-bs-toggle="popover"]');
     popoverElements.forEach(function(el) {
         // eslint-disable-next-line no-undef
-        var pop = new bootstrap.Popover(el, {
+        new bootstrap.Popover(el, {
             html: true,
             trigger: 'focus',
             placement: 'bottom'
