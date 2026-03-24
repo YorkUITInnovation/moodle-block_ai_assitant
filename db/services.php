@@ -63,7 +63,7 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
-    'blcok_block_ai_assistant_delete_autotest_question' => array(
+    'block_ai_assistant_delete_autotest_question' => array(
         'classname' => 'block_ai_assistant_autotest_ws',
         'methodname' => 'delete',
         'classpath' => 'blocks/ai_assistant/classes/external/autotest_ws.php',
