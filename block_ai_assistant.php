@@ -214,7 +214,7 @@ class block_ai_assistant extends block_base
         // get embed code data
         $embed_session_data = cria::start_session(
                 $this->page->course->id,
-                $course_record->bot_api_key,
+                $course_record->bot_api_key ?? '',
                 $payload) ;
 
         $embed_code_data = '<script>' . $embed_session_data . '</script>';
