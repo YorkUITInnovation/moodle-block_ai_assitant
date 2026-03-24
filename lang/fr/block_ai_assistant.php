@@ -134,10 +134,6 @@ $string['name'] = "Nom";
 $string['no_context_message'] = 'Message sans contexte';
 $string['no_context_message_default'] = 'Je suis désolé, je n\'ai trouvé aucune information. Veuillez reformuler votre question';
 $string['no_context_message_help'] = 'Message affiché lorsque le bot ne trouve pas d\'information pertinente dans son contenu entraîné.';
-$string['no_context_use_message'] = 'Utiliser le message sans contexte';
-$string['no_context_use_message_help'] = 'Lorsque activé, le bot répondra avec le message sans contexte ci-dessus au lieu d\'essayer de répondre à partir de ses connaissances générales.';
-$string['no_context_llm_guess'] = 'Autoriser le LLM à deviner';
-$string['no_context_llm_guess_help'] = 'Lorsque activé, le bot tentera de répondre en utilisant ses connaissances générales même si aucun contenu pertinent n\'est trouvé. Désactivez cette option pour appliquer strictement le message sans contexte.';
 $string['pending'] = 'En attente';
 $string['pluginname'] = 'Al Assistant de cours';
 $string['pluginname_help'] = 'Cela peut prendre jusqu\'à une minute. Merci de votre patience.';
@@ -270,6 +266,8 @@ $string['max_context'] = 'Contexte max';
 $string['max_context_help'] = '120000 pour GPT-4o';
 $string['no_context_llm_guess'] = 'Supposition LLM sans contexte';
 $string['no_context_llm_guess_help'] = 'Permettre au LLM de retourner une réponse lorsqu\'aucun contexte n\'est disponible';
+$string['no_context_use_message'] = 'Utiliser le message sans contexte';
+$string['no_context_use_message_help'] = 'Lorsque activé, le bot répondra avec le message sans contexte configuré ci-dessus au lieu d\'utiliser la réponse par défaut du système.';
 $string['embed_position'] = 'Position d\'intégration';
 
 // Default Tutorials

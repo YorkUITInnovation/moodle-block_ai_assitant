@@ -143,10 +143,6 @@ $string['name'] = "Name";
 $string['no_context_message'] = 'No Context Message';
 $string['no_context_message_default'] = 'I\'m sorry, I couldn\'t find any information. Please rephrase your question';
 $string['no_context_message_help'] = 'Message shown to users when the bot cannot find relevant information in its trained content.';
-$string['no_context_use_message'] = 'Use No Context Message';
-$string['no_context_use_message_help'] = 'When enabled, the bot will reply with the No Context Message above instead of attempting to answer from general knowledge.';
-$string['no_context_llm_guess'] = 'Allow LLM to Guess';
-$string['no_context_llm_guess_help'] = 'When enabled, the bot will attempt to answer using its general knowledge even when no relevant content is found. Leave disabled to strictly enforce the No Context Message.';
 $string['pending'] = 'Pending';
 $string['pluginname'] = 'Al Course Assistant';
 $string['pluginname_help'] = 'This may take up to a minute. Thanks for your patience.';
@@ -331,6 +327,8 @@ $string['max_context'] = 'Max Context';
 $string['max_context_help'] = '120000 for GPT-4o';
 $string['no_context_llm_guess'] = 'No Context LLM Guess';
 $string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when no context is available';
+$string['no_context_use_message'] = 'Use No Context Message';
+$string['no_context_use_message_help'] = 'When enabled, the bot will reply with the configured No Context Message instead of the system default response.';
 $string['embed_position'] = 'Embed Position';
 
 // Default Tutorials

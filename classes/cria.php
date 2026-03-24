@@ -133,7 +133,9 @@ class cria
             // Set variables
             $subtitle = $block_settings->subtitle;
             $welcome_message = $block_settings->welcome_message;
-            $no_context_message = $block_settings->no_context_message;
+            $no_context_message = !empty($block_settings->no_context_message)
+                ? $block_settings->no_context_message
+                : $config->no_context_message;
             $embed_position = $block_settings->embed_position;
             $bot_contact = $block_settings->bot_contact;
             $bot_help_text = $block_settings->bot_help_text;
