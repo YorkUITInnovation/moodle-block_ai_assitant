@@ -100,22 +100,22 @@ class course_modules
                             $status = self::get_training_status($ai_assistant_module->id);
                             switch ($status) {
                                 case 0:
-                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-warning">'
+                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge bg-warning text-dark">'
                                         . get_string('pending', 'block_ai_assistant')
                                         . '</span>';
                                     break;
                                 case 1:
-                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-success">'
+                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge bg-success text-white">'
                                         . get_string('trained', 'block_ai_assistant')
                                         . '</span>';;
                                     break;
                                 case 2:
-                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-danger">'
+                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge bg-danger text-white">'
                                         . get_string('error', 'block_ai_assistant')
                                         . '</span>';
                                     break;
                                 case 3:
-                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge badge-info">'
+                                    $course_structure->sections[$i]->modules[$x]->trained = '<span class="badge bg-info text-dark">'
                                         . get_string('training', 'block_ai_assistant')
                                         . '</span>';
                                     break;

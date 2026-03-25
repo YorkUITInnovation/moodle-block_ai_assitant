@@ -42,14 +42,14 @@
                            class="select-all-checkbox">
                     <label for="selectAll-{{idname}}">Select All</label>
                     {{#modules}}
-                        <div class="activitytitle media modtype_{{modname}} position-relative align-self-start mt-1 mb-1">
+                        <div class="activitytitle d-flex modtype_{{modname}} position-relative align-self-start mt-1 mb-1">
                             <label>
                                 <div class="d-flex align-items-center">
 
                                     <input
                                             id="block-aia-{{cmid}}"
                                             type="checkbox"
-                                            class="courseModuleCheckbox module-checkbox-{{idname}} align-self-start mr-3"
+                                            class="courseModuleCheckbox module-checkbox-{{idname}} align-self-start me-3"
                                             data-section="{{idname}}"
                                             data-sectionname="{{sectionname}}"
                                             data-name="{{name}}"
@@ -62,7 +62,7 @@
                                             disabled
                                         {{/trained}}
                                     >
-                                    <span class="activityiconcontainer {{icontype}} courseicon align-self-start mr-3"
+                                    <span class="activityiconcontainer {{icontype}} courseicon align-self-start me-3"
                                           style="width: 24px; height:24px;">
                                     <!--<img src="http://localhost:8180/theme/image.php/moove/page/1722556551/monologo?filtericon=1" class="activityicon " alt="Page icon">-->
 
@@ -76,12 +76,12 @@
                                     </span>
 
                                     {{^isavailable}}
-                                        <span class="text-danger ml-1" title="{{#str}}hiddenfromstudents, core{{/str}}">
+                                        <span class="text-danger ms-1" title="{{#str}}hiddenfromstudents, core{{/str}}">
                                         <i class="fa fa-eye-slash"></i>
                                     </span>
                                     {{/isavailable}}
                                     {{#isavailable}}
-                                        <span class="text-success ml-1"
+                                        <span class="text-success ms-1"
                                               title="{{#str}}visible_to_students, block_ai_assistant{{/str}}">
                                         <i class="fa fa-eye"></i>
                                     </span>

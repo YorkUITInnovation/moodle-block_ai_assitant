@@ -247,22 +247,22 @@ class cria
         switch ($status) {
             case 0:
                 $training_status_id = 0;
-                $training_status = '<div class="badge badge-warning">'
+                $training_status = '<div class="badge bg-warning text-dark">'
                     . get_string('pending', 'block_ai_assistant') . '</div>';
                 break;
             case 1:
                 $training_status_id = 1;
-                $training_status = '<div class="badge badge-success">'
+                $training_status = '<div class="badge bg-success text-white">'
                     . get_string('trained', 'block_ai_assistant') . '</div>';
                 break;
             case 2:
                 $training_status_id = 2;
-                $training_status = '<div class="badge badge-danger">'
+                $training_status = '<div class="badge bg-danger text-white">'
                     . get_string('error', 'block_ai_assistant') . '</div>';
                 break;
             case 3:
                 $training_status_id = 3;
-                $training_status = '<div class="badge badge-info">'
+                $training_status = '<div class="badge bg-info text-dark">'
                     . get_string('training', 'block_ai_assistant') . '</div>';
                 break;
         }

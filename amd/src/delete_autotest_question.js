@@ -45,14 +45,14 @@ function delete_autotest_question() {
  * Append execute button to the form
  */
 function append_execute_button() {
-    const div = document.querySelector('.form-inline');
+    const div = document.querySelector('.form-inline, .d-flex');
     const button = document.createElement('a');
     // Get element value with name courseid
     const courseid = document.querySelector('input[name="courseid"]').value;
 
     button.setAttribute('href', 'autotest_exec.php?courseid=' + courseid);
     button.setAttribute('id', 'block-ai-assistant-execute-auto-test');
-    button.setAttribute('class', 'btn btn-primary ml-2');
+    button.setAttribute('class', 'btn btn-primary ms-2');
     button.textContent = 'Run AutoTest';
     div.appendChild(button);
 }

@@ -15,7 +15,7 @@ export const sendMessage = async () => {
                     <div id="block-ai-assistant-delete-me" class="chat-message bot-message">
                         <div class="message-content">
                         <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
-                        <span class="sr-only">${loadingText}</span></div>
+                        <span class="visually-hidden">${loadingText}</span></div>
                      </div>`;
         // Scroll down to the top of new message
         chatMessages.innerHTML += html;
