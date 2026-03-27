@@ -589,3 +589,72 @@ This data is handled in accordance with York University’s privacy and data gov
     <p>If you have questions about how your data is used, please contact the York University eClass support team.</p>
 
     <h4><strong>By continuing, you acknowledge that you understand and agree to this policy.</strong></h4>";
+
+/**
+ * Privacy metadata
+ */
+$string['privacy:metadata:block_aia_settings'] = 'Configuration and settings for the AI Assistant block, including who last modified them and when.';
+$string['privacy:metadata:block_aia_settings:blockid'] = 'The ID of the AI Assistant block instance.';
+$string['privacy:metadata:block_aia_settings:courseid'] = 'The ID of the course where settings apply.';
+$string['privacy:metadata:block_aia_settings:bot_name'] = 'The display name of the AI assistant.';
+$string['privacy:metadata:block_aia_settings:bot_help_text'] = 'Help text displayed when hovering over the AI assistant.';
+$string['privacy:metadata:block_aia_settings:bot_contact'] = 'Contact information provided to users for support.';
+$string['privacy:metadata:block_aia_settings:subtitle'] = 'Subtitle text for the AI assistant.';
+$string['privacy:metadata:block_aia_settings:welcome_message'] = 'Welcome message displayed to users.';
+$string['privacy:metadata:block_aia_settings:no_context_message'] = 'Message shown when there is no training content available.';
+$string['privacy:metadata:block_aia_settings:usermodified'] = 'The user who last modified these settings.';
+$string['privacy:metadata:block_aia_settings:timecreated'] = 'The time when these settings were created.';
+$string['privacy:metadata:block_aia_settings:timemodified'] = 'The time when these settings were last modified.';
+
+$string['privacy:metadata:block_aia_autotest'] = 'Information about auto-test questions and answers, including who modified them and when.';
+$string['privacy:metadata:block_aia_autotest:courseid'] = 'The ID of the course containing these auto-tests.';
+$string['privacy:metadata:block_aia_autotest:section'] = 'The course section or topic covered by these auto-tests.';
+$string['privacy:metadata:block_aia_autotest:questions'] = 'JSON array of test questions.';
+$string['privacy:metadata:block_aia_autotest:human_answer'] = 'The correct human-provided answer to the auto-test questions.';
+$string['privacy:metadata:block_aia_autotest:bot_answer'] = 'The AI assistant\'s generated answer.';
+$string['privacy:metadata:block_aia_autotest:usermodified'] = 'The user who last modified these auto-test records.';
+$string['privacy:metadata:block_aia_autotest:timecreated'] = 'The time when these auto-tests were created.';
+$string['privacy:metadata:block_aia_autotest:timemodified'] = 'The time when these auto-tests were last modified.';
+
+$string['privacy:metadata:block_aia_question_files'] = 'Information about uploaded question files, including who modified them and when.';
+$string['privacy:metadata:block_aia_question_files:courseid'] = 'The ID of the course containing these files.';
+$string['privacy:metadata:block_aia_question_files:name'] = 'The name of the uploaded question file.';
+$string['privacy:metadata:block_aia_question_files:usermodified'] = 'The user who last modified this file record.';
+$string['privacy:metadata:block_aia_question_files:timecreated'] = 'The time when this file was uploaded.';
+$string['privacy:metadata:block_aia_question_files:timemodified'] = 'The time when this file record was last modified.';
+
+$string['privacy:metadata:block_aia_course_modules'] = 'Information about course modules used for AI training, including who modified them and when.';
+$string['privacy:metadata:block_aia_course_modules:courseid'] = 'The ID of the course containing this module.';
+$string['privacy:metadata:block_aia_course_modules:cmid'] = 'The course module ID used for training.';
+$string['privacy:metadata:block_aia_course_modules:modname'] = 'The name of the module type (activity type).';
+$string['privacy:metadata:block_aia_course_modules:trained'] = 'Whether the AI assistant has been trained on this module\'s content.';
+$string['privacy:metadata:block_aia_course_modules:usermodified'] = 'The user who last modified this training record.';
+$string['privacy:metadata:block_aia_course_modules:timecreated'] = 'The time when this training record was created.';
+$string['privacy:metadata:block_aia_course_modules:timemodified'] = 'The time when this training record was last modified.';
+
+$string['privacy:metadata:block_aia_tutorials'] = 'Information about tutorial content for the AI assistant, including who modified them and when.';
+$string['privacy:metadata:block_aia_tutorials:courseid'] = 'The ID of the course for which the tutorial applies.';
+$string['privacy:metadata:block_aia_tutorials:name'] = 'The name of the tutorial.';
+$string['privacy:metadata:block_aia_tutorials:description'] = 'Description of the tutorial content.';
+$string['privacy:metadata:block_aia_tutorials:prompt'] = 'The AI prompt or instruction template for this tutorial.';
+$string['privacy:metadata:block_aia_tutorials:enabled'] = 'Whether this tutorial is enabled for users.';
+$string['privacy:metadata:block_aia_tutorials:usermodified'] = 'The user who last modified this tutorial.';
+$string['privacy:metadata:block_aia_tutorials:timecreated'] = 'The time when this tutorial was created.';
+$string['privacy:metadata:block_aia_tutorials:timemodified'] = 'The time when this tutorial was last modified.';
+
+$string['privacy:metadata:block_aia_tutorial_chats'] = 'User chat interactions with tutorials, including chat history and metadata.';
+$string['privacy:metadata:block_aia_tutorial_chats:courseid'] = 'The ID of the course in which the chat occurred.';
+$string['privacy:metadata:block_aia_tutorial_chats:tutorialid'] = 'The ID of the tutorial being discussed in the chat.';
+$string['privacy:metadata:block_aia_tutorial_chats:chatid'] = 'The internal chat identifier linking to chat history records.';
+$string['privacy:metadata:block_aia_tutorial_chats:userid'] = 'The user who participated in the chat.';
+$string['privacy:metadata:block_aia_tutorial_chats:cmid'] = 'The course module ID related to this chat.';
+$string['privacy:metadata:block_aia_tutorial_chats:name'] = 'The name given to this chat session by the user.';
+$string['privacy:metadata:block_aia_tutorial_chats:history'] = 'The complete chat history between user and AI assistant.';
+$string['privacy:metadata:block_aia_tutorial_chats:timecreated'] = 'The time when this chat session was created.';
+$string['privacy:metadata:block_aia_tutorial_chats:timemodified'] = 'The time when this chat session was last updated.';
+
+$string['privacy:metadata:block_aia_chat_history'] = 'Individual chat messages exchanged between users and the AI assistant.';
+$string['privacy:metadata:block_aia_chat_history:userid'] = 'The user who sent or received the message.';
+$string['privacy:metadata:block_aia_chat_history:is_human'] = 'Whether this message was sent by the user (1) or AI assistant (0).';
+$string['privacy:metadata:block_aia_chat_history:message'] = 'The content of the chat message.';
+$string['privacy:metadata:block_aia_chat_history:timecreated'] = 'The time when this message was sent.';
