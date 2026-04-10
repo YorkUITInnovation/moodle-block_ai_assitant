@@ -123,16 +123,17 @@ class block_ai_assistant extends block_base
         $moodle_ai_enabled = ($moodle_ai_raw !== false && $moodle_ai_raw !== null && (int)$moodle_ai_raw === 1);
         $ai_active = (!empty($course_record->published) || $moodle_ai_enabled);
 
-        // DEBUG — remove after confirming fix.
-        error_log('[ai_assistant] courseid=' . $this->page->course->id
+        // Only queue the policy JS when AI is active AND the user has not yet accepted.
+        debugging(
+            '[block_ai_assistant] courseid=' . $this->page->course->id
             . ' published=' . var_export($course_record->published, true)
             . ' moodle_ai_raw=' . var_export($moodle_ai_raw, true)
             . ' moodle_ai_enabled=' . var_export($moodle_ai_enabled, true)
             . ' ai_active=' . var_export($ai_active, true)
             . ' policy_accepted=' . var_export(ai_policy::get_policy_status(), true)
-            . ' user=' . $USER->username);
-
-        // Only queue the policy JS when AI is active AND the user has not yet accepted.
+            . ' user=' . $USER->username,
+            DEBUG_DEVELOPER
+        );
         if ($ai_active && !ai_policy::get_policy_status()) {
             $PAGE->requires->js_call_amd('block_ai_assistant/ai_policy', 'init');
         }
