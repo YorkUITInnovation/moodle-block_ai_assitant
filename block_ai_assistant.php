@@ -113,7 +113,20 @@ class block_ai_assistant extends block_base
         $this->content->items = array();
         $this->content->icons = array();
         $this->content->footer = '';
-        $PAGE->requires->js_call_amd('block_ai_assistant/ai_policy', 'init');
+
+        // Determine whether any AI tool is active for this course:
+        //   - block AI assistant bot is published (published = 1), OR
+        //   - Moodle core AI tools are explicitly enabled on this course (enableaitools = 1).
+        // We use the already-loaded $course_record so no extra DB query is needed.
+        // enableaitools is NOTNULL=false with no default — NULL means not set (treat as disabled).
+        $moodle_ai_raw = $DB->get_field('course', 'enableaitools', ['id' => $this->page->course->id]);
+        $moodle_ai_enabled = ($moodle_ai_raw !== false && $moodle_ai_raw !== null && (int)$moodle_ai_raw === 1);
+        $ai_active = (!empty($course_record->published) || $moodle_ai_enabled);
+
+        // Only queue the policy JS when AI is active AND the user has not yet accepted.
+        if ($ai_active && !ai_policy::get_policy_status()) {
+            $PAGE->requires->js_call_amd('block_ai_assistant/ai_policy', 'init');
+        }
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_file', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/publish_to_students', 'init');
         $PAGE->requires->js_call_amd('block_ai_assistant/course_modules', 'init');
@@ -239,6 +252,7 @@ class block_ai_assistant extends block_base
         }
 
         // Find out if there are any autotest questions uploaded
+        $autotest_url = '';
         if (has_capability('block/ai_assistant:view_autotest', $course_context)) {
             $autotest_url = '';
             if ($availability->exception == 'success') {
@@ -339,6 +353,7 @@ class block_ai_assistant extends block_base
             'published' => $course_record->published,
             'publish_tutorials' => $course_record->publish_tutorials,
             'is_published' => ($course_record->published == 1),
+            'ai_active' => $ai_active,
             'title' => get_string('title', 'block_ai_assistant'),
             'content' => 'This is the content',
             'configure_settings_url' => (new \moodle_url('/blocks/ai_assistant/configure_settings.php', [
