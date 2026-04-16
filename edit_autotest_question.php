@@ -57,8 +57,8 @@ if ($mform->is_cancelled()) {
 
 $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/blocks/ai_assistant/edit_autotest_question.php', ['courseid' => $courseid]));
-$PAGE->set_title(get_string('Autotest', 'block_ai_assistant'));
-$PAGE->set_heading(get_string('Autotest', 'block_ai_assistant'));
+$PAGE->set_title(get_string('autotest', 'block_ai_assistant'));
+$PAGE->set_heading(get_string('autotest', 'block_ai_assistant'));
 
 echo $OUTPUT->header();
 $mform->display();
