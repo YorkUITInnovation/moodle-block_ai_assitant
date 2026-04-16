@@ -37,7 +37,6 @@ $string['ai_learning_assistant'] = 'Assistant d\'apprentissage IA';
 $string['ai_policy_not_accepted'] = 'Vous devez accepter la politique IA pour utiliser cette fonctionnalité.';
 $string['answer'] = 'Réponse';
 $string['autotest'] = 'AutoTest';
-$string['Autotest'] = 'AutoTest';
 $string['autotest_questions'] = 'Questions AutoTest';
 $string['autotest_template'] = 'Modèle AutoTest';
 $string['bot_api_key_not_found'] = 'Une erreur s\'est produite lors de la tentative de création de l\'Agent IA backend. '

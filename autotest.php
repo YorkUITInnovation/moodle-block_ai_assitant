@@ -47,8 +47,8 @@ if (!$table->is_downloading()) {
     $table->define_headers(['Section', 'question', 'GenAI Answer', 'Human Answer']);
     $PAGE->set_context($context);
     $PAGE->set_url(new moodle_url('/blocks/ai_assistant/autotest.php', ['courseid' => $courseid]));
-    $PAGE->set_title(get_string('Autotest', 'block_ai_assistant'));
-    $PAGE->set_heading(get_string('Autotest', 'block_ai_assistant'));
+    $PAGE->set_title(get_string('autotest', 'block_ai_assistant'));
+    $PAGE->set_heading(get_string('autotest', 'block_ai_assistant'));
 }
 
 // Work out the sql for the table.
