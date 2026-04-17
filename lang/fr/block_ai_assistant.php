@@ -97,6 +97,7 @@ $string['download'] = 'Télécharger';
 $string['download_english'] = 'Télécharger le modèle anglais';
 $string['download_example'] = 'Télécharger l\'exemple';
 $string['download_syllabus'] = 'Télécharger le plan de cours';
+$string['gradebook'] = 'Carnet de notes';
 $string['edit'] = 'Modifier';
 $string['edit_autotest_question'] = 'Modifier la question AutoTest';
 $string['edit_tutorial'] = 'Modifier le tutoriel';

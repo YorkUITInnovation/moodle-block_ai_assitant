@@ -1,0 +1,608 @@
+import ajax from 'core/ajax';
+import notification from 'core/notification';
+import * as Str from 'core/str';
+
+const STORAGE_PREFIX = 'block_ai_assistant_gradebook';
+let sessionInitPromise = null;
+let requestInFlight = false;
+// Category names from the accepted proposal, used to populate the mapping select dropdowns.
+let proposalCategories = [];
+
+const el = (id) => document.getElementById(id);
+
+const getChatMessages = () => el('gradebook-chat-messages');
+
+const getCourseId = () => String(el('block-ai-assistant-gradebook-courseid').value || '').trim();
+
+const getStorageKey = (kind) => `${STORAGE_PREFIX}_${kind}_${getCourseId()}`;
+
+const loadJson = (key, fallback) => {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) {
+            return fallback;
+        }
+        return JSON.parse(raw);
+    } catch (e) {
+        return fallback;
+    }
+};
+
+const saveJson = (key, value) => {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch (e) {
+        // Ignore quota/storage exceptions.
+    }
+};
+
+const removeKey = (key) => {
+    try {
+        localStorage.removeItem(key);
+    } catch (e) {
+        // Ignore.
+    }
+};
+
+const setText = (id, value) => {
+    const node = el(id);
+    if (node) {
+        node.textContent = value;
+    }
+};
+
+const setSessionId = (sessionId) => {
+    el('block-ai-assistant-gradebook-sessionid').value = sessionId || '';
+    setText('gradebook-session-badge', sessionId || '-');
+    if (sessionId) {
+        saveJson(getStorageKey('session_id'), sessionId);
+    } else {
+        removeKey(getStorageKey('session_id'));
+    }
+};
+
+const getSessionId = () => String(el('block-ai-assistant-gradebook-sessionid').value || '').trim();
+
+const setPhase = (phase) => {
+    const badge = el('gradebook-phase-badge');
+    if (!badge) {
+        return;
+    }
+
+    badge.textContent = phase || '-';
+    badge.classList.remove('bg-secondary', 'bg-info', 'bg-success', 'bg-warning', 'bg-danger');
+
+    const phaseUpper = String(phase || '').toUpperCase();
+    if (phaseUpper === 'COMPLETED') {
+        badge.classList.add('bg-success');
+    } else if (phaseUpper === 'ACCEPTED') {
+        badge.classList.add('bg-info');
+    } else if (phaseUpper === 'INTAKE') {
+        badge.classList.add('bg-warning');
+    } else {
+        badge.classList.add('bg-secondary');
+    }
+};
+
+const parseResponse = (raw) => {
+    if (typeof raw !== 'string') {
+        return raw;
+    }
+
+    const text = raw.trim();
+    if (!text) {
+        throw new Error('Empty response from server.');
+    }
+
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        // Some Moodle/PHP paths can prepend warnings/notices before JSON.
+        const firstObjectStart = text.indexOf('{');
+        const firstArrayStart = text.indexOf('[');
+        let start = -1;
+        if (firstObjectStart >= 0 && firstArrayStart >= 0) {
+            start = Math.min(firstObjectStart, firstArrayStart);
+        } else {
+            start = Math.max(firstObjectStart, firstArrayStart);
+        }
+        const endObject = text.lastIndexOf('}');
+        const endArray = text.lastIndexOf(']');
+        const end = Math.max(endObject, endArray);
+
+        if (start >= 0 && end > start) {
+            const candidate = text.slice(start, end + 1);
+            try {
+                return JSON.parse(candidate);
+            } catch (ignored) {
+                // Fall through to explicit error below.
+            }
+        }
+
+        throw new Error(
+            `Invalid non-JSON response from server: ${text.slice(0, 180)}`
+        );
+    }
+};
+
+const callWs = async (methodname, args) => {
+    const response = await ajax.call([{methodname, args}])[0];
+    return response;
+};
+
+const appendMessage = (container, text, isHuman, skipPersist) => {
+    if (!container) {
+        return;
+    }
+
+    const div = document.createElement('div');
+    div.className = `chat-message ${isHuman ? 'human-message' : 'bot-message'}`;
+
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    content.textContent = text || '';
+
+    div.appendChild(content);
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+
+    if (!skipPersist) {
+        const history = loadJson(getStorageKey('chat_history'), []);
+        history.push({role: isHuman ? 'human' : 'bot', text: text || ''});
+        saveJson(getStorageKey('chat_history'), history);
+    }
+};
+
+const appendSystemMessage = (text) => {
+    appendMessage(getChatMessages(), text, false, false);
+};
+
+const restoreChatHistory = () => {
+    const history = loadJson(getStorageKey('chat_history'), []);
+    if (!Array.isArray(history) || history.length < 1) {
+        return false;
+    }
+
+    const chatMessages = getChatMessages();
+    chatMessages.innerHTML = '';
+    history.forEach((item) => {
+        appendMessage(chatMessages, String(item.text || ''), item.role === 'human', true);
+    });
+    return true;
+};
+
+const isValidConfirmedMapping = (confirmed) => {
+    if (!Array.isArray(confirmed) || confirmed.length < 1) {
+        return false;
+    }
+    return confirmed.every((item) => {
+        return item &&
+            Number.isFinite(Number(item.moodle_cmid)) &&
+            String(item.category || '').trim().length > 0;
+    });
+};
+
+const getConfirmedMapping = () => {
+    try {
+        return JSON.parse(el('gradebook-confirmed-mapping').value || '[]');
+    } catch (e) {
+        return [];
+    }
+};
+
+const setFinalizeEnabled = (enabled) => {
+    const btn = el('btn-gradebook-finalize');
+    if (btn) {
+        btn.disabled = !enabled;
+    }
+};
+
+const setUiBusy = (isBusy) => {
+    [
+        'block-ai-assistant-gradebook-input',
+        'block-ai-assistant-gradebook-send-btn',
+        'btn-gradebook-proposal',
+        'btn-gradebook-accept',
+        'btn-gradebook-finalize'
+    ].forEach((id) => {
+        const node = el(id);
+        if (node) {
+            node.disabled = isBusy;
+        }
+    });
+
+    if (!isBusy) {
+        setFinalizeEnabled(isValidConfirmedMapping(getConfirmedMapping()));
+    }
+};
+
+const syncMappingUIFromJson = () => {
+    const confirmed = getConfirmedMapping();
+
+    const empty = el('gradebook-mapping-empty');
+    const wrapper = el('gradebook-mapping-table-wrapper');
+    const rows = el('gradebook-mapping-rows');
+    if (!rows || !empty || !wrapper) {
+        return;
+    }
+
+    rows.innerHTML = '';
+    if (!Array.isArray(confirmed) || confirmed.length < 1) {
+        empty.classList.remove('d-none');
+        wrapper.classList.add('d-none');
+        setFinalizeEnabled(false);
+        return;
+    }
+
+    empty.classList.add('d-none');
+    wrapper.classList.remove('d-none');
+
+    confirmed.forEach((item) => {
+        const tr = document.createElement('tr');
+
+        const cmid = document.createElement('td');
+        cmid.textContent = item.moodle_cmid != null ? item.moodle_cmid : '';
+        tr.appendChild(cmid);
+
+        const activity = document.createElement('td');
+        activity.textContent = item.activity_name || item.name || '';
+        tr.appendChild(activity);
+
+        const category = document.createElement('td');
+        const currentCat = item.category || (proposalCategories.length ? proposalCategories[0] : 'Assignments');
+
+        if (proposalCategories.length > 0) {
+            const sel = document.createElement('select');
+            sel.className = 'form-select form-select-sm';
+            proposalCategories.forEach((catName) => {
+                const opt = document.createElement('option');
+                opt.value = catName;
+                opt.textContent = catName;
+                if (catName === currentCat) {
+                    opt.selected = true;
+                }
+                sel.appendChild(opt);
+            });
+            if (!proposalCategories.includes(currentCat)) {
+                const customOpt = document.createElement('option');
+                customOpt.value = currentCat;
+                customOpt.textContent = currentCat;
+                customOpt.selected = true;
+                sel.appendChild(customOpt);
+            }
+            item.category = sel.value;
+            sel.addEventListener('change', () => {
+                item.category = sel.value;
+                el('gradebook-confirmed-mapping').value = JSON.stringify(confirmed, null, 2);
+                setFinalizeEnabled(isValidConfirmedMapping(confirmed));
+            });
+            category.appendChild(sel);
+        } else {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control form-control-sm';
+            input.value = currentCat;
+            input.addEventListener('input', () => {
+                item.category = input.value;
+                el('gradebook-confirmed-mapping').value = JSON.stringify(confirmed, null, 2);
+                setFinalizeEnabled(isValidConfirmedMapping(confirmed));
+            });
+            category.appendChild(input);
+        }
+        tr.appendChild(category);
+
+        rows.appendChild(tr);
+    });
+
+    setFinalizeEnabled(isValidConfirmedMapping(confirmed));
+};
+
+const extractContentMapping = (payload) => {
+    if (!payload || typeof payload !== 'object') {
+        return null;
+    }
+
+    return payload.content_mapping ||
+        payload.contentMapping ||
+        payload.mapping ||
+        (payload.session && (payload.session.content_mapping || payload.session.contentMapping)) ||
+        null;
+};
+
+const mappingToConfirmedRows = (mapping) => {
+    if (!mapping || typeof mapping !== 'object') {
+        return [];
+    }
+
+    const activities = mapping.graded_activities || mapping.activities || mapping.mapped_activities || [];
+    if (!Array.isArray(activities)) {
+        return [];
+    }
+
+    return activities.map((item) => {
+        return {
+            moodle_cmid: item.moodle_cmid != null ? item.moodle_cmid : (item.cmid != null ? item.cmid : item.id),
+            activity_name: item.activity_name || item.name || item.module_name || '',
+            category: item.confirmed_category || item.suggested_category || item.category || 'Assignments'
+        };
+    }).filter((item) => item.moodle_cmid != null);
+};
+
+const normalizePrompt = (prompt) => {
+    let p = String(prompt || '').trim();
+    p = p.replace(/\blap\b/gi, 'Labs').replace(/\badjuest\b/gi, 'adjust');
+
+    const lower = p.toLowerCase();
+    if ((lower.indexOf('change') !== -1 || lower.indexOf('adjust') !== -1 || lower.indexOf('set') !== -1) &&
+        lower.indexOf('labs') !== -1 && lower.indexOf('final') !== -1) {
+        const labsMatch = p.match(/labs?\s*(?:to|=)?\s*(\d+(?:\.\d+)?)/i);
+        const finalMatch = p.match(/final(?:\s*exam)?\s*(?:to|=)?\s*(\d+(?:\.\d+)?)/i);
+        if (labsMatch && finalMatch) {
+            return `Update existing categories only: set Labs to ${labsMatch[1]}%, set Final Exam to ${finalMatch[1]}%. Keep all other categories unchanged and keep total exactly 100%.`;
+        }
+    }
+
+    if (lower.indexOf('split assignments into') !== -1) {
+        p += ' Treat Homework/Projects as subcategories inside Assignments and do not add extra top-level categories.';
+    }
+
+    return p;
+};
+
+const hydrateFromStatusPayload = (parsed) => {
+    const statusPayload = parsed && parsed.session ? parsed.session : null;
+    if (!statusPayload || typeof statusPayload !== 'object') {
+        return;
+    }
+
+    setPhase(statusPayload.phase || parsed.phase || parsed.state || '-');
+
+    const mapping = extractContentMapping(statusPayload);
+    const confirmed = mappingToConfirmedRows(mapping);
+    if (confirmed.length > 0) {
+        el('gradebook-confirmed-mapping').value = JSON.stringify(confirmed, null, 2);
+        syncMappingUIFromJson();
+    }
+};
+
+const doStartSession = async () => {
+    const raw = await callWs('block_ai_assistant_gradebook_start', {courseid: getCourseId()});
+    const parsed = parseResponse(raw);
+    const sessionId = parsed.session_id || parsed.sessionId || parsed.session || '';
+    setSessionId(sessionId);
+    setPhase(parsed.phase || parsed.state || '-');
+
+    const initial = parsed.initial_message || parsed.message || 'Gradebook session started.';
+    appendSystemMessage(initial);
+
+    return sessionId;
+};
+
+const restoreOrStartSession = async () => {
+    const existing = getSessionId();
+    if (existing) {
+        return existing;
+    }
+
+    const stored = String(loadJson(getStorageKey('session_id'), '') || '').trim();
+    if (stored) {
+        try {
+            const raw = await callWs('block_ai_assistant_gradebook_status', {
+                courseid: getCourseId(),
+                session_id: stored
+            });
+            const parsed = parseResponse(raw);
+            setSessionId(stored);
+            hydrateFromStatusPayload(parsed);
+            if (!restoreChatHistory()) {
+                appendSystemMessage('Resumed previous gradebook session.');
+            }
+            return stored;
+        } catch (e) {
+            // Keep local session/history for continuity if status endpoint is temporarily unavailable.
+            setSessionId(stored);
+            if (!restoreChatHistory()) {
+                appendSystemMessage('Recovered local session state. If this fails, send one message to re-sync.');
+            }
+            return stored;
+        }
+    }
+
+    return doStartSession();
+};
+
+const ensureSession = async () => {
+    if (getSessionId()) {
+        return getSessionId();
+    }
+    if (!sessionInitPromise) {
+        sessionInitPromise = restoreOrStartSession().finally(() => {
+            sessionInitPromise = null;
+        });
+    }
+    return sessionInitPromise;
+};
+
+const withRequestLock = async (action) => {
+    if (requestInFlight) {
+        return;
+    }
+    requestInFlight = true;
+    setUiBusy(true);
+    try {
+        await action();
+    } finally {
+        requestInFlight = false;
+        setUiBusy(false);
+    }
+};
+
+const sendPrompt = async () => {
+    const input = el('block-ai-assistant-gradebook-input');
+    const typed = String(input.value || '').trim();
+    if (!typed) {
+        return;
+    }
+    const normalized = normalizePrompt(typed);
+
+    await withRequestLock(async () => {
+        appendMessage(getChatMessages(), typed, true, false);
+        input.value = '';
+
+        await ensureSession();
+
+        const loadingText = await Str.get_string('loading', 'block_learningassist');
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'chat-message bot-message';
+        loadingDiv.id = 'gradebook-loading-indicator';
+        loadingDiv.innerHTML = `
+            <div class="message-content">
+                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+                <span class="sr-only">${loadingText}</span>
+            </div>`;
+        getChatMessages().appendChild(loadingDiv);
+
+        try {
+            const raw = await callWs('block_ai_assistant_gradebook_chat', {
+                courseid: getCourseId(),
+                session_id: getSessionId(),
+                prompt: normalized
+            });
+            const parsed = parseResponse(raw);
+            setPhase(parsed.phase || parsed.state || '-');
+            appendSystemMessage(parsed.reply || parsed.message || 'Updated.');
+        } finally {
+            const indicator = document.getElementById('gradebook-loading-indicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+    });
+};
+
+const extractProposalCategories = (proposal) => {
+    if (proposal && Array.isArray(proposal.categories)) {
+        return proposal.categories.map((c) => c.name).filter(Boolean);
+    }
+    return [];
+};
+
+const fetchProposal = async () => {
+    await withRequestLock(async () => {
+        await ensureSession();
+
+        const raw = await callWs('block_ai_assistant_gradebook_proposal', {
+            courseid: getCourseId(),
+            session_id: getSessionId()
+        });
+        const parsed = parseResponse(raw);
+
+        const proposal = parsed.proposal || null;
+        setPhase(parsed.phase || parsed.state || '-');
+        appendSystemMessage('Proposal loaded.');
+
+        if (proposal && Array.isArray(proposal.categories)) {
+            const cats = extractProposalCategories(proposal);
+            if (cats.length) {
+                proposalCategories = cats;
+            }
+            const lines = proposal.categories.map((c) => `${c.name}: ${c.weight}%`).join(' | ');
+            appendSystemMessage(`Current proposal: ${lines}`);
+        } else {
+            appendSystemMessage('No proposal yet. Send a prompt to generate one.');
+        }
+    });
+};
+
+const acceptProposal = async () => {
+    await withRequestLock(async () => {
+        await ensureSession();
+
+        const raw = await callWs('block_ai_assistant_gradebook_accept', {
+            courseid: getCourseId(),
+            session_id: getSessionId()
+        });
+        const parsed = parseResponse(raw);
+
+        setPhase(parsed.phase || parsed.state || '-');
+
+        // Capture proposal categories for the mapping select dropdowns.
+        const cats = extractProposalCategories(parsed.proposal || null);
+        if (cats.length) {
+            proposalCategories = cats;
+        }
+
+        const confirmed = mappingToConfirmedRows(extractContentMapping(parsed));
+        if (confirmed.length > 0) {
+            el('gradebook-confirmed-mapping').value = JSON.stringify(confirmed, null, 2);
+            syncMappingUIFromJson();
+            appendSystemMessage('Accepted. Mapping generated.');
+        } else {
+            syncMappingUIFromJson();
+            appendSystemMessage('Accepted, but mapping is empty. Check course activities and try Proposal then Generate mapping again.');
+        }
+    });
+};
+
+const finalizeGradebook = async () => {
+    await withRequestLock(async () => {
+        await ensureSession();
+
+        const confirmed = getConfirmedMapping();
+        if (!isValidConfirmedMapping(confirmed)) {
+            throw new Error('Please review mapping: each row needs a numeric CMID and a non-empty category.');
+        }
+
+        const raw = await callWs('block_ai_assistant_gradebook_finalize', {
+            courseid: getCourseId(),
+            session_id: getSessionId(),
+            confirmed_mapping_json: JSON.stringify(confirmed)
+        });
+        const parsed = parseResponse(raw);
+
+        setPhase(parsed.phase || parsed.state || 'COMPLETED');
+        appendSystemMessage(parsed.message || 'Gradebook finalized.');
+    });
+};
+
+const guardedAction = (action) => {
+    return () => {
+        action().catch((error) => {
+            notification.exception(error);
+        });
+    };
+};
+
+export const init = () => {
+    if (!el('block-ai-assistant-gradebook-courseid')) {
+        return;
+    }
+
+    restoreChatHistory();
+    syncMappingUIFromJson();
+    setFinalizeEnabled(isValidConfirmedMapping(getConfirmedMapping()));
+
+    ensureSession().catch((error) => {
+        notification.exception(error);
+    });
+
+    el('block-ai-assistant-gradebook-send-btn').addEventListener('click', guardedAction(sendPrompt));
+    el('gradebook-chat-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        guardedAction(sendPrompt)();
+    });
+    el('block-ai-assistant-gradebook-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            guardedAction(sendPrompt)();
+        }
+    });
+
+    el('btn-gradebook-proposal').addEventListener('click', guardedAction(fetchProposal));
+    el('btn-gradebook-accept').addEventListener('click', guardedAction(acceptProposal));
+    el('btn-gradebook-finalize').addEventListener('click', guardedAction(finalizeGradebook));
+
+    el('gradebook-confirmed-mapping').addEventListener('input', () => {
+        syncMappingUIFromJson();
+    });
+};

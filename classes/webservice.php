@@ -158,6 +158,50 @@ class webservice
                     $resp = self::request_json('DELETE', $criabot_url . '/bots/chats/' . rawurlencode($chat_id) . '/end', $headers, null, 30);
                     return $resp['raw'];
                 }
+
+                case 'cria_gradebook_start': {
+                    $body = $data;
+                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/start', $headers, $body, 60);
+                    return $resp['raw'];
+                }
+
+                case 'cria_gradebook_chat': {
+                    $session_id = trim((string)($data['session_id'] ?? ''));
+                    $body = [
+                        'prompt' => (string)($data['prompt'] ?? ''),
+                    ];
+                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/chat', $headers, $body, 60);
+                    return $resp['raw'];
+                }
+
+                case 'cria_gradebook_proposal': {
+                    $session_id = trim((string)($data['session_id'] ?? ''));
+                    $resp = self::request_json('GET', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/proposal', $headers, null, 30);
+                    return $resp['raw'];
+                }
+
+                case 'cria_gradebook_status': {
+                    $session_id = trim((string)($data['session_id'] ?? ''));
+                    $resp = self::request_json('GET', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/status', $headers, null, 30);
+                    return $resp['raw'];
+                }
+
+                case 'cria_gradebook_accept': {
+                    $session_id = trim((string)($data['session_id'] ?? ''));
+                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/accept', $headers, [], 30);
+                    return $resp['raw'];
+                }
+
+                case 'cria_gradebook_finalize': {
+                    $session_id = trim((string)($data['session_id'] ?? ''));
+                    $body = [
+                        'confirmed_mapping' => $data['confirmed_mapping'] ?? [],
+                        'create_categories' => isset($data['create_categories']) ? (bool)$data['create_categories'] : true,
+                        'reorganize_resources' => isset($data['reorganize_resources']) ? (bool)$data['reorganize_resources'] : false,
+                    ];
+                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/finalize', $headers, $body, 60);
+                    return $resp['raw'];
+                }
             }
         }
 

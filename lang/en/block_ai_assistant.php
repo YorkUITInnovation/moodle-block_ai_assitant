@@ -103,6 +103,7 @@ $string['download'] = 'Download';
 $string['download_english'] = 'Download English Template';
 $string['download_example'] = 'Download example';
 $string['download_syllabus'] = 'Download Syllabus';
+$string['gradebook'] = 'Gradebook';
 $string['edit'] = 'Edit';
 $string['edit_autotest_question'] = 'Edit AutoTest Question';
 $string['edit_tutorial'] = 'Edit Tutorial';

@@ -1,0 +1,196 @@
+<input type="hidden" id="block-ai-assistant-gradebook-courseid" value="{{courseid}}">
+<input type="hidden" id="block-ai-assistant-gradebook-userid" value="{{userid}}">
+<input type="hidden" id="block-ai-assistant-gradebook-botname" value="{{botname}}">
+<input type="hidden" id="block-ai-assistant-gradebook-sessionid" value="">
+
+<style>
+    /* Reuse the existing chat look & feel */
+    #region-main {
+        height: auto;
+        min-height: calc(100vh - 300px);
+        max-height: calc(100vh - 300px);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .chat-container {
+        height: calc(100vh - 300px);
+        max-height: calc(100vh - 300px);
+        display: flex;
+        flex-direction: column;
+        background: var(--bs-body-bg, #ffffff);
+        border-radius: 8px;
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        overflow: hidden;
+    }
+
+    .chat-card {
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        border: none;
+        border-radius: 8px;
+    }
+
+    .chat-messages {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        min-height: 0;
+        padding: 20px;
+        background: var(--bs-tertiary-bg, #f8f9fa);
+        scrollbar-width: thin;
+        scrollbar-color: #c1c1c1 transparent;
+    }
+
+    .chat-message {
+        display: flex;
+        margin-bottom: 20px;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .bot-message {
+        justify-content: flex-start;
+    }
+
+    .human-message {
+        justify-content: flex-end;
+    }
+
+    .message-content {
+        max-width: 75%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        font-size: 14px;
+        line-height: 1.5;
+        word-wrap: break-word;
+        position: relative;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .bot-message .message-content {
+        background: var(--bs-body-bg, #ffffff);
+        color: var(--bs-body-color, #212529);
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-bottom-left-radius: 4px;
+    }
+
+    .human-message .message-content {
+        background: var(--bs-primary, #0d6efd);
+        color: var(--bs-white, #ffffff);
+        border-bottom-right-radius: 4px;
+        margin-left: auto;
+    }
+
+    .card-footer {
+        background: var(--bs-body-bg, #ffffff);
+        border-top: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 0 0 8px 8px;
+        padding: 16px 20px;
+        max-height: 50vh;
+        overflow-y: auto;
+        flex-shrink: 0;
+    }
+
+    #gradebook-mapping-table-wrapper {
+        max-height: 220px;
+        overflow-y: auto;
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 4px;
+    }
+
+    .alert-info {
+        background: var(--bs-info-bg-subtle, #cff4fc);
+        border: 1px solid var(--bs-info-border-subtle, #9eeaf9);
+        color: var(--bs-info-text-emphasis, #055160);
+        border-radius: 8px 8px 0 0;
+        margin: 0;
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+</style>
+
+<div class="row">
+    <div class="col-12">
+        <div class="chat-container">
+            <div class="card chat-card">
+                <div class="alert alert-info mb-0 d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-semibold">{{#str}}gradebook, block_ai_assistant{{/str}}</div>
+                        <div class="small">
+                            <span class="me-2">Session:</span><code id="gradebook-session-badge">starting…</code>
+                            <span class="ms-3 me-2">Phase:</span><span id="gradebook-phase-badge" class="badge bg-secondary">—</span>
+                        </div>
+                    </div>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Gradebook actions">
+                        <button type="button" class="btn btn-outline-primary" id="btn-gradebook-proposal">
+                            Proposal
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="btn-gradebook-accept">
+                            Generate mapping
+                        </button>
+                        <button type="button" class="btn btn-primary" id="btn-gradebook-finalize" disabled>
+                            Finalize
+                        </button>
+                    </div>
+                </div>
+
+                <div id="gradebook-chat-messages" class="card-body chat-messages">
+                    <!-- Messages inserted by JS -->
+                </div>
+
+                <div class="card-footer p-2">
+                    <form id="gradebook-chat-form" class="d-flex" method="post" action="gradebook.php" onsubmit="return false;">
+                        <input type="hidden" name="courseid" value="{{courseid}}">
+                        <input type="text" class="form-control me-2" id="block-ai-assistant-gradebook-input"
+                               placeholder="Describe your grading breakdown or ask for adjustments..." autocomplete="off">
+                        <button type="button" id="block-ai-assistant-gradebook-send-btn"
+                                class="btn btn-primary">Send
+                        </button>
+                    </form>
+
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="fw-semibold">Mapping preview</div>
+                            <button class="btn btn-link btn-sm p-0" type="button" data-bs-toggle="collapse" data-bs-target="#gradebook-advanced"
+                                    aria-expanded="false" aria-controls="gradebook-advanced">
+                                Advanced
+                            </button>
+                        </div>
+                        <div class="small text-muted mb-2">
+                            After “Generate mapping”, review categories here. Finalize is enabled once mapping is valid.
+                        </div>
+
+                        <div id="gradebook-mapping-empty" class="alert alert-secondary py-2 small mb-2">
+                            No mapping yet. Click “Generate mapping” after you’re happy with the proposal.
+                        </div>
+
+                        <div id="gradebook-mapping-table-wrapper" class="table-responsive d-none">
+                            <table class="table table-sm align-middle mb-2">
+                                <thead>
+                                <tr>
+                                    <th style="width: 10%">CMID</th>
+                                    <th style="width: 55%">Activity</th>
+                                    <th style="width: 35%">Category</th>
+                                </tr>
+                                </thead>
+                                <tbody id="gradebook-mapping-rows"></tbody>
+                            </table>
+                        </div>
+
+                        <div class="collapse" id="gradebook-advanced">
+                            <label for="gradebook-confirmed-mapping" class="form-label mb-1 small">Confirmed mapping (JSON)</label>
+                            <textarea id="gradebook-confirmed-mapping" class="form-control" rows="6"
+                                      placeholder='[{"moodle_cmid":101,"category":"Assignments"}]'></textarea>
+                            <small class="text-muted">
+                                Used by Finalize. This stays in sync with the table above.
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

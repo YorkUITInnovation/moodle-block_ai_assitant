@@ -132,6 +132,15 @@
                     {{#str}}help, block_ai_assistant{{/str}}
                     </a>
                 </li>
+                {{#is_teacher}}
+                    <li class="list-group-item">
+                        <a href="{{config.wwwroot}}/blocks/ai_assistant/gradebook.php?courseid={{courseid}}"
+                           class="btn btn-link btn-sm"
+                           title="{{#str}}gradebook, block_ai_assistant{{/str}}">
+                            {{#str}}gradebook, block_ai_assistant{{/str}}
+                        </a>
+                    </li>
+                {{/is_teacher}}
             </ul>
         </div>
     </div>

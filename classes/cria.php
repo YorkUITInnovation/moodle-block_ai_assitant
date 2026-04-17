@@ -1178,6 +1178,104 @@ class cria
         return json_decode($response);
     }
 
+    public static function gradebook_start(int $courseid, int $professorid): string
+    {
+        global $DB;
+        $bot_name = (string)$DB->get_field('block_aia_settings', 'bot_name', ['courseid' => $courseid]);
+        if ($bot_name === '') {
+            return json_encode([
+                'status' => 500,
+                'code' => 'BOT_NOT_CONFIGURED',
+                'message' => 'Bot is not configured for this course.',
+            ]);
+        }
+
+        $activities = [];
+        $resources = [];
+        try {
+            $modinfo = get_fast_modinfo($courseid);
+            foreach ($modinfo->get_cms() as $cm) {
+                if (!$cm->uservisible) {
+                    continue;
+                }
+                $activities[] = [
+                    'cmid' => (int)$cm->id,
+                    'module' => (string)$cm->modname,
+                    'name' => (string)$cm->name,
+                ];
+                if (in_array((string)$cm->modname, ['resource', 'page', 'book', 'folder', 'label'], true)) {
+                    $resources[] = [
+                        'cmid' => (int)$cm->id,
+                        'type' => (string)$cm->modname,
+                        'name' => (string)$cm->name,
+                        'content_url' => (string)$cm->url,
+                    ];
+                }
+            }
+        } catch (\Throwable $e) {
+            // Fallback: leave arrays empty; backend will handle intake mode.
+        }
+
+        $method = 'cria_gradebook_start';
+        $data = array(
+            'course_id' => (string)$courseid,
+            'professor_id' => (string)$professorid,
+            'bot_name' => $bot_name,
+            'moodle_resources' => $resources,
+            'course_activities' => $activities,
+        );
+        return webservice::exec($method, $data);
+    }
+
+    public static function gradebook_chat(string $session_id, string $prompt): string
+    {
+        $method = 'cria_gradebook_chat';
+        $data = array(
+            'session_id' => trim($session_id),
+            'prompt' => $prompt,
+        );
+        return webservice::exec($method, $data);
+    }
+
+    public static function gradebook_proposal(string $session_id): string
+    {
+        $method = 'cria_gradebook_proposal';
+        $data = array(
+            'session_id' => trim($session_id),
+        );
+        return webservice::exec($method, $data);
+    }
+
+    public static function gradebook_status(string $session_id): string
+    {
+        $method = 'cria_gradebook_status';
+        $data = array(
+            'session_id' => trim($session_id),
+        );
+        return webservice::exec($method, $data);
+    }
+
+    public static function gradebook_accept(string $session_id): string
+    {
+        $method = 'cria_gradebook_accept';
+        $data = array(
+            'session_id' => trim($session_id),
+        );
+        return webservice::exec($method, $data);
+    }
+
+    public static function gradebook_finalize(string $session_id, array $confirmed_mapping): string
+    {
+        $method = 'cria_gradebook_finalize';
+        $data = array(
+            'session_id' => trim($session_id),
+            'confirmed_mapping' => $confirmed_mapping,
+            'create_categories' => true,
+            'reorganize_resources' => false,
+        );
+        return webservice::exec($method, $data);
+    }
+
     /**
      * Return chat response
      * @param $chat_id

@@ -144,4 +144,58 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_gradebook_start' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'start',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Start a gradebook workflow session with Criabot.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_chat' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'chat',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Send a gradebook chat prompt to advance the workflow session.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_proposal' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'proposal',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Read the latest gradebook proposal for the active session.',
+        'type' => 'read',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_status' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'status',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Read gradebook session status and payload for resume.',
+        'type' => 'read',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_accept' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'accept',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Accept the gradebook proposal and generate content mapping.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_finalize' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'finalize',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Finalize gradebook mapping and mark ready for Moodle sync.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
 );
