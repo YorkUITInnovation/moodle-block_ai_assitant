@@ -209,6 +209,30 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2025072905, 'ai_assistant');
     }
 
+    if ($oldversion < 2026042001) {
+        // Define table block_aia_gradebook_state to be created.
+        $table = new xmldb_table('block_aia_gradebook_state');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('session_id', XMLDB_TYPE_CHAR, '128', null, null, null, null);
+        $table->add_field('phase', XMLDB_TYPE_CHAR, '32', null, null, null, null);
+        $table->add_field('chat_history_json', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('confirmed_mapping_json', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('result_json', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_index('course_user_x', XMLDB_INDEX_UNIQUE, ['courseid', 'userid']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_block_savepoint(true, 2026042001, 'ai_assistant');
+    }
 
     return true;
 

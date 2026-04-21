@@ -152,6 +152,26 @@
         <INDEX NAME="changemecourse_tut_cm_x" UNIQUE="false" FIELDS="courseid, tutorialid, cmid, userid"/>
       </INDEXES>
     </TABLE>
+    <TABLE NAME="block_aia_gradebook_state" COMMENT="Per-user, per-course gradebook session state (session id, phase, chat history, finalize result)">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="session_id" TYPE="char" LENGTH="128" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="phase" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="chat_history_json" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON array of {role, text}"/>
+        <FIELD NAME="confirmed_mapping_json" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Latest confirmed mapping JSON"/>
+        <FIELD NAME="result_json" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Full Criabot finalize response (summary + content_mapping)"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course_user_x" UNIQUE="true" FIELDS="courseid, userid"/>
+      </INDEXES>
+    </TABLE>
     <TABLE NAME="block_aia_chat_history" COMMENT="Default comment for the table, please edit me">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>

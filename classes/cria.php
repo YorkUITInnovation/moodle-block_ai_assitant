@@ -1277,6 +1277,130 @@ class cria
     }
 
     /**
+     * Persist (upsert) per-user, per-course gradebook UI state in Moodle DB.
+     * Any provided field overwrites the existing one; pass null to leave unchanged.
+     *
+     * @param int $courseid
+     * @param int $userid
+     * @param string|null $session_id
+     * @param string|null $phase
+     * @param string|null $chat_history_json  JSON array of {role, text}
+     * @param string|null $confirmed_mapping_json
+     * @param string|null $result_json
+     * @return array Normalised record persisted.
+     */
+    public static function gradebook_save_state(
+        int $courseid,
+        int $userid,
+        ?string $session_id = null,
+        ?string $phase = null,
+        ?string $chat_history_json = null,
+        ?string $confirmed_mapping_json = null,
+        ?string $result_json = null
+    ): array {
+        global $DB;
+
+        $now = time();
+        $existing = $DB->get_record(
+            'block_aia_gradebook_state',
+            ['courseid' => $courseid, 'userid' => $userid]
+        );
+
+        if ($existing) {
+            $updates = new \stdClass();
+            $updates->id = $existing->id;
+            $updates->timemodified = $now;
+            if ($session_id !== null) {
+                $updates->session_id = $session_id;
+            }
+            if ($phase !== null) {
+                $updates->phase = $phase;
+            }
+            if ($chat_history_json !== null) {
+                $updates->chat_history_json = $chat_history_json;
+            }
+            if ($confirmed_mapping_json !== null) {
+                $updates->confirmed_mapping_json = $confirmed_mapping_json;
+            }
+            if ($result_json !== null) {
+                $updates->result_json = $result_json;
+            }
+            $DB->update_record('block_aia_gradebook_state', $updates);
+            $record = $DB->get_record('block_aia_gradebook_state', ['id' => $existing->id]);
+        } else {
+            $insert = new \stdClass();
+            $insert->courseid = $courseid;
+            $insert->userid = $userid;
+            $insert->session_id = $session_id;
+            $insert->phase = $phase;
+            $insert->chat_history_json = $chat_history_json;
+            $insert->confirmed_mapping_json = $confirmed_mapping_json;
+            $insert->result_json = $result_json;
+            $insert->timecreated = $now;
+            $insert->timemodified = $now;
+            $id = $DB->insert_record('block_aia_gradebook_state', $insert);
+            $record = $DB->get_record('block_aia_gradebook_state', ['id' => $id]);
+        }
+
+        return [
+            'found' => true,
+            'session_id' => (string)($record->session_id ?? ''),
+            'phase' => (string)($record->phase ?? ''),
+            'chat_history_json' => (string)($record->chat_history_json ?? ''),
+            'confirmed_mapping_json' => (string)($record->confirmed_mapping_json ?? ''),
+            'result_json' => (string)($record->result_json ?? ''),
+            'timemodified' => (int)($record->timemodified ?? 0),
+        ];
+    }
+
+    /**
+     * Load per-user, per-course gradebook UI state. Always returns an array; 'found' flag tells if a row exists.
+     */
+    public static function gradebook_get_state(int $courseid, int $userid): array
+    {
+        global $DB;
+
+        $record = $DB->get_record(
+            'block_aia_gradebook_state',
+            ['courseid' => $courseid, 'userid' => $userid]
+        );
+
+        if (!$record) {
+            return [
+                'found' => false,
+                'session_id' => '',
+                'phase' => '',
+                'chat_history_json' => '',
+                'confirmed_mapping_json' => '',
+                'result_json' => '',
+                'timemodified' => 0,
+            ];
+        }
+
+        return [
+            'found' => true,
+            'session_id' => (string)($record->session_id ?? ''),
+            'phase' => (string)($record->phase ?? ''),
+            'chat_history_json' => (string)($record->chat_history_json ?? ''),
+            'confirmed_mapping_json' => (string)($record->confirmed_mapping_json ?? ''),
+            'result_json' => (string)($record->result_json ?? ''),
+            'timemodified' => (int)($record->timemodified ?? 0),
+        ];
+    }
+
+    /**
+     * Clear the persisted gradebook UI state for a user+course (used when session expired or user resets).
+     */
+    public static function gradebook_clear_state(int $courseid, int $userid): void
+    {
+        global $DB;
+        $DB->delete_records(
+            'block_aia_gradebook_state',
+            ['courseid' => $courseid, 'userid' => $userid]
+        );
+    }
+
+    /**
      * Return chat response
      * @param $chat_id
      * @param $bot_id

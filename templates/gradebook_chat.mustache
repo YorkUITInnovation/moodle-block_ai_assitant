@@ -4,40 +4,55 @@
 <input type="hidden" id="block-ai-assistant-gradebook-sessionid" value="">
 
 <style>
-    /* Reuse the existing chat look & feel */
+    /* Make the page a fixed-height flex column so chat + mapping + input share vertical space nicely. */
     #region-main {
         height: auto;
-        min-height: calc(100vh - 300px);
-        max-height: calc(100vh - 300px);
+        min-height: calc(100vh - 220px);
+        max-height: calc(100vh - 220px);
         position: relative;
         overflow: hidden;
     }
 
-    .chat-container {
-        height: calc(100vh - 300px);
-        max-height: calc(100vh - 300px);
+    .gradebook-container {
+        height: calc(100vh - 220px);
+        max-height: calc(100vh - 220px);
         display: flex;
         flex-direction: column;
         background: var(--bs-body-bg, #ffffff);
-        border-radius: 8px;
+        border-radius: 10px;
         border: 1px solid var(--bs-border-color, #dee2e6);
         overflow: hidden;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
     }
 
-    .chat-card {
+    .gradebook-card {
         flex: 1 1 auto;
         display: flex;
         flex-direction: column;
         height: 100%;
         border: none;
-        border-radius: 8px;
+        border-radius: 10px;
+        min-height: 0;
     }
 
+    /* Header. */
+    .gradebook-header {
+        background: var(--bs-info-bg-subtle, #cff4fc);
+        border: 1px solid var(--bs-info-border-subtle, #9eeaf9);
+        color: var(--bs-info-text-emphasis, #055160);
+        border-radius: 10px 10px 0 0;
+        margin: 0;
+        padding: 10px 16px;
+        font-size: 14px;
+        flex-shrink: 0;
+    }
+
+    /* Chat scroll area. */
     .chat-messages {
         flex: 1 1 auto;
         overflow-y: auto;
-        min-height: 0;
-        padding: 20px;
+        min-height: 160px;
+        padding: 16px 20px;
         background: var(--bs-tertiary-bg, #f8f9fa);
         scrollbar-width: thin;
         scrollbar-color: #c1c1c1 transparent;
@@ -45,28 +60,24 @@
 
     .chat-message {
         display: flex;
-        margin-bottom: 20px;
+        margin-bottom: 16px;
         align-items: flex-start;
         gap: 12px;
     }
 
-    .bot-message {
-        justify-content: flex-start;
-    }
-
-    .human-message {
-        justify-content: flex-end;
-    }
+    .bot-message { justify-content: flex-start; }
+    .human-message { justify-content: flex-end; }
 
     .message-content {
         max-width: 75%;
-        padding: 12px 16px;
-        border-radius: 18px;
+        padding: 10px 14px;
+        border-radius: 16px;
         font-size: 14px;
         line-height: 1.5;
         word-wrap: break-word;
+        white-space: pre-wrap;
         position: relative;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
     }
 
     .bot-message .message-content {
@@ -83,39 +94,181 @@
         margin-left: auto;
     }
 
-    .card-footer {
-        background: var(--bs-body-bg, #ffffff);
+    /* Mapping preview drawer — collapsible, compact, its own scroll. */
+    .gradebook-mapping-drawer {
         border-top: 1px solid var(--bs-border-color, #dee2e6);
-        border-radius: 0 0 8px 8px;
-        padding: 16px 20px;
-        max-height: 50vh;
-        overflow-y: auto;
+        background: var(--bs-body-bg, #ffffff);
         flex-shrink: 0;
     }
 
-    #gradebook-mapping-table-wrapper {
-        max-height: 220px;
-        overflow-y: auto;
-        border: 1px solid var(--bs-border-color, #dee2e6);
-        border-radius: 4px;
+    .gradebook-mapping-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 14px;
+        font-size: 13px;
+        color: var(--bs-body-color, #212529);
+        cursor: pointer;
+        user-select: none;
+        background: var(--bs-tertiary-bg, #f8f9fa);
     }
 
-    .alert-info {
-        background: var(--bs-info-bg-subtle, #cff4fc);
-        border: 1px solid var(--bs-info-border-subtle, #9eeaf9);
-        color: var(--bs-info-text-emphasis, #055160);
-        border-radius: 8px 8px 0 0;
+    .gradebook-mapping-header:hover {
+        background: var(--bs-secondary-bg, #e9ecef);
+    }
+
+    .gradebook-mapping-header .chevron {
+        transition: transform 0.2s ease;
+    }
+
+    .gradebook-mapping-drawer.is-collapsed .chevron {
+        transform: rotate(-90deg);
+    }
+
+    .gradebook-mapping-body {
+        padding: 8px 14px 12px 14px;
+        max-height: 34vh;
+        overflow-y: auto;
+    }
+
+    .gradebook-mapping-drawer.is-collapsed .gradebook-mapping-body {
+        display: none;
+    }
+
+    #gradebook-mapping-table-wrapper {
+        max-height: 26vh;
+        overflow-y: auto;
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 6px;
+    }
+
+    #gradebook-mapping-table-wrapper table {
+        margin-bottom: 0;
+    }
+
+    #gradebook-mapping-table-wrapper thead th {
+        position: sticky;
+        top: 0;
+        background: var(--bs-secondary-bg, #e9ecef);
+        z-index: 1;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .gradebook-row-not-graded .gradebook-activity-name {
+        color: var(--bs-secondary-color, #6c757d);
+        text-decoration: line-through;
+        text-decoration-thickness: 1px;
+    }
+    .gradebook-row-not-graded td {
+        background: var(--bs-tertiary-bg, #f8f9fa);
+    }
+
+    .gradebook-row-missing td {
+        background: rgba(220, 53, 69, 0.08);
+    }
+
+    .gradebook-row-missing .gradebook-category-select {
+        border-color: var(--bs-danger, #dc3545);
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.15);
+    }
+
+    .gradebook-category-select {
+        min-width: 150px;
+    }
+
+    .gradebook-select-empty {
+        color: var(--bs-secondary-color, #6c757d);
+    }
+
+    /* Result panel — success banner shown after finalize. */
+    #gradebook-result-panel {
+        background: var(--bs-success-bg-subtle, #d1e7dd);
+        border: 1px solid var(--bs-success-border-subtle, #a3cfbb);
+        color: var(--bs-success-text-emphasis, #0a3622);
+        border-radius: 0;
         margin: 0;
-        padding: 12px 20px;
+        padding: 10px 16px;
+        flex-shrink: 0;
+    }
+
+    /* Modern input bar. */
+    .gradebook-input-bar {
+        background: var(--bs-body-bg, #ffffff);
+        border-top: 1px solid var(--bs-border-color, #dee2e6);
+        padding: 10px 14px;
+        flex-shrink: 0;
+    }
+
+    .gradebook-input-wrap {
+        display: flex;
+        align-items: center;
+        background: var(--bs-tertiary-bg, #f8f9fa);
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 24px;
+        padding: 4px 4px 4px 16px;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .gradebook-input-wrap:focus-within {
+        border-color: var(--bs-primary, #0d6efd);
+        box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+    }
+
+    #block-ai-assistant-gradebook-input {
+        flex: 1 1 auto;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        padding: 8px 4px;
         font-size: 14px;
+        min-width: 0;
+    }
+
+    #block-ai-assistant-gradebook-input:focus {
+        box-shadow: none;
+    }
+
+    #block-ai-assistant-gradebook-send-btn {
+        flex: 0 0 auto;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        background: var(--bs-primary, #0d6efd);
+        color: #ffffff;
+        transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    #block-ai-assistant-gradebook-send-btn:hover:not(:disabled) {
+        background: var(--bs-primary-rgb, #0b5ed7);
+        transform: scale(1.05);
+    }
+
+    #block-ai-assistant-gradebook-send-btn:disabled {
+        background: var(--bs-secondary, #6c757d);
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    #block-ai-assistant-gradebook-send-btn svg {
+        width: 18px;
+        height: 18px;
     }
 </style>
 
 <div class="row">
     <div class="col-12">
-        <div class="chat-container">
-            <div class="card chat-card">
-                <div class="alert alert-info mb-0 d-flex justify-content-between align-items-center">
+        <div class="gradebook-container">
+            <div class="card gradebook-card">
+
+                <div class="gradebook-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
                         <div class="fw-semibold">{{#str}}gradebook, block_ai_assistant{{/str}}</div>
                         <div class="small">
@@ -130,67 +283,120 @@
                         <button type="button" class="btn btn-outline-primary" id="btn-gradebook-accept">
                             Generate mapping
                         </button>
-                        <button type="button" class="btn btn-primary" id="btn-gradebook-finalize" disabled>
+                        <button type="button" class="btn btn-primary" id="btn-gradebook-finalize">
                             Finalize
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btn-gradebook-reset"
+                                title="{{#str}}gradebook_reset_session, block_ai_assistant{{/str}}">
+                            {{#str}}gradebook_reset_session, block_ai_assistant{{/str}}
                         </button>
                     </div>
                 </div>
 
-                <div id="gradebook-chat-messages" class="card-body chat-messages">
+                <div id="gradebook-result-panel" class="d-none" role="region" aria-label="Gradebook finalize result">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <div class="fw-semibold">{{#str}}gradebook_result_heading, block_ai_assistant{{/str}}</div>
+                            <div id="gradebook-result-summary" class="small" style="white-space: pre-wrap;"></div>
+                        </div>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-success" id="btn-gradebook-download-result">
+                                {{#str}}gradebook_download_result, block_ai_assistant{{/str}}
+                            </button>
+                            <button type="button" class="btn btn-outline-success" id="btn-gradebook-download-word">
+                                {{#str}}gradebook_download_word, block_ai_assistant{{/str}}
+                            </button>
+                            <button type="button" class="btn btn-outline-success" id="btn-gradebook-download-pdf">
+                                {{#str}}gradebook_download_pdf, block_ai_assistant{{/str}}
+                            </button>
+                            <button type="button" class="btn btn-outline-success" id="btn-gradebook-copy-summary">
+                                {{#str}}gradebook_copy_summary, block_ai_assistant{{/str}}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="gradebook-chat-messages" class="chat-messages">
                     <!-- Messages inserted by JS -->
                 </div>
 
-                <div class="card-footer p-2">
-                    <form id="gradebook-chat-form" class="d-flex" method="post" action="gradebook.php" onsubmit="return false;">
-                        <input type="hidden" name="courseid" value="{{courseid}}">
-                        <input type="text" class="form-control me-2" id="block-ai-assistant-gradebook-input"
-                               placeholder="Describe your grading breakdown or ask for adjustments..." autocomplete="off">
-                        <button type="button" id="block-ai-assistant-gradebook-send-btn"
-                                class="btn btn-primary">Send
-                        </button>
-                    </form>
+                <div id="gradebook-mapping-drawer" class="gradebook-mapping-drawer is-collapsed">
+                    <div class="gradebook-mapping-header" id="gradebook-mapping-toggle" role="button"
+                         tabindex="0" aria-expanded="false" aria-controls="gradebook-mapping-body">
+                        <span class="d-flex align-items-center gap-2">
+                            <svg class="chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                <path d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/>
+                            </svg>
+                            <span class="fw-semibold">{{#str}}gradebook_mapping_preview, block_ai_assistant{{/str}}</span>
+                            <span class="badge bg-secondary" id="gradebook-mapping-count" title="graded / total">0</span>
+                        </span>
+                        <span class="small text-muted d-none d-md-inline">
+                            {{#str}}gradebook_mapping_hint, block_ai_assistant{{/str}}
+                        </span>
+                    </div>
 
-                    <div class="mt-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div class="fw-semibold">Mapping preview</div>
-                            <button class="btn btn-link btn-sm p-0" type="button" data-bs-toggle="collapse" data-bs-target="#gradebook-advanced"
-                                    aria-expanded="false" aria-controls="gradebook-advanced">
-                                Advanced
-                            </button>
-                        </div>
-                        <div class="small text-muted mb-2">
-                            After “Generate mapping”, review categories here. Finalize is enabled once mapping is valid.
-                        </div>
-
+                    <div class="gradebook-mapping-body" id="gradebook-mapping-body">
                         <div id="gradebook-mapping-empty" class="alert alert-secondary py-2 small mb-2">
-                            No mapping yet. Click “Generate mapping” after you’re happy with the proposal.
+                            {{#str}}gradebook_mapping_empty, block_ai_assistant{{/str}}
                         </div>
 
                         <div id="gradebook-mapping-table-wrapper" class="table-responsive d-none">
-                            <table class="table table-sm align-middle mb-2">
+                            <table class="table table-sm align-middle mb-0">
                                 <thead>
                                 <tr>
-                                    <th style="width: 10%">CMID</th>
-                                    <th style="width: 55%">Activity</th>
-                                    <th style="width: 35%">Category</th>
+                                    <th style="width: 60px">CMID</th>
+                                    <th>Activity</th>
+                                    <th style="width: 180px">Category</th>
                                 </tr>
                                 </thead>
                                 <tbody id="gradebook-mapping-rows"></tbody>
                             </table>
                         </div>
 
-                        <div class="collapse" id="gradebook-advanced">
-                            <label for="gradebook-confirmed-mapping" class="form-label mb-1 small">Confirmed mapping (JSON)</label>
-                            <textarea id="gradebook-confirmed-mapping" class="form-control" rows="6"
+                        <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
+                            <button class="btn btn-link btn-sm p-0" type="button" data-bs-toggle="collapse"
+                                    data-bs-target="#gradebook-advanced" aria-expanded="false" aria-controls="gradebook-advanced">
+                                Advanced (edit JSON)
+                            </button>
+                            <button type="button" class="btn btn-success btn-sm" id="btn-gradebook-generate"
+                                    title="{{#str}}gradebook_generate_title, block_ai_assistant{{/str}}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 16 16" fill="currentColor" class="me-1" aria-hidden="true">
+                                    <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                                </svg>
+                                {{#str}}gradebook_generate, block_ai_assistant{{/str}}
+                            </button>
+                        </div>
+                        <div class="collapse mt-2" id="gradebook-advanced">
+                            <textarea id="gradebook-confirmed-mapping" class="form-control form-control-sm" rows="5"
                                       placeholder='[{"moodle_cmid":101,"category":"Assignments"}]'></textarea>
                             <small class="text-muted">
-                                Used by Finalize. This stays in sync with the table above.
+                                Synced with the table above. Rows with category "{{#str}}gradebook_not_graded, block_ai_assistant{{/str}}" are excluded from Finalize.
                             </small>
                         </div>
                     </div>
                 </div>
+
+                <div class="gradebook-input-bar">
+                    <form id="gradebook-chat-form" method="post" action="gradebook.php" onsubmit="return false;">
+                        <input type="hidden" name="courseid" value="{{courseid}}">
+                        <div class="gradebook-input-wrap">
+                            <input type="text"
+                                   id="block-ai-assistant-gradebook-input"
+                                   placeholder="{{#str}}gradebook_input_placeholder, block_ai_assistant{{/str}}"
+                                   autocomplete="off"
+                                   aria-label="{{#str}}gradebook_input_placeholder, block_ai_assistant{{/str}}">
+                            <button type="button" id="block-ai-assistant-gradebook-send-btn"
+                                    aria-label="{{#str}}gradebook_send, block_ai_assistant{{/str}}"
+                                    title="{{#str}}gradebook_send, block_ai_assistant{{/str}}">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M3.4 20.4 20.85 12.92a1 1 0 0 0 0-1.84L3.4 3.6a1 1 0 0 0-1.39 1.19L4 11l8 1-8 1-1.99 6.21a1 1 0 0 0 1.39 1.19Z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
             </div>
         </div>
     </div>
 </div>
-

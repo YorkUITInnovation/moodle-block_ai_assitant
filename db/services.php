@@ -198,4 +198,22 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_gradebook_get_state' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'get_state',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Load persisted gradebook UI state (session id, chat history, finalize result) for current user and course.',
+        'type' => 'read',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_save_state' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'save_state',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Upsert or clear persisted gradebook UI state for the current user and course.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
 );

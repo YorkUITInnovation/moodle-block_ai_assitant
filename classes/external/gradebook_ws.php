@@ -202,5 +202,111 @@ class block_ai_assistant_gradebook_ws extends external_api
     {
         return new external_value(PARAM_RAW, 'JSON response from Criabot gradebook finalize');
     }
+
+    /**
+     * Schema for the persisted state returned to the client.
+     */
+    private static function state_single_structure(): external_single_structure
+    {
+        return new external_single_structure([
+            'found' => new external_value(PARAM_BOOL, 'Whether a state row exists'),
+            'session_id' => new external_value(PARAM_RAW, 'Stored Criabot session id', VALUE_DEFAULT, ''),
+            'phase' => new external_value(PARAM_RAW, 'Stored phase', VALUE_DEFAULT, ''),
+            'chat_history_json' => new external_value(PARAM_RAW, 'Chat history JSON array', VALUE_DEFAULT, ''),
+            'confirmed_mapping_json' => new external_value(PARAM_RAW, 'Confirmed mapping JSON', VALUE_DEFAULT, ''),
+            'result_json' => new external_value(PARAM_RAW, 'Finalize result JSON', VALUE_DEFAULT, ''),
+            'timemodified' => new external_value(PARAM_INT, 'Unix timestamp of last update', VALUE_DEFAULT, 0),
+        ]);
+    }
+
+    public static function get_state_parameters(): external_function_parameters
+    {
+        return new external_function_parameters([
+            'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+        ]);
+    }
+
+    public static function get_state(int $courseid): array
+    {
+        global $USER;
+
+        self::validate_parameters(self::get_state_parameters(), ['courseid' => $courseid]);
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        return cria::gradebook_get_state($courseid, (int)$USER->id);
+    }
+
+    public static function get_state_returns(): external_description
+    {
+        return self::state_single_structure();
+    }
+
+    public static function save_state_parameters(): external_function_parameters
+    {
+        return new external_function_parameters([
+            'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+            'session_id' => new external_value(PARAM_RAW, 'Criabot session id', VALUE_DEFAULT, null),
+            'phase' => new external_value(PARAM_RAW, 'Current phase', VALUE_DEFAULT, null),
+            'chat_history_json' => new external_value(PARAM_RAW, 'Chat history JSON array', VALUE_DEFAULT, null),
+            'confirmed_mapping_json' => new external_value(PARAM_RAW, 'Confirmed mapping JSON', VALUE_DEFAULT, null),
+            'result_json' => new external_value(PARAM_RAW, 'Finalize result JSON', VALUE_DEFAULT, null),
+            'clear' => new external_value(PARAM_BOOL, 'Delete the row instead of upsert', VALUE_DEFAULT, false),
+        ]);
+    }
+
+    public static function save_state(
+        int $courseid,
+        ?string $session_id = null,
+        ?string $phase = null,
+        ?string $chat_history_json = null,
+        ?string $confirmed_mapping_json = null,
+        ?string $result_json = null,
+        bool $clear = false
+    ): array {
+        global $USER;
+
+        self::validate_parameters(self::save_state_parameters(), [
+            'courseid' => $courseid,
+            'session_id' => $session_id,
+            'phase' => $phase,
+            'chat_history_json' => $chat_history_json,
+            'confirmed_mapping_json' => $confirmed_mapping_json,
+            'result_json' => $result_json,
+            'clear' => $clear,
+        ]);
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        if ($clear) {
+            cria::gradebook_clear_state($courseid, (int)$USER->id);
+            return [
+                'found' => false,
+                'session_id' => '',
+                'phase' => '',
+                'chat_history_json' => '',
+                'confirmed_mapping_json' => '',
+                'result_json' => '',
+                'timemodified' => 0,
+            ];
+        }
+
+        return cria::gradebook_save_state(
+            $courseid,
+            (int)$USER->id,
+            $session_id,
+            $phase,
+            $chat_history_json,
+            $confirmed_mapping_json,
+            $result_json
+        );
+    }
+
+    public static function save_state_returns(): external_description
+    {
+        return self::state_single_structure();
+    }
 }
 
