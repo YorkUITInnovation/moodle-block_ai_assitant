@@ -47,7 +47,7 @@ class block_ai_assistant extends block_base
     public function get_content()
     {
         global $OUTPUT;
-        global $PAGE, $DB, $USER, $CFG;
+        global $PAGE, $DB, $USER, $CFG, $SESSION;
         require_once($CFG->libdir . '/gradelib.php');
         $config = get_config('block_ai_assistant');
 
@@ -123,7 +123,10 @@ class block_ai_assistant extends block_base
         $moodle_ai_enabled = ($moodle_ai_raw !== false && $moodle_ai_raw !== null && (int)$moodle_ai_raw === 1);
         $ai_active = (!empty($course_record->published) || $moodle_ai_enabled);
 
-        // Only queue the policy JS when AI is active AND the user has not yet accepted.
+        // Only queue the policy JS when AI is active AND the user has not yet accepted
+        // AND we are not currently impersonating another user via "Login as".
+        // Accepting the policy during impersonation would permanently mark it as
+        // accepted for the target user — which must never happen silently.
         debugging(
             '[block_ai_assistant] courseid=' . $this->page->course->id
             . ' published=' . var_export($course_record->published, true)
@@ -134,7 +137,8 @@ class block_ai_assistant extends block_base
             . ' user=' . $USER->username,
             DEBUG_DEVELOPER
         );
-        if ($ai_active && !ai_policy::get_policy_status()) {
+        $is_impersonating = !empty($SESSION->realuser);
+        if ($ai_active && !ai_policy::get_policy_status() && !$is_impersonating) {
             $PAGE->requires->js_call_amd('block_ai_assistant/ai_policy', 'init');
         }
         $PAGE->requires->js_call_amd('block_ai_assistant/delete_file', 'init');

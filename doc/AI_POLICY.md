@@ -83,7 +83,40 @@ The popup is **never shown** if both are off, regardless of whether the user has
 
 ---
 
-## Code Path — Popup Trigger
+## Impersonation ("Login as") Guard
+
+When a site admin uses Moodle's **"Login as"** feature to impersonate another user, `$USER` becomes the target user. Without a guard, the admin clicking **Accept** on the AI policy modal would permanently record acceptance against the **student's** account — even though the student never consented themselves.
+
+### The fix
+
+`block_ai_assistant.php` checks `$SESSION->realuser` before injecting the policy AMD call:
+
+```php
+$is_impersonating = !empty($SESSION->realuser);
+if ($ai_active && !ai_policy::get_policy_status() && !$is_impersonating) {
+    $PAGE->requires->js_call_amd('block_ai_assistant/ai_policy', 'init');
+}
+```
+
+When `$SESSION->realuser` is set, Moodle is in "Login as" mode:
+- The **real admin's** user ID is stored in `$SESSION->realuser`
+- `$USER` is the **impersonated student**
+
+### Behaviour during impersonation
+
+| Scenario | AI policy modal shown? |
+|----------|----------------------|
+| Normal authenticated user | ✅ Yes (if AI active + not accepted) |
+| Admin impersonating a student | ❌ No — modal suppressed entirely |
+| Admin on their own session | ✅ Yes (if AI active + not accepted) |
+
+### Why this matters
+
+- The AI policy is a **legal/consent record** — it must only be accepted by the user themselves
+- An admin impersonating a student for support/testing purposes should not inadvertently accept policies on the student's behalf
+- The student's policy status is left unchanged during impersonation
+
+
 
 ```
 block_ai_assistant::get_content()
