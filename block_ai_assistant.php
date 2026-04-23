@@ -47,7 +47,7 @@ class block_ai_assistant extends block_base
     public function get_content()
     {
         global $OUTPUT;
-        global $PAGE, $DB, $USER, $CFG, $SESSION;
+        global $PAGE, $DB, $USER, $CFG;
         require_once($CFG->libdir . '/gradelib.php');
         $config = get_config('block_ai_assistant');
 
@@ -137,7 +137,7 @@ class block_ai_assistant extends block_base
             . ' user=' . $USER->username,
             DEBUG_DEVELOPER
         );
-        $is_impersonating = !empty($SESSION->realuser);
+        $is_impersonating = \core\session\manager::is_loggedinas();
         if ($ai_active && !ai_policy::get_policy_status() && !$is_impersonating) {
             $PAGE->requires->js_call_amd('block_ai_assistant/ai_policy', 'init');
         }
