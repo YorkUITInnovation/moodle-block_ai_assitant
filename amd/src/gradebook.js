@@ -3,33 +3,50 @@ import notification from 'core/notification';
 import * as Str from 'core/str';
 
 const STORAGE_PREFIX = 'block_ai_assistant_gradebook';
-// Sentinel value for "not graded / exclude from gradebook". Stored in the row's `category`
-// field; rows carrying this value are filtered out before `finalize` is sent to Criabot.
 const NOT_GRADED = '__not_graded__';
-// Fallback list of categories if we have not yet accepted a proposal.
 const DEFAULT_CATEGORIES = ['Assignments', 'Quizzes', 'Labs', 'Exams', 'Projects', 'Participation'];
 let sessionInitPromise = null;
 let requestInFlight = false;
-// Category names from the accepted proposal, used to populate the mapping select dropdowns.
 let proposalCategories = [];
-// In-memory cache of the latest server-side state timestamp we've seen, so we never overwrite newer data.
 let lastKnownStateTimemodified = 0;
-// Debounced server-save state.
 let pendingServerSave = null;
-// Localized labels (populated from lang strings once available; literal fallbacks used until then).
+let saveInFlight = Promise.resolve();
+let suspendAutoSave = false;
 let notGradedLabel = '— Not graded —';
 let selectCategoryLabel = 'Select a category…';
 let missingCategoryErrorLabel = 'Please pick a category for every row (or set it to Not graded).';
+
+let currentCourseId = 0;
 
 const el = (id) => document.getElementById(id);
 
 const getChatMessages = () => el('gradebook-chat-messages');
 
-const getCourseId = () => String(el('block-ai-assistant-gradebook-courseid').value || '').trim();
+const getCourseId = () => {
+    if (currentCourseId > 0) {
+        return String(currentCourseId);
+    }
+    const node = el('block-ai-assistant-gradebook-courseid');
+    const val = node ? String(node.value || '').trim() : '';
+    if (val && val !== '0') {
+        currentCourseId = Number(val);
+        return val;
+    }
+    return '';
+};
 
-const getStorageKey = (kind) => `${STORAGE_PREFIX}_${kind}_${getCourseId()}`;
+const getStorageKey = (kind) => {
+    const cid = getCourseId();
+    if (!cid) {
+        return null;
+    }
+    return `${STORAGE_PREFIX}_${kind}_${cid}`;
+};
 
 const loadJson = (key, fallback) => {
+    if (!key) {
+        return fallback;
+    }
     try {
         const raw = localStorage.getItem(key);
         if (!raw) {
@@ -42,18 +59,22 @@ const loadJson = (key, fallback) => {
 };
 
 const saveJson = (key, value) => {
+    if (!key) {
+        return;
+    }
     try {
         localStorage.setItem(key, JSON.stringify(value));
     } catch (e) {
-        // Ignore quota/storage exceptions.
     }
 };
 
 const removeKey = (key) => {
+    if (!key) {
+        return;
+    }
     try {
         localStorage.removeItem(key);
     } catch (e) {
-        // Ignore.
     }
 };
 
@@ -65,16 +86,22 @@ const setText = (id, value) => {
 };
 
 const setSessionId = (sessionId) => {
-    el('block-ai-assistant-gradebook-sessionid').value = sessionId || '';
+    const input = el('block-ai-assistant-gradebook-sessionid');
+    if (input) {
+        input.value = sessionId || '';
+    }
     setText('gradebook-session-badge', sessionId || '-');
-    if (sessionId) {
+    if (sessionId && sessionId !== 'starting…') {
         saveJson(getStorageKey('session_id'), sessionId);
-    } else {
+    } else if (!sessionId) {
         removeKey(getStorageKey('session_id'));
     }
 };
 
-const getSessionId = () => String(el('block-ai-assistant-gradebook-sessionid').value || '').trim();
+const getSessionId = () => {
+    const input = el('block-ai-assistant-gradebook-sessionid');
+    return String(input ? (input.value || '') : '').trim();
+};
 
 const setPhase = (phase) => {
     const badge = el('gradebook-phase-badge');
@@ -95,6 +122,12 @@ const setPhase = (phase) => {
     } else {
         badge.classList.add('bg-secondary');
     }
+
+    if (phase && phase !== '—') {
+        saveJson(getStorageKey('phase'), phase);
+    } else if (!phase) {
+        removeKey(getStorageKey('phase'));
+    }
 };
 
 const parseResponse = (raw) => {
@@ -110,7 +143,6 @@ const parseResponse = (raw) => {
     try {
         return JSON.parse(text);
     } catch (e) {
-        // Some Moodle/PHP paths can prepend warnings/notices before JSON.
         const firstObjectStart = text.indexOf('{');
         const firstArrayStart = text.indexOf('[');
         let start = -1;
@@ -128,7 +160,6 @@ const parseResponse = (raw) => {
             try {
                 return JSON.parse(candidate);
             } catch (ignored) {
-                // Fall through to explicit error below.
             }
         }
 
@@ -143,7 +174,6 @@ const callWs = async (methodname, args) => {
     return response;
 };
 
-// Heuristic: does a parsed Criabot response indicate the backend lost/expired our session?
 const isSessionNotFound = (parsed) => {
     if (!parsed || typeof parsed !== 'object') {
         return false;
@@ -219,18 +249,17 @@ const restoreChatHistory = () => {
 
 const isNotGraded = (category) => String(category || '').trim() === NOT_GRADED;
 
-// A row has a real category if it has any non-empty string in `category` (Not-graded counts).
 const rowHasCategory = (item) => item && String(item.category || '').trim().length > 0;
 
 const getConfirmedMapping = () => {
+    const node = el('gradebook-confirmed-mapping');
     try {
-        return JSON.parse(el('gradebook-confirmed-mapping').value || '[]');
+        return JSON.parse((node ? node.value : '') || '[]');
     } catch (e) {
         return [];
     }
 };
 
-// Find row indexes that are missing a category (used for the click-time validation + red borders).
 const findMissingCategoryIndexes = (confirmed) => {
     const missing = [];
     if (!Array.isArray(confirmed)) {
@@ -244,6 +273,50 @@ const findMissingCategoryIndexes = (confirmed) => {
     return missing;
 };
 
+const findEmptyCategories = (confirmed) => {
+    if (!Array.isArray(proposalCategories) || proposalCategories.length < 1) {
+        return [];
+    }
+    const used = new Set();
+    if (Array.isArray(confirmed)) {
+        confirmed.forEach((item) => {
+            const cat = String(item.category || '').trim();
+            if (cat !== '' && !isNotGraded(cat)) {
+                used.add(cat);
+            }
+        });
+    }
+    return proposalCategories.filter((cat) => !used.has(cat));
+};
+
+const showMappingError = (text) => {
+    const errorEl = el('gradebook-mapping-error');
+    const textEl = el('gradebook-mapping-error-text');
+    if (!errorEl || !textEl) {
+        return;
+    }
+
+    textEl.textContent = text;
+    errorEl.classList.remove('d-none');
+    errorEl.classList.add('gradebook-error-shake');
+
+    setTimeout(() => {
+        errorEl.classList.remove('gradebook-error-shake');
+    }, 500);
+
+    const body = el('gradebook-mapping-body');
+    if (body) {
+        body.scrollTop = 0;
+    }
+};
+
+const clearMappingError = () => {
+    const errorEl = el('gradebook-mapping-error');
+    if (errorEl) {
+        errorEl.classList.add('d-none');
+    }
+};
+
 const clearMissingHighlights = () => {
     document.querySelectorAll('#gradebook-mapping-rows tr.gradebook-row-missing').forEach((tr) => {
         tr.classList.remove('gradebook-row-missing');
@@ -251,14 +324,45 @@ const clearMissingHighlights = () => {
 };
 
 const setFinalizeEnabled = (enabled) => {
-    // The finalize + generate buttons are kept clickable whenever the UI isn't busy;
-    // we validate on click instead of silently disabling, so the user always knows why.
     ['btn-gradebook-finalize', 'btn-gradebook-generate'].forEach((id) => {
         const btn = el(id);
         if (btn) {
             btn.disabled = !enabled;
         }
     });
+};
+
+const setAcceptEnabled = (enabled) => {
+    const btn = el('btn-gradebook-accept');
+    if (btn) {
+        btn.disabled = !enabled;
+    }
+};
+
+const proposalTotalAndValid = (proposal) => {
+    if (!proposal || !Array.isArray(proposal.categories)) {
+        return {total: null, valid: true};
+    }
+    const total = proposal.categories.reduce((sum, c) => sum + Number(c.weight || 0), 0);
+    const valid = Math.abs(total - 100.0) <= 0.1;
+    return {total, valid};
+};
+
+const applyProposalWeightGate = (proposal) => {
+    const {total, valid} = proposalTotalAndValid(proposal);
+    if (total === null) {
+        setAcceptEnabled(false);
+        return;
+    }
+
+    if (!valid) {
+        setAcceptEnabled(false);
+        setFinalizeEnabled(false);
+        appendSystemMessage(`Weight check: total is ${total.toFixed(1)}% (expected 100%). Update weights before accepting or generating mapping.`);
+    } else {
+        setAcceptEnabled(true);
+        setFinalizeEnabled(true);
+    }
 };
 
 const setUiBusy = (isBusy) => {
@@ -277,17 +381,13 @@ const setUiBusy = (isBusy) => {
         }
     });
 
-    // After a request finishes, re-enable finalize/generate unconditionally — validation happens on click.
     if (!isBusy) {
         setFinalizeEnabled(true);
     }
 };
 
-// Build the list of options to show in the category dropdown.
-// Always includes the "Not graded" sentinel + either proposalCategories or DEFAULT_CATEGORIES.
 const buildCategoryOptions = (currentCat) => {
     const base = proposalCategories.length > 0 ? proposalCategories.slice() : DEFAULT_CATEGORIES.slice();
-    // If the current value is a custom one (neither in the base list nor the sentinel), include it.
     if (currentCat && !base.includes(currentCat) && currentCat !== NOT_GRADED) {
         base.push(currentCat);
     }
@@ -308,7 +408,6 @@ const persistMappingInputs = (confirmed) => {
         jsonNode.value = JSON.stringify(confirmed, null, 2);
     }
     updateMappingSummary(confirmed);
-    // Finalize/Generate remain clickable; we validate only on click.
     setFinalizeEnabled(true);
     scheduleServerSave();
 };
@@ -368,7 +467,6 @@ const syncMappingUIFromJson = () => {
 
         const currentValue = String(item.category || '');
 
-        // Placeholder option — always present, selected when category is empty.
         const placeholder = document.createElement('option');
         placeholder.value = '';
         placeholder.textContent = selectCategoryLabel;
@@ -390,7 +488,6 @@ const syncMappingUIFromJson = () => {
             sel.appendChild(opt);
         });
 
-        // Separator + Not graded.
         const sep = document.createElement('option');
         sep.disabled = true;
         sep.textContent = '──────────';
@@ -412,7 +509,6 @@ const syncMappingUIFromJson = () => {
             const val = sel.value;
             item.category = val;
             applyNotGradedRowStyle(tr, isNotGraded(val));
-            // Once the user picks anything, clear the "missing" red-border state on this row.
             tr.classList.remove('gradebook-row-missing');
             if (val) {
                 sel.classList.remove('gradebook-select-empty');
@@ -420,6 +516,7 @@ const syncMappingUIFromJson = () => {
                 sel.classList.add('gradebook-select-empty');
             }
             persistMappingInputs(confirmed);
+            clearMappingError();
         });
 
         category.appendChild(sel);
@@ -429,7 +526,6 @@ const syncMappingUIFromJson = () => {
     });
 
     updateMappingSummary(confirmed);
-    // Finalize/Generate stay clickable; validation runs on click.
     setFinalizeEnabled(true);
 };
 
@@ -458,38 +554,43 @@ const mappingToConfirmedRows = (mapping) => {
     return activities.map((item) => {
         const name = item.activity_name || item.name || item.module_name || '';
         const module = item.module || item.modname || item.activity_type || item.type || '';
-        // Prefer a category the backend explicitly confirmed, then suggested, then a generic one.
-        // If still missing, leave it blank — the user will pick from the dropdown.
-        const provided = item.confirmed_category || item.suggested_category || item.category || '';
-        const category = provided && String(provided).trim().length > 0 ? provided : '';
+        const confirmed = item.confirmed_category && String(item.confirmed_category).trim().length > 0
+            ? String(item.confirmed_category).trim()
+            : '';
+        const suggested = !confirmed && item.suggested_category && String(item.suggested_category).trim().length > 0
+            ? String(item.suggested_category).trim()
+            : '';
         return {
             moodle_cmid: item.moodle_cmid != null ? item.moodle_cmid : (item.cmid != null ? item.cmid : item.id),
             activity_name: name,
             module: module,
-            category: category
+            category: confirmed,
+            suggested_category: suggested
         };
     }).filter((item) => item.moodle_cmid != null);
 };
 
 const normalizePrompt = (prompt) => {
     let p = String(prompt || '').trim();
-    p = p.replace(/\blap\b/gi, 'Labs').replace(/\badjuest\b/gi, 'adjust');
-
-    const lower = p.toLowerCase();
-    if ((lower.indexOf('change') !== -1 || lower.indexOf('adjust') !== -1 || lower.indexOf('set') !== -1) &&
-        lower.indexOf('labs') !== -1 && lower.indexOf('final') !== -1) {
-        const labsMatch = p.match(/labs?\s*(?:to|=)?\s*(\d+(?:\.\d+)?)/i);
-        const finalMatch = p.match(/final(?:\s*exam)?\s*(?:to|=)?\s*(\d+(?:\.\d+)?)/i);
-        if (labsMatch && finalMatch) {
-            return `Update existing categories only: set Labs to ${labsMatch[1]}%, set Final Exam to ${finalMatch[1]}%. Keep all other categories unchanged and keep total exactly 100%.`;
-        }
-    }
-
-    if (lower.indexOf('split assignments into') !== -1) {
-        p += ' Treat Homework/Projects as subcategories inside Assignments and do not add extra top-level categories.';
-    }
-
+    p = p.replace(/\badjuest\b/gi, 'adjust');
     return p;
+};
+
+const extractProposalCategories = (proposal) => {
+    if (proposal && Array.isArray(proposal.categories)) {
+        return proposal.categories.map((c) => c.name).filter(Boolean);
+    }
+    return [];
+};
+
+const setProposalCategories = (cats) => {
+    proposalCategories = Array.isArray(cats) ? cats : [];
+    if (proposalCategories.length > 0) {
+        saveJson(getStorageKey('proposal_categories'), proposalCategories);
+    } else {
+        removeKey(getStorageKey('proposal_categories'));
+    }
+    syncMappingUIFromJson();
 };
 
 const hydrateFromStatusPayload = (parsed) => {
@@ -500,77 +601,208 @@ const hydrateFromStatusPayload = (parsed) => {
 
     setPhase(statusPayload.phase || parsed.phase || parsed.state || '-');
 
+    const cats = extractProposalCategories(statusPayload.proposal || null);
+    if (cats.length > 0) {
+        setProposalCategories(cats);
+    }
+
     const mapping = extractContentMapping(statusPayload);
     const confirmed = mappingToConfirmedRows(mapping);
     if (confirmed.length > 0) {
-        el('gradebook-confirmed-mapping').value = JSON.stringify(confirmed, null, 2);
+        const node = el('gradebook-confirmed-mapping');
+        if (node) {
+            node.value = JSON.stringify(confirmed, null, 2);
+        }
         syncMappingUIFromJson();
     }
 };
 
-// --- Server-side persistence (authoritative across refresh / browsers) ---
+const bumpLastKnown = (value) => {
+    const t = Number(value) || 0;
+    if (t > lastKnownStateTimemodified) {
+        lastKnownStateTimemodified = t;
+    }
+};
+
+const localHistoryLength = () => {
+    const key = getStorageKey('chat_history');
+    if (!key) {
+        return 0;
+    }
+    const arr = loadJson(key, []);
+    return Array.isArray(arr) ? arr.length : 0;
+};
+
+const stateHistoryLength = (state) => {
+    if (!state) {
+        return 0;
+    }
+    try {
+        const arr = JSON.parse(state.chat_history_json || '[]');
+        return Array.isArray(arr) ? arr.length : 0;
+    } catch (e) {
+        return 0;
+    }
+};
 
 const collectStateSnapshot = () => {
+    const sid = getSessionId();
+    const phaseNode = el('gradebook-phase-badge');
+    const phaseText = phaseNode ? phaseNode.textContent.trim() : '';
+    const mappingNode = el('gradebook-confirmed-mapping');
+
     return {
-        session_id: getSessionId() || null,
-        phase: el('gradebook-phase-badge') ? el('gradebook-phase-badge').textContent.trim() : null,
+        session_id: (sid && sid !== 'starting…') ? sid : null,
+        phase: (phaseText && phaseText !== '—') ? phaseText : null,
         chat_history_json: JSON.stringify(loadJson(getStorageKey('chat_history'), [])),
-        confirmed_mapping_json: el('gradebook-confirmed-mapping')
-            ? String(el('gradebook-confirmed-mapping').value || '')
-            : null,
+        confirmed_mapping_json: mappingNode ? String(mappingNode.value || '') : null,
         result_json: JSON.stringify(loadJson(getStorageKey('result'), null))
     };
 };
 
-const serverSaveState = async (overrides = {}) => {
-    const snap = Object.assign({}, collectStateSnapshot(), overrides);
+let consecutiveSaveFailures = 0;
+let saveWarningShown = false;
+
+const warnSaveFailure = async () => {
+    if (saveWarningShown) {
+        return;
+    }
+    saveWarningShown = true;
     try {
-        const payload = {
-            courseid: Number(getCourseId()),
-            session_id: snap.session_id,
-            phase: snap.phase,
-            chat_history_json: snap.chat_history_json,
-            confirmed_mapping_json: snap.confirmed_mapping_json,
-            result_json: snap.result_json
-        };
-        const response = await callWs('block_ai_assistant_gradebook_save_state', payload);
-        if (response && response.timemodified) {
-            lastKnownStateTimemodified = Number(response.timemodified) || lastKnownStateTimemodified;
+        const msg = await Str.get_string('gradebook_save_warning', 'block_ai_assistant');
+        // eslint-disable-next-line no-console
+        console.warn('[gradebook]', msg);
+        if (notification && typeof notification.addNotification === 'function') {
+            notification.addNotification({
+                message: msg,
+                type: 'warning'
+            });
         }
     } catch (e) {
-        // Best-effort only; a save failure should never block the UI.
+        // eslint-disable-next-line no-console
+        console.warn('[gradebook] Failed to save session state to the server.');
     }
+};
+
+const serverSaveState = (overrides = {}) => {
+    const run = async () => {
+        const cid = Number(getCourseId());
+        if (!cid) {
+            return null;
+        }
+        const force = overrides && overrides.force === true;
+        const snap = Object.assign({}, collectStateSnapshot(), overrides);
+        try {
+            const payload = {
+                courseid: cid,
+                session_id: snap.session_id,
+                phase: snap.phase,
+                chat_history_json: snap.chat_history_json,
+                confirmed_mapping_json: snap.confirmed_mapping_json,
+                result_json: snap.result_json,
+                last_known_timemodified: Number(lastKnownStateTimemodified) || 0,
+                force: !!force
+            };
+            const response = await callWs('block_ai_assistant_gradebook_save_state', payload);
+            if (response && response.timemodified) {
+                bumpLastKnown(response.timemodified);
+            }
+            if (response && response.conflict) {
+                const serverLen = stateHistoryLength(response);
+                const localLen = localHistoryLength();
+                if (serverLen > localLen) {
+                    hydrateFromServerState(response);
+                } else if (!force) {
+                    setTimeout(() => { serverSaveState({force: true}); }, 0);
+                }
+            }
+            consecutiveSaveFailures = 0;
+            return response;
+        } catch (e) {
+            consecutiveSaveFailures += 1;
+            if (consecutiveSaveFailures >= 2) {
+                warnSaveFailure();
+            }
+            return null;
+        }
+    };
+
+    const next = saveInFlight.then(run, run);
+    saveInFlight = next.catch(() => null);
+    return next;
 };
 
 const scheduleServerSave = () => {
     if (pendingServerSave) {
         clearTimeout(pendingServerSave);
+        pendingServerSave = null;
+    }
+    if (suspendAutoSave) {
+        return;
     }
     pendingServerSave = setTimeout(() => {
         pendingServerSave = null;
+        if (suspendAutoSave) {
+            return;
+        }
         serverSaveState();
     }, 400);
 };
 
 const serverClearState = async () => {
+    const cid = Number(getCourseId());
+    if (!cid) {
+        return;
+    }
     try {
         await callWs('block_ai_assistant_gradebook_save_state', {
-            courseid: Number(getCourseId()),
+            courseid: cid,
             clear: true
         });
     } catch (e) {
-        // Ignore.
     }
     lastKnownStateTimemodified = 0;
 };
 
+const sendStateBeacon = () => {
+    try {
+        if (!navigator || typeof navigator.sendBeacon !== 'function') {
+            return false;
+        }
+        const cid = Number(getCourseId());
+        if (!cid) {
+            return false;
+        }
+        const snap = collectStateSnapshot();
+        const payload = JSON.stringify({
+            courseid: cid,
+            session_id: snap.session_id,
+            phase: snap.phase,
+            chat_history_json: snap.chat_history_json,
+            confirmed_mapping_json: snap.confirmed_mapping_json,
+            result_json: snap.result_json,
+            last_known_timemodified: Number(lastKnownStateTimemodified) || 0
+        });
+        const url = (M && M.cfg && M.cfg.wwwroot ? M.cfg.wwwroot : '')
+            + '/blocks/ai_assistant/gradebook_beacon.php';
+        const blob = new Blob([payload], {type: 'application/json'});
+        return navigator.sendBeacon(url, blob);
+    } catch (e) {
+        return false;
+    }
+};
+
 const serverGetState = async () => {
+    const cid = Number(getCourseId());
+    if (!cid) {
+        return null;
+    }
     try {
         const response = await callWs('block_ai_assistant_gradebook_get_state', {
-            courseid: Number(getCourseId())
+            courseid: cid
         });
         if (response && response.timemodified) {
-            lastKnownStateTimemodified = Number(response.timemodified) || 0;
+            bumpLastKnown(response.timemodified);
         }
         return response && response.found ? response : null;
     } catch (e) {
@@ -578,7 +810,6 @@ const serverGetState = async () => {
     }
 };
 
-// Hydrate UI (chat history, mapping, result panel) from a persisted server-side state record.
 const hydrateFromServerState = (state) => {
     if (!state) {
         return false;
@@ -586,34 +817,35 @@ const hydrateFromServerState = (state) => {
 
     let hydrated = false;
 
-    // Chat history.
     try {
         const history = JSON.parse(state.chat_history_json || '[]');
-        if (Array.isArray(history) && history.length > 0) {
+        const localLen = localHistoryLength();
+        if (Array.isArray(history) && history.length > 0 && history.length >= localLen) {
             saveJson(getStorageKey('chat_history'), history);
             renderHistory(history);
             hydrated = true;
+        } else if (localLen > 0 && (!Array.isArray(history) || history.length < localLen)) {
+            scheduleServerSave();
         }
     } catch (e) {
-        // Ignore malformed history.
     }
 
-    // Session id + phase.
-    if (state.session_id) {
+    if (state.session_id && state.session_id !== 'starting…') {
         setSessionId(state.session_id);
         hydrated = true;
     }
-    if (state.phase) {
+    if (state.phase && state.phase !== '—') {
         setPhase(state.phase);
     }
 
-    // Mapping JSON.
-    if (state.confirmed_mapping_json && el('gradebook-confirmed-mapping')) {
-        el('gradebook-confirmed-mapping').value = state.confirmed_mapping_json;
-        syncMappingUIFromJson();
+    if (state.confirmed_mapping_json && state.confirmed_mapping_json !== '[]') {
+        const node = el('gradebook-confirmed-mapping');
+        if (node) {
+            node.value = state.confirmed_mapping_json;
+            syncMappingUIFromJson();
+        }
     }
 
-    // Finalize result.
     try {
         const result = state.result_json ? JSON.parse(state.result_json) : null;
         if (result) {
@@ -622,13 +854,10 @@ const hydrateFromServerState = (state) => {
             hydrated = true;
         }
     } catch (e) {
-        // Ignore malformed result.
     }
 
     return hydrated;
 };
-
-// --- Finalize result panel ---
 
 const buildSummaryText = (result) => {
     if (!result || typeof result !== 'object') {
@@ -683,210 +912,55 @@ const renderResultPanel = (result) => {
     panel.classList.remove('d-none');
 };
 
-const triggerJsonDownload = (filename, data) => {
-    try {
-        const payload = JSON.stringify(data, null, 2);
-        const blob = new Blob([payload], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) {
-        notification.exception(e);
+const base64ToUint8Array = (b64) => {
+    const binary = atob(b64);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binary.charCodeAt(i);
     }
+    return bytes;
 };
 
-const downloadFinalizeResult = () => {
-    const result = loadJson(getStorageKey('result'), null);
-    if (!result) {
-        return;
-    }
-    const courseid = getCourseId();
-    const sessionId = result.session_id || getSessionId() || 'session';
-    triggerJsonDownload(`gradebook-${courseid}-${sessionId}.json`, result);
-};
-
-const copyFinalizeSummary = async () => {
-    const result = loadJson(getStorageKey('result'), null);
-    const text = buildSummaryText(result);
-    if (!text) {
-        return;
-    }
+const downloadExport = async (format) => {
+    const buttons = ['btn-gradebook-download-word', 'btn-gradebook-download-pdf']
+        .map((id) => el(id))
+        .filter(Boolean);
+    buttons.forEach((b) => { b.disabled = true; });
     try {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(text);
-        } else {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
+        const response = await callWs('block_ai_assistant_gradebook_export', {
+            courseid: Number(getCourseId()),
+            format: format
+        });
+        if (!response || !response.base64) {
+            throw new Error('Empty export payload');
         }
-        const notice = await Str.get_string('gradebook_copied', 'block_ai_assistant');
-        appendSystemMessage(notice);
-    } catch (e) {
-        notification.exception(e);
-    }
-};
-
-// Minimal HTML-escape for embedding into the Word/PDF export documents.
-const escapeHtml = (value) => String(value == null ? '' : value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-
-// Build a printable HTML document from the finalize result. Shared by Word + PDF.
-const buildPrintableHtml = (result) => {
-    if (!result || typeof result !== 'object') {
-        return '';
-    }
-    const summary = result.summary || result.details || {};
-    const mapping = extractContentMapping(result) || {};
-    const categories = mapping.categories || (result.proposal && result.proposal.categories) || [];
-    const activities = mapping.graded_activities || mapping.activities || mapping.mapped_activities || [];
-
-    const metaRows = [];
-    if (summary.course_name) {
-        metaRows.push(`<tr><th>Course</th><td>${escapeHtml(summary.course_name)}</td></tr>`);
-    }
-    if (summary.total_items != null) {
-        metaRows.push(`<tr><th>Total items</th><td>${escapeHtml(summary.total_items)}</td></tr>`);
-    }
-    if (summary.created_categories != null) {
-        metaRows.push(`<tr><th>Created categories</th><td>${escapeHtml(summary.created_categories)}</td></tr>`);
-    }
-    if (summary.total_weight != null) {
-        metaRows.push(`<tr><th>Total weight</th><td>${escapeHtml(summary.total_weight)}%</td></tr>`);
-    }
-    const generatedAt = new Date().toLocaleString();
-    metaRows.push(`<tr><th>Generated</th><td>${escapeHtml(generatedAt)}</td></tr>`);
-
-    const categoriesHtml = Array.isArray(categories) && categories.length
-        ? `<h2>Grade categories</h2>
-           <table>
-             <thead><tr><th>Category</th><th style="width:100px">Weight</th></tr></thead>
-             <tbody>
-               ${categories.map((c) => `<tr>
-                 <td>${escapeHtml(c.name || '')}</td>
-                 <td>${c.weight != null ? escapeHtml(c.weight) + '%' : ''}</td>
-               </tr>`).join('')}
-             </tbody>
-           </table>`
-        : '';
-
-    const activitiesHtml = Array.isArray(activities) && activities.length
-        ? `<h2>Activity mapping</h2>
-           <table>
-             <thead><tr><th>Activity</th><th>Category</th><th>CMID</th></tr></thead>
-             <tbody>
-               ${activities.map((a) => `<tr>
-                 <td>${escapeHtml(a.activity_name || a.name || '')}</td>
-                 <td>${escapeHtml(a.confirmed_category || a.suggested_category || a.category || '')}</td>
-                 <td>${escapeHtml(a.moodle_cmid != null ? a.moodle_cmid : (a.cmid != null ? a.cmid : ''))}</td>
-               </tr>`).join('')}
-             </tbody>
-           </table>`
-        : '';
-
-    return `<!DOCTYPE html>
-<html><head>
-<meta charset="utf-8">
-<title>Gradebook export</title>
-<style>
-  body { font-family: Calibri, Arial, sans-serif; color: #222; margin: 24px; }
-  h1 { font-size: 22px; margin: 0 0 8px 0; }
-  h2 { font-size: 16px; margin: 24px 0 8px 0; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
-  table { border-collapse: collapse; width: 100%; margin-bottom: 12px; font-size: 12pt; }
-  th, td { border: 1px solid #999; padding: 6px 10px; text-align: left; vertical-align: top; }
-  th { background: #f2f2f2; }
-  .meta th { width: 160px; }
-  .muted { color: #666; font-size: 10pt; }
-</style>
-</head><body>
-<h1>Gradebook — ${escapeHtml(summary.course_name || 'Course ' + getCourseId())}</h1>
-<p class="muted">Generated by Cria AI Assistant.</p>
-<table class="meta"><tbody>${metaRows.join('')}</tbody></table>
-${categoriesHtml}
-${activitiesHtml}
-</body></html>`;
-};
-
-const downloadBlob = (filename, content, mime) => {
-    try {
-        const blob = new Blob([content], {type: mime});
+        const bytes = base64ToUint8Array(response.base64);
+        const blob = new Blob([bytes], {type: response.mime || 'application/octet-stream'});
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = filename;
+        link.download = response.filename || ('gradebook.' + (format === 'pdf' ? 'pdf' : 'doc'));
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
-        notification.exception(e);
-    }
-};
-
-const downloadFinalizeResultAsWord = () => {
-    const result = loadJson(getStorageKey('result'), null);
-    if (!result) {
-        return;
-    }
-    const html = buildPrintableHtml(result);
-    if (!html) {
-        return;
-    }
-    const courseid = getCourseId();
-    const sessionId = result.session_id || getSessionId() || 'session';
-    // .doc extension + application/msword MIME is opened natively by MS Word and LibreOffice.
-    downloadBlob(`gradebook-${courseid}-${sessionId}.doc`, html, 'application/msword');
-};
-
-const downloadFinalizeResultAsPdf = () => {
-    const result = loadJson(getStorageKey('result'), null);
-    if (!result) {
-        return;
-    }
-    const html = buildPrintableHtml(result);
-    if (!html) {
-        return;
-    }
-    // Open a new window and trigger the native print dialog — the user picks "Save as PDF".
-    const win = window.open('', '_blank');
-    if (!win) {
-        // Popup blocked — fall back to downloading an HTML file.
-        const courseid = getCourseId();
-        const sessionId = result.session_id || getSessionId() || 'session';
-        downloadBlob(`gradebook-${courseid}-${sessionId}.html`, html, 'text/html');
-        return;
-    }
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
-    const fire = () => {
         try {
-            win.focus();
-            win.print();
-        } catch (e) {
-            // Ignore — the document is still open for the user to print manually.
+            const msg = await Str.get_string('gradebook_download_failed', 'block_ai_assistant');
+            if (notification && typeof notification.addNotification === 'function') {
+                notification.addNotification({message: msg, type: 'error'});
+            }
+        } catch (_) {
+            notification.exception(e);
         }
-    };
-    // Give the browser a tick to lay out the styles before invoking print.
-    if (win.document.readyState === 'complete') {
-        setTimeout(fire, 150);
-    } else {
-        win.addEventListener('load', () => setTimeout(fire, 150));
+    } finally {
+        buttons.forEach((b) => { b.disabled = false; });
     }
 };
 
-// --- Session lifecycle ---
+const downloadFinalizeResultAsWord = () => downloadExport('docx');
+const downloadFinalizeResultAsPdf = () => downloadExport('pdf');
 
 const doStartSession = async () => {
     const raw = await callWs('block_ai_assistant_gradebook_start', {courseid: getCourseId()});
@@ -898,41 +972,48 @@ const doStartSession = async () => {
     const initial = parsed.initial_message || parsed.message || 'Gradebook session started.';
     appendSystemMessage(initial);
 
-    // Persist the fresh session id + phase immediately (do not wait for debounce).
     serverSaveState();
 
     return sessionId;
 };
 
-// Full reset: clear local + server state, start a fresh session.
 const resetSession = async (systemMessageKey) => {
+    suspendAutoSave = true;
+    if (pendingServerSave) {
+        clearTimeout(pendingServerSave);
+        pendingServerSave = null;
+    }
+    try { await saveInFlight; } catch (_) { }
+
     removeKey(getStorageKey('session_id'));
     removeKey(getStorageKey('chat_history'));
+    removeKey(getStorageKey('phase'));
     removeKey(getStorageKey('result'));
+    removeKey(getStorageKey('proposal_categories'));
+    proposalCategories = [];
     setSessionId('');
-    if (el('gradebook-confirmed-mapping')) {
-        el('gradebook-confirmed-mapping').value = '';
+    const node = el('gradebook-confirmed-mapping');
+    if (node) {
+        node.value = '';
     }
     clearChatUI();
     renderResultPanel(null);
     syncMappingUIFromJson();
     await serverClearState();
 
+    suspendAutoSave = false;
+
     if (systemMessageKey) {
         try {
             const msg = await Str.get_string(systemMessageKey, 'block_ai_assistant');
             appendSystemMessage(msg);
         } catch (e) {
-            // Ignore missing string.
         }
     }
 
     return doStartSession();
 };
 
-// Soft-restart: keep chat history, mapping, and result visible, but mint a brand new backend
-// session because the Criabot session has expired/been dropped. Used when the backend says
-// "session not found" but the user's local work is still valid.
 const softRestartSession = async (systemMessageKey) => {
     setSessionId('');
     if (systemMessageKey) {
@@ -940,22 +1021,12 @@ const softRestartSession = async (systemMessageKey) => {
             const msg = await Str.get_string(systemMessageKey, 'block_ai_assistant');
             appendSystemMessage(msg);
         } catch (e) {
-            // Ignore.
         }
     }
     return doStartSession();
 };
 
-// Restore from server-side state if available, else localStorage, else start fresh.
-// If the Criabot status call shows the session is gone, keep the chat history visible and
-// transparently start a new backend session (soft restart).
 const restoreOrStartSession = async () => {
-    const existing = getSessionId();
-    if (existing) {
-        return existing;
-    }
-
-    // 1) Authoritative source: server-side state.
     const serverState = await serverGetState();
     if (serverState) {
         hydrateFromServerState(serverState);
@@ -964,7 +1035,7 @@ const restoreOrStartSession = async () => {
     const candidateSession = (serverState && serverState.session_id) ||
         String(loadJson(getStorageKey('session_id'), '') || '').trim();
 
-    if (candidateSession) {
+    if (candidateSession && candidateSession !== 'starting…') {
         try {
             const raw = await callWs('block_ai_assistant_gradebook_status', {
                 courseid: getCourseId(),
@@ -972,18 +1043,15 @@ const restoreOrStartSession = async () => {
             });
             const parsed = parseResponse(raw);
             if (isSessionNotFound(parsed)) {
-                // Backend session is gone, but keep whatever UI state the user had visible.
                 return softRestartSession('gradebook_session_expired');
             }
             setSessionId(candidateSession);
             hydrateFromStatusPayload(parsed);
             if (!serverState) {
-                // Promote the localStorage-only session to the server store.
                 serverSaveState();
             }
             return candidateSession;
         } catch (e) {
-            // Transient failure — keep the locally-restored state visible; the user can retry.
             setSessionId(candidateSession);
             return candidateSession;
         }
@@ -992,13 +1060,16 @@ const restoreOrStartSession = async () => {
     return doStartSession();
 };
 
+let authoritativeCheckDone = false;
+
 const ensureSession = async () => {
-    if (getSessionId()) {
+    if (authoritativeCheckDone && getSessionId() && getSessionId() !== 'starting…') {
         return getSessionId();
     }
     if (!sessionInitPromise) {
         sessionInitPromise = restoreOrStartSession().finally(() => {
             sessionInitPromise = null;
+            authoritativeCheckDone = true;
         });
     }
     return sessionInitPromise;
@@ -1018,11 +1089,10 @@ const withRequestLock = async (action) => {
     }
 };
 
-// Wrap a call that expects an active session: if the backend says the session is gone,
-// keep the chat history visible (soft restart) and retry once with the fresh session id.
 const callWithSessionRetry = async (fn) => {
     try {
-        const parsed = await fn(getSessionId());
+        const sid = getSessionId();
+        const parsed = await fn(sid);
         if (isSessionNotFound(parsed)) {
             const newId = await softRestartSession('gradebook_session_expired');
             return fn(newId);
@@ -1051,7 +1121,6 @@ const sendPrompt = async () => {
         try {
             loadingText = await Str.get_string('gradebook_loading', 'block_ai_assistant');
         } catch (e) {
-            // Fallback to literal if the string is not available.
         }
         const loadingDiv = document.createElement('div');
         loadingDiv.className = 'chat-message bot-message';
@@ -1074,7 +1143,9 @@ const sendPrompt = async () => {
             });
             setPhase(parsed.phase || parsed.state || '-');
             appendSystemMessage(parsed.reply || parsed.message || 'Updated.');
-            // Persist immediately so history is never lost to a sudden refresh.
+            if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
+                applyProposalWeightGate(parsed.proposal);
+            }
             await serverSaveState();
         } finally {
             const indicator = document.getElementById('gradebook-loading-indicator');
@@ -1083,13 +1154,6 @@ const sendPrompt = async () => {
             }
         }
     });
-};
-
-const extractProposalCategories = (proposal) => {
-    if (proposal && Array.isArray(proposal.categories)) {
-        return proposal.categories.map((c) => c.name).filter(Boolean);
-    }
-    return [];
 };
 
 const fetchProposal = async () => {
@@ -1111,12 +1175,14 @@ const fetchProposal = async () => {
         if (proposal && Array.isArray(proposal.categories)) {
             const cats = extractProposalCategories(proposal);
             if (cats.length) {
-                proposalCategories = cats;
+                setProposalCategories(cats);
             }
             const lines = proposal.categories.map((c) => `${c.name}: ${c.weight}%`).join(' | ');
             appendSystemMessage(`Current proposal: ${lines}`);
+            applyProposalWeightGate(proposal);
         } else {
             appendSystemMessage('No proposal yet. Send a prompt to generate one.');
+            setAcceptEnabled(false);
         }
         await serverSaveState();
     });
@@ -1138,14 +1204,16 @@ const acceptProposal = async () => {
 
         const cats = extractProposalCategories(parsed.proposal || null);
         if (cats.length) {
-            proposalCategories = cats;
+            setProposalCategories(cats);
         }
 
         const confirmed = mappingToConfirmedRows(extractContentMapping(parsed));
         if (confirmed.length > 0) {
-            el('gradebook-confirmed-mapping').value = JSON.stringify(confirmed, null, 2);
+            const node = el('gradebook-confirmed-mapping');
+            if (node) {
+                node.value = JSON.stringify(confirmed, null, 2);
+            }
             syncMappingUIFromJson();
-            // Auto-open the mapping drawer now that there is something to review.
             const drawer = el('gradebook-mapping-drawer');
             if (drawer && drawer.classList.contains('is-collapsed')) {
                 drawer.classList.remove('is-collapsed');
@@ -1154,9 +1222,12 @@ const acceptProposal = async () => {
                     toggle.setAttribute('aria-expanded', 'true');
                 }
             }
+            const catHint = proposalCategories.length
+                ? ` Each of your ${proposalCategories.length} categories (${proposalCategories.join(', ')}) needs at least one activity.`
+                : '';
             appendSystemMessage(
                 `Mapping ready: ${confirmed.length} activities. ` +
-                `Pick a category for each row (or "Not graded"), then click "Generate gradebook".`
+                `Pick a category for each row (or "Not graded"), then click "Generate gradebook".${catHint}`
             );
         } else {
             syncMappingUIFromJson();
@@ -1167,7 +1238,6 @@ const acceptProposal = async () => {
     });
 };
 
-// Apply red-border highlighting to the rows at the given indexes and scroll to the first one.
 const highlightMissingRows = (missingIdx) => {
     clearMissingHighlights();
     const rowsWrap = el('gradebook-mapping-rows');
@@ -1184,7 +1254,6 @@ const highlightMissingRows = (missingIdx) => {
     if (missingIdx.length > 0 && trs[missingIdx[0]] && trs[missingIdx[0]].scrollIntoView) {
         trs[missingIdx[0]].scrollIntoView({behavior: 'smooth', block: 'center'});
     }
-    // Make sure the mapping drawer is open so the user can see the red rows.
     const drawer = el('gradebook-mapping-drawer');
     if (drawer && drawer.classList.contains('is-collapsed')) {
         drawer.classList.remove('is-collapsed');
@@ -1206,7 +1275,8 @@ const finalizeGradebook = async () => {
             return;
         }
 
-        // 1) Every row must have a category picked (Not graded counts).
+        clearMappingError();
+
         const missing = findMissingCategoryIndexes(confirmed);
         if (missing.length > 0) {
             highlightMissingRows(missing);
@@ -1215,15 +1285,36 @@ const finalizeGradebook = async () => {
                 ? template.replace('{$a}', String(missing.length))
                 : `${template} (${missing.length} row${missing.length === 1 ? '' : 's'} missing)`;
             appendSystemMessage(msg);
+            showMappingError(msg);
             return;
         }
 
-        // 2) At least one row must be actually graded (otherwise there's nothing to grade).
+        const emptyCats = findEmptyCategories(confirmed);
+        if (emptyCats.length > 0) {
+            const names = emptyCats.join(', ');
+            const msg = `These categories have no activities assigned: ${names}. ` +
+                `Pick at least one row for each, or remove the category from the proposal.`;
+            appendSystemMessage(msg);
+            showMappingError(msg);
+
+            const drawer = el('gradebook-mapping-drawer');
+            if (drawer && drawer.classList.contains('is-collapsed')) {
+                drawer.classList.remove('is-collapsed');
+                const toggle = el('gradebook-mapping-toggle');
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', 'true');
+                }
+            }
+            return;
+        }
+
         const gradedRows = confirmed.filter((item) => !isNotGraded(item.category))
             .map((item) => ({moodle_cmid: item.moodle_cmid, category: item.category}));
         if (gradedRows.length < 1) {
-            appendSystemMessage('Every row is set to "Not graded" — nothing would be added to the gradebook. ' +
-                'Pick a real category for at least one activity.');
+            const msg = 'Every row is set to "Not graded" — nothing would be added to the gradebook. ' +
+                'Pick a real category for at least one activity.';
+            appendSystemMessage(msg);
+            showMappingError(msg);
             return;
         }
 
@@ -1241,7 +1332,6 @@ const finalizeGradebook = async () => {
         setPhase(parsed.phase || parsed.state || 'COMPLETED');
         appendSystemMessage(parsed.message || 'Gradebook finalized.');
 
-        // Persist the full Criabot response so the user can download/copy later.
         saveJson(getStorageKey('result'), parsed);
         renderResultPanel(parsed);
         await serverSaveState({result_json: JSON.stringify(parsed)});
@@ -1274,21 +1364,37 @@ const attachListener = (id, event, handler) => {
     }
 };
 
-export const init = () => {
-    if (!el('block-ai-assistant-gradebook-courseid')) {
+export const init = (courseId) => {
+    if (courseId) {
+        currentCourseId = Number(courseId);
+    }
+    if (!getCourseId()) {
         return;
     }
 
-    // Fast, optimistic hydration from localStorage so the UI feels instant.
     restoreChatHistory();
     syncMappingUIFromJson();
+
+    const cachedSessionId = loadJson(getStorageKey('session_id'), '');
+    if (cachedSessionId && cachedSessionId !== 'starting…') {
+        setSessionId(cachedSessionId);
+    }
+    const cachedPhase = loadJson(getStorageKey('phase'), '');
+    if (cachedPhase && cachedPhase !== '—') {
+        setPhase(cachedPhase);
+    }
+    const cachedCats = loadJson(getStorageKey('proposal_categories'), []);
+    if (Array.isArray(cachedCats) && cachedCats.length > 0) {
+        proposalCategories = cachedCats;
+        syncMappingUIFromJson();
+    }
+
     setFinalizeEnabled(true);
     const cachedResult = loadJson(getStorageKey('result'), null);
     if (cachedResult) {
         renderResultPanel(cachedResult);
     }
 
-    // Authoritative hydration + Criabot status check runs via ensureSession().
     ensureSession().catch((error) => {
         notification.exception(error);
     });
@@ -1310,17 +1416,15 @@ export const init = () => {
     attachListener('btn-gradebook-finalize', 'click', guardedAction(finalizeGradebook));
     attachListener('btn-gradebook-generate', 'click', guardedAction(finalizeGradebook));
     attachListener('btn-gradebook-reset', 'click', guardedAction(resetSessionHandler));
-    attachListener('btn-gradebook-download-result', 'click', () => downloadFinalizeResult());
-    attachListener('btn-gradebook-copy-summary', 'click', guardedAction(copyFinalizeSummary));
     attachListener('btn-gradebook-download-word', 'click', () => downloadFinalizeResultAsWord());
     attachListener('btn-gradebook-download-pdf', 'click', () => downloadFinalizeResultAsPdf());
 
     attachListener('gradebook-confirmed-mapping', 'input', () => {
         syncMappingUIFromJson();
         scheduleServerSave();
+        clearMappingError();
     });
 
-    // Mapping drawer collapse/expand toggle (also keyboard accessible).
     const toggleMappingDrawer = () => {
         const drawer = el('gradebook-mapping-drawer');
         const toggle = el('gradebook-mapping-toggle');
@@ -1339,7 +1443,6 @@ export const init = () => {
         }
     });
 
-    // Auto-expand the mapping drawer the first time a mapping is present.
     const confirmedOnLoad = getConfirmedMapping();
     if (Array.isArray(confirmedOnLoad) && confirmedOnLoad.length > 0) {
         const drawer = el('gradebook-mapping-drawer');
@@ -1352,15 +1455,12 @@ export const init = () => {
         }
     }
 
-    // Pre-load the localized "Not graded" label so the first render uses it.
     Str.get_string('gradebook_not_graded', 'block_ai_assistant').then((label) => {
         if (label) {
             notGradedLabel = label;
-            // Re-render in case the mapping was already painted before the lang string arrived.
             syncMappingUIFromJson();
         }
     }).catch(() => {
-        // Keep the literal fallback defined at module scope.
     });
     Str.get_string('gradebook_select_category', 'block_ai_assistant').then((label) => {
         if (label) {
@@ -1368,24 +1468,27 @@ export const init = () => {
             syncMappingUIFromJson();
         }
     }).catch(() => {
-        // Keep literal fallback.
     });
     Str.get_string('gradebook_mapping_missing', 'block_ai_assistant').then((label) => {
         if (label) {
             missingCategoryErrorLabel = label;
         }
     }).catch(() => {
-        // Keep literal fallback.
     });
 
-    // Save-on-unload as a last-ditch guarantee. We also fire a keep-alive beacon so the request
-    // survives even if the Moodle AJAX Promise can't complete during unload.
-    window.addEventListener('beforeunload', () => {
+    const flushBeforeUnload = () => {
         if (pendingServerSave) {
             clearTimeout(pendingServerSave);
             pendingServerSave = null;
         }
-        // Fire-and-forget async save (may not complete).
-        serverSaveState();
+        sendStateBeacon();
+    };
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            flushBeforeUnload();
+        }
     });
+    window.addEventListener('pagehide', flushBeforeUnload);
+    window.addEventListener('beforeunload', flushBeforeUnload);
 };

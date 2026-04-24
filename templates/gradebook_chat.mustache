@@ -177,10 +177,37 @@
 
     .gradebook-category-select {
         min-width: 150px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
 
     .gradebook-select-empty {
         color: var(--bs-secondary-color, #6c757d);
+    }
+
+    /* Error highlight and shake effect. */
+    .gradebook-error-shake {
+        animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        transform: translate3d(0, 0, 0);
+    }
+
+    @keyframes shake {
+        10%, 90% { transform: translate3d(-1px, 0, 0); }
+        20%, 80% { transform: translate3d(2px, 0, 0); }
+        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+        40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+
+    .gradebook-mapping-error-alert {
+        border-left: 4px solid var(--bs-danger, #dc3545);
+        background: var(--bs-danger-bg-subtle, #f8d7da);
+        color: var(--bs-danger-text-emphasis, #842029);
+        font-size: 13px;
+        padding: 8px 12px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     /* Result panel — success banner shown after finalize. */
@@ -300,17 +327,11 @@
                             <div id="gradebook-result-summary" class="small" style="white-space: pre-wrap;"></div>
                         </div>
                         <div class="btn-group btn-group-sm">
-                            <button type="button" class="btn btn-outline-success" id="btn-gradebook-download-result">
-                                {{#str}}gradebook_download_result, block_ai_assistant{{/str}}
-                            </button>
                             <button type="button" class="btn btn-outline-success" id="btn-gradebook-download-word">
                                 {{#str}}gradebook_download_word, block_ai_assistant{{/str}}
                             </button>
                             <button type="button" class="btn btn-outline-success" id="btn-gradebook-download-pdf">
                                 {{#str}}gradebook_download_pdf, block_ai_assistant{{/str}}
-                            </button>
-                            <button type="button" class="btn btn-outline-success" id="btn-gradebook-copy-summary">
-                                {{#str}}gradebook_copy_summary, block_ai_assistant{{/str}}
                             </button>
                         </div>
                     </div>
@@ -336,6 +357,13 @@
                     </div>
 
                     <div class="gradebook-mapping-body" id="gradebook-mapping-body">
+                        <div id="gradebook-mapping-error" class="gradebook-mapping-error-alert d-none" role="alert">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-exclamation-triangle-fill flex-shrink-0" viewBox="0 0 16 16">
+                                <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                            </svg>
+                            <div id="gradebook-mapping-error-text"></div>
+                        </div>
+
                         <div id="gradebook-mapping-empty" class="alert alert-secondary py-2 small mb-2">
                             {{#str}}gradebook_mapping_empty, block_ai_assistant{{/str}}
                         </div>

@@ -52,7 +52,7 @@ $data = [
     'profileimageurl' => $user_picture->get_url($PAGE)->out(),
 ];
 
-$PAGE->requires->js_call_amd('block_ai_assistant/gradebook', 'init');
+$PAGE->requires->js_call_amd('block_ai_assistant/gradebook', 'init', [$courseid]);
 
 echo $OUTPUT->header();
 echo $OUTPUT->render_from_template('block_ai_assistant/gradebook_chat', $data);

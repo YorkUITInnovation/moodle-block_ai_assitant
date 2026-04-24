@@ -1296,7 +1296,9 @@ class cria
         ?string $phase = null,
         ?string $chat_history_json = null,
         ?string $confirmed_mapping_json = null,
-        ?string $result_json = null
+        ?string $result_json = null,
+        int $last_known_timemodified = 0,
+        bool $force = false
     ): array {
         global $DB;
 
@@ -1306,26 +1308,43 @@ class cria
             ['courseid' => $courseid, 'userid' => $userid]
         );
 
+        $conflict = false;
         if ($existing) {
-            $updates = new \stdClass();
-            $updates->id = $existing->id;
-            $updates->timemodified = $now;
-            if ($session_id !== null) {
-                $updates->session_id = $session_id;
+            // Optimistic concurrency: if the server has a newer record than the client last saw,
+            // reject this write (unless caller explicitly asked to force).
+            if (!$force
+                && $last_known_timemodified > 0
+                && (int)$existing->timemodified > $last_known_timemodified) {
+                $conflict = true;
             }
-            if ($phase !== null) {
-                $updates->phase = $phase;
+
+            if (!$conflict) {
+                $updates = new \stdClass();
+                $updates->id = $existing->id;
+                $updates->timemodified = $now;
+                if ($session_id !== null) {
+                    $updates->session_id = $session_id;
+                }
+                if ($phase !== null) {
+                    $updates->phase = $phase;
+                }
+                // Never overwrite a non-empty stored history/mapping/result with an empty value
+                // unless the caller explicitly forced it (e.g. reset). This guarantees a stale
+                // tab with empty localStorage cannot wipe a good server record.
+                if ($chat_history_json !== null
+                    && self::gradebook_should_write_field($existing->chat_history_json, $chat_history_json, $force)) {
+                    $updates->chat_history_json = $chat_history_json;
+                }
+                if ($confirmed_mapping_json !== null
+                    && self::gradebook_should_write_field($existing->confirmed_mapping_json, $confirmed_mapping_json, $force)) {
+                    $updates->confirmed_mapping_json = $confirmed_mapping_json;
+                }
+                if ($result_json !== null
+                    && self::gradebook_should_write_field($existing->result_json, $result_json, $force)) {
+                    $updates->result_json = $result_json;
+                }
+                $DB->update_record('block_aia_gradebook_state', $updates);
             }
-            if ($chat_history_json !== null) {
-                $updates->chat_history_json = $chat_history_json;
-            }
-            if ($confirmed_mapping_json !== null) {
-                $updates->confirmed_mapping_json = $confirmed_mapping_json;
-            }
-            if ($result_json !== null) {
-                $updates->result_json = $result_json;
-            }
-            $DB->update_record('block_aia_gradebook_state', $updates);
             $record = $DB->get_record('block_aia_gradebook_state', ['id' => $existing->id]);
         } else {
             $insert = new \stdClass();
@@ -1344,6 +1363,7 @@ class cria
 
         return [
             'found' => true,
+            'conflict' => $conflict,
             'session_id' => (string)($record->session_id ?? ''),
             'phase' => (string)($record->phase ?? ''),
             'chat_history_json' => (string)($record->chat_history_json ?? ''),
@@ -1351,6 +1371,35 @@ class cria
             'result_json' => (string)($record->result_json ?? ''),
             'timemodified' => (int)($record->timemodified ?? 0),
         ];
+    }
+
+    /**
+     * Decide whether an incoming JSON blob should replace the stored one.
+     *
+     * Rules (in order):
+     *  - If $force is true, always write.
+     *  - If the stored value is empty/null/"[]"/"null", always write (we have nothing to lose).
+     *  - If the incoming value is empty or represents an empty array/null but the stored value is non-empty,
+     *    DO NOT write — that protects against a stale/new tab clobbering a good record.
+     *  - Otherwise, write.
+     */
+    protected static function gradebook_should_write_field($stored, string $incoming, bool $force): bool
+    {
+        if ($force) {
+            return true;
+        }
+        $stored_str = (string)($stored ?? '');
+        $stored_trim = trim($stored_str);
+        $stored_is_empty = ($stored_trim === '' || $stored_trim === '[]' || $stored_trim === 'null' || $stored_trim === '{}');
+        if ($stored_is_empty) {
+            return true;
+        }
+        $incoming_trim = trim($incoming);
+        $incoming_is_empty = ($incoming_trim === '' || $incoming_trim === '[]' || $incoming_trim === 'null' || $incoming_trim === '{}');
+        if ($incoming_is_empty) {
+            return false;
+        }
+        return true;
     }
 
     /**

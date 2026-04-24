@@ -216,4 +216,22 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_gradebook_save_state_beacon' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'save_state_beacon',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Keep-alive endpoint for navigator.sendBeacon during page unload.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_export' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'export',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Render the finalized gradebook as a PDF or Word document and return its bytes.',
+        'type' => 'read',
+        'capabilities' => '',
+        'ajax' => true
+    ),
 );
