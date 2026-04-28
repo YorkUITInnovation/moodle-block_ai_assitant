@@ -202,6 +202,17 @@ class webservice
                     $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/finalize', $headers, $body, 60);
                     return $resp['raw'];
                 }
+
+                case 'cria_gradebook_upload': {
+                    $session_id = trim((string)($data['session_id'] ?? ''));
+                    $body = [
+                        'filename' => (string)($data['filename'] ?? ''),
+                        'filetype' => (string)($data['filetype'] ?? ''),
+                        'base64' => (string)($data['base64'] ?? ''),
+                    ];
+                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/upload', $headers, $body, 120);
+                    return $resp['raw'];
+                }
             }
         }
 

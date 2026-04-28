@@ -11,6 +11,7 @@ function block_ai_assistant_pluginfile($course, $cm, $context, $filearea, $args,
     $fileAreas = array(
         'syllabus',
         'questions',
+        'gradebookdocs',
     );
 
     if (!in_array($filearea, $fileAreas)) {

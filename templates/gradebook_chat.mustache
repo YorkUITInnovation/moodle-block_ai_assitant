@@ -288,6 +288,39 @@
         width: 18px;
         height: 18px;
     }
+
+    .gradebook-icon-btn {
+        flex: 0 0 auto;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        background: var(--bs-secondary, #6c757d);
+        color: #ffffff;
+        transition: background 0.15s ease, transform 0.1s ease;
+        margin-right: 4px;
+        cursor: pointer;
+    }
+
+    .gradebook-icon-btn:hover:not(:disabled) {
+        background: var(--bs-secondary-hover, #565e64);
+        transform: scale(1.05);
+    }
+
+    .gradebook-icon-btn:disabled {
+        background: var(--bs-secondary, #6c757d);
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .gradebook-icon-btn svg {
+        width: 18px;
+        height: 18px;
+    }
 </style>
 
 <div class="row">
@@ -413,6 +446,19 @@
                                    placeholder="{{#str}}gradebook_input_placeholder, block_ai_assistant{{/str}}"
                                    autocomplete="off"
                                    aria-label="{{#str}}gradebook_input_placeholder, block_ai_assistant{{/str}}">
+                            <input type="file"
+                                   id="gradebook-file-upload-input"
+                                   style="display: none;"
+                                   accept=".pdf,.doc,.docx,.txt,.xlsx,.xls"
+                                   aria-label="Upload syllabus or grading document">
+                            <button type="button" id="gradebook-file-upload-btn"
+                                    class="gradebook-icon-btn"
+                                    aria-label="Upload document (PDF, Word, or text)"
+                                    title="Upload syllabus or grading document">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                                    <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                                </svg>
+                            </button>
                             <button type="button" id="block-ai-assistant-gradebook-send-btn"
                                     aria-label="{{#str}}gradebook_send, block_ai_assistant{{/str}}"
                                     title="{{#str}}gradebook_send, block_ai_assistant{{/str}}">
@@ -422,6 +468,12 @@
                             </button>
                         </div>
                     </form>
+                    <div id="gradebook-upload-progress" class="d-none" style="margin-top: 8px;">
+                        <div class="progress" style="height: 4px;">
+                            <div id="gradebook-upload-progress-bar" class="progress-bar bg-success" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small class="text-muted" id="gradebook-upload-status">Uploading...</small>
+                    </div>
                 </div>
 
             </div>

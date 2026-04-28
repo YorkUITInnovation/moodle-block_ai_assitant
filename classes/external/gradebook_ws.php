@@ -203,6 +203,43 @@ class block_ai_assistant_gradebook_ws extends external_api
         return new external_value(PARAM_RAW, 'JSON response from Criabot gradebook finalize');
     }
 
+    public static function upload_parameters(): external_function_parameters
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'session_id' => new external_value(PARAM_RAW, 'Gradebook session id', VALUE_REQUIRED),
+                'filename' => new external_value(PARAM_RAW, 'Uploaded filename', VALUE_REQUIRED),
+                'filetype' => new external_value(PARAM_RAW, 'Uploaded mimetype', VALUE_DEFAULT, ''),
+                'base64' => new external_value(PARAM_RAW, 'Base64 encoded file bytes', VALUE_REQUIRED),
+            )
+        );
+    }
+
+    public static function upload(int $courseid, string $session_id, string $filename, string $filetype, string $base64): string
+    {
+        self::validate_parameters(
+            self::upload_parameters(),
+            [
+                'courseid' => $courseid,
+                'session_id' => $session_id,
+                'filename' => $filename,
+                'filetype' => $filetype,
+                'base64' => $base64,
+            ]
+        );
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        return cria::gradebook_upload($courseid, $session_id, $filename, $filetype, $base64);
+    }
+
+    public static function upload_returns(): external_description
+    {
+        return new external_value(PARAM_RAW, 'JSON response from Criabot gradebook upload');
+    }
+
     /**
      * Schema for the persisted state returned to the client.
      */

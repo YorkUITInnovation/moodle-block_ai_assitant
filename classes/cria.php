@@ -464,8 +464,23 @@ class cria
                 if (!empty($job['finished'])) {
                     $response = $job['response'] ?? null;
                     if (is_array($response)) {
-                        $nodes = $response['elements'] ?? [];
-                        $assets = $response['assets'] ?? [];
+                        $raw_elements = $response['elements'] ?? [];
+                        $raw_assets = $response['assets'] ?? [];
+                        $nodes = self::normalize_criaparse_elements($raw_elements);
+                        $assets = self::normalize_criaparse_assets($raw_assets);
+
+                        // Defensive fallback: if parser output is not structured as elements,
+                        // still push one minimal node to avoid hard 422 failures downstream.
+                        if (empty($nodes)) {
+                            $flat_text = trim((string)($response['text'] ?? $response['content'] ?? ''));
+                            if ($flat_text !== '') {
+                                $nodes = [[
+                                    'text' => $flat_text,
+                                    'metadata' => new \stdClass(),
+                                    'type' => 'text',
+                                ]];
+                            }
+                        }
                     }
                     break;
                 }
@@ -518,6 +533,79 @@ class cria
             "parsingstrategy" => $parsing_strategy
         ];
         return webservice::exec($method, $data);
+    }
+
+    /**
+     * Normalize parser elements into the document schema expected by Criabot.
+     *
+     * @param array $elements
+     * @return array
+     */
+    private static function normalize_criaparse_elements(array $elements): array
+    {
+        $nodes = [];
+        foreach ($elements as $element) {
+            if (is_object($element)) {
+                $element = (array)$element;
+            }
+            if (!is_array($element)) {
+                continue;
+            }
+
+            $text = '';
+            foreach (['text', 'content', 'page_content', 'chunk', 'value'] as $candidate) {
+                if (isset($element[$candidate]) && is_scalar($element[$candidate])) {
+                    $text = trim((string)$element[$candidate]);
+                    if ($text !== '') {
+                        break;
+                    }
+                }
+            }
+            if ($text === '') {
+                continue;
+            }
+
+            $metadata = [];
+            if (isset($element['metadata']) && is_array($element['metadata'])) {
+                $metadata = $element['metadata'];
+            }
+            if (isset($element['page']) && !isset($metadata['page'])) {
+                $metadata['page'] = $element['page'];
+            }
+
+            $node = [
+                'text' => $text,
+                'metadata' => empty($metadata) ? new \stdClass() : $metadata,
+            ];
+
+            if (isset($element['type']) && is_scalar($element['type'])) {
+                $node['type'] = (string)$element['type'];
+            } else {
+                $node['type'] = 'text';
+            }
+
+            $nodes[] = $node;
+        }
+        return $nodes;
+    }
+
+    /**
+     * Normalize parser assets payload to a plain array.
+     *
+     * @param array $assets
+     * @return array
+     */
+    private static function normalize_criaparse_assets(array $assets): array
+    {
+        $out = [];
+        foreach ($assets as $asset) {
+            if (is_object($asset)) {
+                $out[] = (array)$asset;
+            } else if (is_array($asset)) {
+                $out[] = $asset;
+            }
+        }
+        return $out;
     }
 
     /**
@@ -1198,6 +1286,7 @@ class cria
                 if (!$cm->uservisible) {
                     continue;
                 }
+                $sectionnum = isset($cm->sectionnum) ? (string)$cm->sectionnum : '';
                 $activities[] = [
                     'cmid' => (int)$cm->id,
                     'module' => (string)$cm->modname,
@@ -1208,12 +1297,77 @@ class cria
                         'cmid' => (int)$cm->id,
                         'type' => (string)$cm->modname,
                         'name' => (string)$cm->name,
+                        'section' => $sectionnum,
                         'content_url' => (string)$cm->url,
                     ];
                 }
             }
         } catch (\Throwable $e) {
             // Fallback: leave arrays empty; backend will handle intake mode.
+        }
+
+        // Also include syllabus uploaded via AI Assistant block file area,
+        // so gradebook flow can detect syllabus even when indexing/training failed.
+        try {
+            $context = \context_course::instance($courseid);
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $courseid, 'itemid', false);
+            foreach ($files as $file) {
+                if ($file->get_filesize() <= 0 || $file->is_directory()) {
+                    continue;
+                }
+                $resources[] = [
+                    'cmid' => null,
+                    'type' => 'file',
+                    'name' => (string)$file->get_filename(),
+                    'section' => '0',
+                    'content_url' => '',
+                    'content_preview' => 'Uploaded in AI Assistant syllabus area.',
+                ];
+            }
+        } catch (\Throwable $e) {
+            // Ignore file area read failures; keep best-effort discovery.
+        }
+
+        // Include additional supporting documents uploaded from gradebook chat.
+        try {
+            $context = \context_course::instance($courseid);
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'gradebookdocs', $courseid, 'itemid', false);
+            foreach ($files as $file) {
+                if ($file->get_filesize() <= 0 || $file->is_directory()) {
+                    continue;
+                }
+                $resources[] = [
+                    'cmid' => null,
+                    'type' => 'file',
+                    'name' => (string)$file->get_filename(),
+                    'section' => '0',
+                    'content_url' => '',
+                    'content_preview' => 'Supporting document uploaded in gradebook chat.',
+                ];
+            }
+        } catch (\Throwable $e) {
+            // Ignore file area read failures; keep best-effort discovery.
+        }
+
+        // Include block-level syllabus metadata as a final signal.
+        try {
+            $settings = $DB->get_record('block_aia_settings', ['courseid' => $courseid]);
+            if ($settings && !empty($settings->syllabus_document_name)) {
+                $resources[] = [
+                    'cmid' => null,
+                    'type' => 'file',
+                    'name' => (string)$settings->syllabus_document_name,
+                    'section' => '0',
+                    'content_url' => '',
+                    'content_preview' => ((int)($settings->syllabus_trained ?? 0) === 1)
+                        ? 'Syllabus uploaded and trained in AI Assistant.'
+                        : 'Syllabus uploaded in AI Assistant.',
+                ];
+            }
+        } catch (\Throwable $e) {
+            // Ignore metadata read failures; continue with available data.
         }
 
         $method = 'cria_gradebook_start';
@@ -1272,6 +1426,95 @@ class cria
             'confirmed_mapping' => $confirmed_mapping,
             'create_categories' => true,
             'reorganize_resources' => false,
+        );
+        return webservice::exec($method, $data);
+    }
+
+    private static function is_syllabus_like_filename(string $filename): bool
+    {
+        $name = strtolower(trim($filename));
+        if ($name === '') {
+            return false;
+        }
+
+        $tokens = [
+            'syllabus',
+            'syllabi',
+            'syllabe',
+            'plan de cours',
+            'plan_du_cours',
+            'plan-du-cours',
+            'outline',
+            'course outline',
+            'programme',
+        ];
+
+        foreach ($tokens as $token) {
+            if (strpos($name, $token) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function persist_gradebook_uploaded_file(int $courseid, string $filename, string $base64): void
+    {
+        global $DB, $USER;
+
+        if ($courseid <= 0 || trim($filename) === '' || trim($base64) === '') {
+            return;
+        }
+
+        $context = \context_course::instance($courseid);
+        $fs = get_file_storage();
+
+        $is_syllabus = self::is_syllabus_like_filename($filename);
+        $filearea = $is_syllabus ? 'syllabus' : 'gradebookdocs';
+
+        // Replace existing syllabus file to keep one canonical syllabus in this area.
+        if ($is_syllabus) {
+            $existing = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $courseid, 'itemid', false);
+            foreach ($existing as $file) {
+                $file->delete();
+            }
+        }
+
+        $file_record = [
+            'contextid' => $context->id,
+            'component' => 'block_ai_assistant',
+            'filearea' => $filearea,
+            'itemid' => $courseid,
+            'filepath' => '/',
+            'filename' => $filename,
+            'userid' => (int)($USER->id ?? 0),
+        ];
+
+        // Upsert behavior for same name in same area.
+        if ($old = $fs->get_file($context->id, 'block_ai_assistant', $filearea, $courseid, '/', $filename)) {
+            $old->delete();
+        }
+        $fs->create_file_from_string($file_record, base64_decode($base64));
+
+        if ($is_syllabus) {
+            $DB->set_field('block_aia_settings', 'syllabus_document_name', $filename, ['courseid' => $courseid]);
+        }
+    }
+
+    public static function gradebook_upload(int $courseid, string $session_id, string $filename, string $filetype, string $base64): string
+    {
+        try {
+            self::persist_gradebook_uploaded_file($courseid, $filename, $base64);
+        } catch (\Throwable $e) {
+            // Never block backend upload on Moodle local persistence failure.
+        }
+
+        $method = 'cria_gradebook_upload';
+        $data = array(
+            'session_id' => trim($session_id),
+            'filename' => $filename,
+            'filetype' => $filetype,
+            'base64' => $base64,
         );
         return webservice::exec($method, $data);
     }

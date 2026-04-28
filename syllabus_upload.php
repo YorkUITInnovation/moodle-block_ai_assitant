@@ -64,7 +64,10 @@ if ($mform->is_cancelled()) {
     $filepath = cria::copy_file_to_temp_folder($context->id, $courseid);
     $prepare_file = cria::get_upload_content_to_bot_config($filepath);
     $file_id = cria::upload_content_to_bot($courseid, $prepare_file->file_name, $prepare_file->file_content);
-    $DB->set_field('block_aia_settings', 'cria_file_id', $file_id, ['courseid' => $courseid]);
+    $DB->set_field('block_aia_settings', 'cria_file_id', (int)$file_id, ['courseid' => $courseid]);
+    // Keep syllabus metadata even if external upload/indexing fails, so gradebook can still detect local syllabus context.
+    $DB->set_field('block_aia_settings', 'syllabus_document_name', (string)$prepare_file->file_name, ['courseid' => $courseid]);
+    $DB->set_field('block_aia_settings', 'syllabus_trained', !empty($file_id) ? 1 : 0, ['courseid' => $courseid]);
     redirect($CFG->wwwroot . '/course/view.php?id=' . $courseid);
 } else {
     // Show form

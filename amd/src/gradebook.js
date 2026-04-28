@@ -8,6 +8,7 @@ const DEFAULT_CATEGORIES = ['Assignments', 'Quizzes', 'Labs', 'Exams', 'Projects
 let sessionInitPromise = null;
 let requestInFlight = false;
 let proposalCategories = [];
+let latestProposalWeightCheck = {known: false, total: null, valid: true};
 let lastKnownStateTimemodified = 0;
 let pendingServerSave = null;
 let saveInFlight = Promise.resolve();
@@ -324,18 +325,20 @@ const clearMissingHighlights = () => {
 };
 
 const setFinalizeEnabled = (enabled) => {
+    const blockedByWeight = latestProposalWeightCheck.known && !latestProposalWeightCheck.valid;
     ['btn-gradebook-finalize', 'btn-gradebook-generate'].forEach((id) => {
         const btn = el(id);
         if (btn) {
-            btn.disabled = !enabled;
+            btn.disabled = !enabled || blockedByWeight;
         }
     });
 };
 
 const setAcceptEnabled = (enabled) => {
+    const blockedByWeight = latestProposalWeightCheck.known && !latestProposalWeightCheck.valid;
     const btn = el('btn-gradebook-accept');
     if (btn) {
-        btn.disabled = !enabled;
+        btn.disabled = !enabled || blockedByWeight;
     }
 };
 
@@ -351,9 +354,13 @@ const proposalTotalAndValid = (proposal) => {
 const applyProposalWeightGate = (proposal) => {
     const {total, valid} = proposalTotalAndValid(proposal);
     if (total === null) {
+        latestProposalWeightCheck = {known: false, total: null, valid: true};
         setAcceptEnabled(false);
+        setFinalizeEnabled(false);
         return;
     }
+
+    latestProposalWeightCheck = {known: true, total, valid};
 
     if (!valid) {
         setAcceptEnabled(false);
@@ -384,6 +391,16 @@ const setUiBusy = (isBusy) => {
     if (!isBusy) {
         setFinalizeEnabled(true);
     }
+};
+
+const isWeightGateBlocked = () => latestProposalWeightCheck.known && !latestProposalWeightCheck.valid;
+
+const getWeightGateMessage = () => {
+    const total = Number(latestProposalWeightCheck.total);
+    if (Number.isFinite(total)) {
+        return `Weight check: total is ${total.toFixed(1)}% (expected 100%). Fix proposal weights before mapping/finalizing.`;
+    }
+    return 'Weight check failed. Fix proposal weights to total 100% before mapping/finalizing.';
 };
 
 const buildCategoryOptions = (currentCat) => {
@@ -601,9 +618,13 @@ const hydrateFromStatusPayload = (parsed) => {
 
     setPhase(statusPayload.phase || parsed.phase || parsed.state || '-');
 
-    const cats = extractProposalCategories(statusPayload.proposal || null);
+    const statusProposal = statusPayload.proposal || null;
+    const cats = extractProposalCategories(statusProposal);
     if (cats.length > 0) {
         setProposalCategories(cats);
+    }
+    if (statusProposal && Array.isArray(statusProposal.categories)) {
+        applyProposalWeightGate(statusProposal);
     }
 
     const mapping = extractContentMapping(statusPayload);
@@ -1103,6 +1124,31 @@ const callWithSessionRetry = async (fn) => {
     }
 };
 
+const shouldUseUploadFallback = (error) => {
+    const raw = String((error && (error.message || error.error || error.detail)) || '').toLowerCase();
+    return raw.includes('external_functions') ||
+        raw.includes('invalidrecord') ||
+        raw.includes('block_ai_assistant_gradebook_upload');
+};
+
+const uploadViaFallbackEndpoint = async ({courseid, session_id, filename, filetype, base64}) => {
+    const root = (typeof M !== 'undefined' && M && M.cfg && M.cfg.wwwroot) ? M.cfg.wwwroot : '';
+    const url = `${root}/blocks/ai_assistant/gradebook_upload.php?sesskey=${encodeURIComponent(M.cfg.sesskey)}`;
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({courseid, session_id, filename, filetype, base64})
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+        throw new Error(text || `Upload fallback failed (${response.status})`);
+    }
+    return parseResponse(text);
+};
+
 const sendPrompt = async () => {
     const input = el('block-ai-assistant-gradebook-input');
     const typed = String(input.value || '').trim();
@@ -1192,6 +1238,11 @@ const acceptProposal = async () => {
     await withRequestLock(async () => {
         await ensureSession();
 
+        if (isWeightGateBlocked()) {
+            appendSystemMessage(getWeightGateMessage());
+            return;
+        }
+
         const parsed = await callWithSessionRetry(async (sid) => {
             const raw = await callWs('block_ai_assistant_gradebook_accept', {
                 courseid: getCourseId(),
@@ -1201,6 +1252,10 @@ const acceptProposal = async () => {
         });
 
         setPhase(parsed.phase || parsed.state || '-');
+
+        if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
+            applyProposalWeightGate(parsed.proposal);
+        }
 
         const cats = extractProposalCategories(parsed.proposal || null);
         if (cats.length) {
@@ -1267,6 +1322,13 @@ const highlightMissingRows = (missingIdx) => {
 const finalizeGradebook = async () => {
     await withRequestLock(async () => {
         await ensureSession();
+
+        if (isWeightGateBlocked()) {
+            const msg = getWeightGateMessage();
+            appendSystemMessage(msg);
+            showMappingError(msg);
+            return;
+        }
 
         const confirmed = getConfirmedMapping();
 
@@ -1349,6 +1411,133 @@ const resetSessionHandler = async () => {
     });
 };
 
+const handleFileUpload = async () => {
+    const fileInput = el('gradebook-file-upload-input');
+    if (!fileInput || !fileInput.files || fileInput.files.length < 1) {
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const maxSizeMB = 10;
+    if (file.size > maxSizeMB * 1024 * 1024) {
+        appendSystemMessage(`⚠ File is too large (max ${maxSizeMB}MB). Please upload a smaller file.`);
+        fileInput.value = '';
+        return;
+    }
+
+    const allowedTypes = ['application/pdf', 'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain', 'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
+
+    const fileName = String(file.name || '').toLowerCase();
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.md', '.xls', '.xlsx'];
+    const extensionAllowed = allowedExtensions.some((ext) => fileName.endsWith(ext));
+    const mimeAllowed = allowedTypes.includes(file.type) || file.type === 'application/octet-stream';
+
+    if (!mimeAllowed && !extensionAllowed) {
+        appendSystemMessage('⚠ Unsupported file type. Please upload PDF, Word, or text files.');
+        fileInput.value = '';
+        return;
+    }
+
+    const progressEl = el('gradebook-upload-progress');
+    const progressBar = el('gradebook-upload-progress-bar');
+    const uploadStatus = el('gradebook-upload-status');
+    
+    if (progressEl) {
+        progressEl.classList.remove('d-none');
+    }
+
+    try {
+        const reader = new FileReader();
+        
+        reader.onprogress = (event) => {
+            if (event.lengthComputable && progressBar) {
+                const percentComplete = Math.round((event.loaded / event.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                progressBar.setAttribute('aria-valuenow', percentComplete);
+            }
+        };
+
+        reader.onload = async () => {
+            try {
+                if (uploadStatus) {
+                    uploadStatus.textContent = 'Processing file...';
+                }
+
+                const base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(reader.result)));
+                
+                await ensureSession();
+                
+                const parsed = await callWithSessionRetry(async (sid) => {
+                    try {
+                        const raw = await callWs('block_ai_assistant_gradebook_upload', {
+                            courseid: getCourseId(),
+                            session_id: sid,
+                            filename: file.name,
+                            filetype: file.type,
+                            base64: base64
+                        });
+                        return parseResponse(raw);
+                    } catch (error) {
+                        if (!shouldUseUploadFallback(error)) {
+                            throw error;
+                        }
+                        return uploadViaFallbackEndpoint({
+                            courseid: getCourseId(),
+                            session_id: sid,
+                            filename: file.name,
+                            filetype: file.type,
+                            base64: base64
+                        });
+                    }
+                });
+
+                appendSystemMessage(`✓ Uploaded "${file.name}". I'm analyzing the grading structure...`);
+                
+                if (parsed.phase) {
+                    setPhase(parsed.phase);
+                }
+                if (parsed.reply) {
+                    appendSystemMessage(parsed.reply);
+                }
+
+                await serverSaveState();
+            } catch (error) {
+                appendSystemMessage('⚠ Failed to process uploaded file. Please try again or provide the grading breakdown in the chat.');
+            } finally {
+                fileInput.value = '';
+                if (progressEl) {
+                    progressEl.classList.add('d-none');
+                }
+                if (progressBar) {
+                    progressBar.style.width = '0%';
+                }
+                if (uploadStatus) {
+                    uploadStatus.textContent = 'Uploading...';
+                }
+            }
+        };
+
+        reader.onerror = () => {
+            appendSystemMessage('⚠ Failed to read file. Please try again.');
+            fileInput.value = '';
+            if (progressEl) {
+                progressEl.classList.add('d-none');
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
+    } catch (error) {
+        appendSystemMessage('⚠ Error uploading file. Please try again.');
+        fileInput.value = '';
+        if (progressEl) {
+            progressEl.classList.add('d-none');
+        }
+    }
+};
+
 const guardedAction = (action) => {
     return () => {
         action().catch((error) => {
@@ -1389,8 +1578,14 @@ export const init = (courseId) => {
         syncMappingUIFromJson();
     }
 
-    setFinalizeEnabled(true);
     const cachedResult = loadJson(getStorageKey('result'), null);
+    if (cachedResult && cachedResult.proposal && Array.isArray(cachedResult.proposal.categories)) {
+        applyProposalWeightGate(cachedResult.proposal);
+    } else {
+        setAcceptEnabled(false);
+        setFinalizeEnabled(false);
+    }
+
     if (cachedResult) {
         renderResultPanel(cachedResult);
     }
@@ -1410,6 +1605,17 @@ export const init = (courseId) => {
             guardedAction(sendPrompt)();
         }
     });
+
+    // Upload button handler
+    attachListener('gradebook-file-upload-btn', 'click', () => {
+        const fileInput = el('gradebook-file-upload-input');
+        if (fileInput) {
+            fileInput.click();
+        }
+    });
+
+    // File selection handler
+    attachListener('gradebook-file-upload-input', 'change', guardedAction(handleFileUpload));
 
     attachListener('btn-gradebook-proposal', 'click', guardedAction(fetchProposal));
     attachListener('btn-gradebook-accept', 'click', guardedAction(acceptProposal));

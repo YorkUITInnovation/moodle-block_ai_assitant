@@ -198,6 +198,15 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_gradebook_upload' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'upload',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Upload a syllabus document for gradebook analysis and proposal refinement.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
     'block_ai_assistant_gradebook_get_state' => array(
         'classname' => 'block_ai_assistant_gradebook_ws',
         'methodname' => 'get_state',
