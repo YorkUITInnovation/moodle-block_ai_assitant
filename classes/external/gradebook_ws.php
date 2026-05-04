@@ -165,6 +165,70 @@ class block_ai_assistant_gradebook_ws extends external_api
         return new external_value(PARAM_RAW, 'JSON response from Criabot gradebook accept');
     }
 
+    public static function reset_parameters(): external_function_parameters
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'session_id' => new external_value(PARAM_RAW, 'Gradebook session id', VALUE_REQUIRED),
+                'keep_extraction' => new external_value(PARAM_BOOL, 'Keep extracted syllabus/resources context', VALUE_DEFAULT, true),
+            )
+        );
+    }
+
+    public static function reset(int $courseid, string $session_id, bool $keep_extraction = true): string
+    {
+        self::validate_parameters(
+            self::reset_parameters(),
+            [
+                'courseid' => $courseid,
+                'session_id' => $session_id,
+                'keep_extraction' => $keep_extraction,
+            ]
+        );
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        return cria::gradebook_reset($session_id, $keep_extraction);
+    }
+
+    public static function reset_returns(): external_description
+    {
+        return new external_value(PARAM_RAW, 'JSON response from Criabot gradebook reset');
+    }
+
+    public static function delete_parameters(): external_function_parameters
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'session_id' => new external_value(PARAM_RAW, 'Gradebook session id', VALUE_REQUIRED),
+            )
+        );
+    }
+
+    public static function delete(int $courseid, string $session_id): string
+    {
+        self::validate_parameters(
+            self::delete_parameters(),
+            [
+                'courseid' => $courseid,
+                'session_id' => $session_id,
+            ]
+        );
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        return cria::gradebook_delete($session_id);
+    }
+
+    public static function delete_returns(): external_description
+    {
+        return new external_value(PARAM_RAW, 'JSON response from Criabot gradebook delete');
+    }
+
     public static function finalize_parameters(): external_function_parameters
     {
         return new external_function_parameters(
@@ -195,7 +259,7 @@ class block_ai_assistant_gradebook_ws extends external_api
             $decoded = [];
         }
 
-        return cria::gradebook_finalize($session_id, $decoded);
+        return cria::gradebook_finalize($courseid, $session_id, $decoded);
     }
 
     public static function finalize_returns(): external_description

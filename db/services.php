@@ -189,6 +189,24 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_gradebook_reset' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'reset',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Reset the active gradebook session state while preserving extracted context.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_delete' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'delete',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Delete the active gradebook session from Criabot.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
     'block_ai_assistant_gradebook_finalize' => array(
         'classname' => 'block_ai_assistant_gradebook_ws',
         'methodname' => 'finalize',

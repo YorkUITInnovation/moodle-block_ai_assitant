@@ -321,6 +321,19 @@
         width: 18px;
         height: 18px;
     }
+
+    .gradebook-action-active {
+        background: var(--bs-danger, #dc3545) !important;
+        border-color: var(--bs-danger, #dc3545) !important;
+        color: var(--bs-white, #ffffff) !important;
+    }
+
+    .gradebook-action-active:hover,
+    .gradebook-action-active:focus {
+        background: var(--bs-danger-text-emphasis, #842029) !important;
+        border-color: var(--bs-danger-text-emphasis, #842029) !important;
+        color: var(--bs-white, #ffffff) !important;
+    }
 </style>
 
 <div class="row">
@@ -328,28 +341,34 @@
         <div class="gradebook-container">
             <div class="card gradebook-card">
 
-                <div class="gradebook-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div>
-                        <div class="fw-semibold">{{#str}}gradebook, block_ai_assistant{{/str}}</div>
-                        <div class="small">
-                            <span class="me-2">Session:</span><code id="gradebook-session-badge">starting…</code>
-                            <span class="ms-3 me-2">Phase:</span><span id="gradebook-phase-badge" class="badge bg-secondary">—</span>
+                <div class="gradebook-header">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="fw-semibold">{{#str}}gradebook, block_ai_assistant{{/str}}</div>
+                            <span class="me-2">Phase:</span><span id="gradebook-phase-badge" class="badge bg-secondary">—</span>
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Gradebook actions">
+                            <button type="button" class="btn btn-outline-primary" id="btn-gradebook-proposal" data-stage="proposal">
+                                Proposal
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="btn-gradebook-accept" data-stage="accept">
+                                Generate mapping
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="btn-gradebook-finalize" data-stage="finalize">
+                                Finalize
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="btn-gradebook-reset"
+                                    title="{{#str}}gradebook_reset_session_tooltip, block_ai_assistant{{/str}}">
+                                {{#str}}gradebook_reset_session, block_ai_assistant{{/str}}
+                            </button>
+                            <button type="button" class="btn btn-outline-danger" id="btn-gradebook-delete"
+                                    title="{{#str}}gradebook_delete_session_tooltip, block_ai_assistant{{/str}}">
+                                {{#str}}gradebook_delete_session, block_ai_assistant{{/str}}
+                            </button>
                         </div>
                     </div>
-                    <div class="btn-group btn-group-sm" role="group" aria-label="Gradebook actions">
-                        <button type="button" class="btn btn-outline-primary" id="btn-gradebook-proposal">
-                            Proposal
-                        </button>
-                        <button type="button" class="btn btn-outline-primary" id="btn-gradebook-accept">
-                            Generate mapping
-                        </button>
-                        <button type="button" class="btn btn-primary" id="btn-gradebook-finalize">
-                            Finalize
-                        </button>
-                        <button type="button" class="btn btn-outline-secondary" id="btn-gradebook-reset"
-                                title="{{#str}}gradebook_reset_session, block_ai_assistant{{/str}}">
-                            {{#str}}gradebook_reset_session, block_ai_assistant{{/str}}
-                        </button>
+                    <div class="small mt-1">
+                        <span class="me-2">Session:</span><code id="gradebook-session-badge">starting…</code>
                     </div>
                 </div>
 

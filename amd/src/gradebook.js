@@ -104,6 +104,37 @@ const getSessionId = () => {
     return String(input ? (input.value || '') : '').trim();
 };
 
+const resolveNextActionStage = (phase) => {
+    const phaseUpper = String(phase || '').toUpperCase();
+    if (!phaseUpper || phaseUpper === '—') {
+        return null;
+    }
+    if (['INTAKE', 'INITIAL', 'ANALYZE', 'ANALYSE', 'ANALYZING', 'ANALYSING', 'DRAFT'].includes(phaseUpper)) {
+        return 'proposal';
+    }
+    if (['PROPOSAL', 'PROPOSED'].includes(phaseUpper)) {
+        return 'accept';
+    }
+    if (['ACCEPTED', 'MAPPING', 'MAPPED', 'READY_TO_FINALIZE'].includes(phaseUpper)) {
+        return 'finalize';
+    }
+    if (['COMPLETED', 'FINALIZED'].includes(phaseUpper)) {
+        return null;
+    }
+    return null;
+};
+
+const updateActionStageHighlight = (phase) => {
+    const buttons = document.querySelectorAll('[data-stage]');
+    const activeStage = resolveNextActionStage(phase);
+    buttons.forEach((button) => {
+        button.classList.remove('gradebook-action-active');
+        if (button.getAttribute('data-stage') === activeStage) {
+            button.classList.add('gradebook-action-active');
+        }
+    });
+};
+
 const setPhase = (phase) => {
     const badge = el('gradebook-phase-badge');
     if (!badge) {
@@ -123,6 +154,8 @@ const setPhase = (phase) => {
     } else {
         badge.classList.add('bg-secondary');
     }
+
+    updateActionStageHighlight(phase);
 
     if (phase && phase !== '—') {
         saveJson(getStorageKey('phase'), phase);
@@ -998,14 +1031,7 @@ const doStartSession = async () => {
     return sessionId;
 };
 
-const resetSession = async (systemMessageKey) => {
-    suspendAutoSave = true;
-    if (pendingServerSave) {
-        clearTimeout(pendingServerSave);
-        pendingServerSave = null;
-    }
-    try { await saveInFlight; } catch (_) { }
-
+const clearLocalGradebookState = async () => {
     removeKey(getStorageKey('session_id'));
     removeKey(getStorageKey('chat_history'));
     removeKey(getStorageKey('phase'));
@@ -1013,6 +1039,7 @@ const resetSession = async (systemMessageKey) => {
     removeKey(getStorageKey('proposal_categories'));
     proposalCategories = [];
     setSessionId('');
+    setPhase('—');
     const node = el('gradebook-confirmed-mapping');
     if (node) {
         node.value = '';
@@ -1021,8 +1048,71 @@ const resetSession = async (systemMessageKey) => {
     renderResultPanel(null);
     syncMappingUIFromJson();
     await serverClearState();
+};
+
+const remoteResetSession = async (sessionId) => {
+    if (!sessionId || sessionId === 'starting…') {
+        return null;
+    }
+    const raw = await callWs('block_ai_assistant_gradebook_reset', {
+        courseid: getCourseId(),
+        session_id: sessionId,
+        keep_extraction: true
+    });
+    return parseResponse(raw);
+};
+
+const remoteDeleteSession = async (sessionId) => {
+    if (!sessionId || sessionId === 'starting…') {
+        return null;
+    }
+    const raw = await callWs('block_ai_assistant_gradebook_delete', {
+        courseid: getCourseId(),
+        session_id: sessionId
+    });
+    return parseResponse(raw);
+};
+
+const resetSession = async (systemMessageKey) => {
+    suspendAutoSave = true;
+    if (pendingServerSave) {
+        clearTimeout(pendingServerSave);
+        pendingServerSave = null;
+    }
+    try { await saveInFlight; } catch (_) { }
+
+    const currentSessionId = getSessionId();
+    let resetResponse = null;
+    try {
+        resetResponse = await remoteResetSession(currentSessionId);
+    } catch (e) {
+        resetResponse = null;
+    }
+
+    await clearLocalGradebookState();
+
+    let nextSessionId = '';
+    if (resetResponse && !isSessionNotFound(resetResponse)) {
+        nextSessionId = String(resetResponse.session_id || currentSessionId || '').trim();
+    }
 
     suspendAutoSave = false;
+
+    if (nextSessionId) {
+        setSessionId(nextSessionId);
+        setPhase((resetResponse && (resetResponse.phase || resetResponse.state)) || 'INITIAL');
+        if (systemMessageKey) {
+            try {
+                const msg = await Str.get_string(systemMessageKey, 'block_ai_assistant');
+                appendSystemMessage(msg);
+            } catch (e) {
+            }
+        } else if (resetResponse && resetResponse.message) {
+            appendSystemMessage(String(resetResponse.message));
+        }
+        await serverSaveState();
+        return nextSessionId;
+    }
 
     if (systemMessageKey) {
         try {
@@ -1033,6 +1123,45 @@ const resetSession = async (systemMessageKey) => {
     }
 
     return doStartSession();
+};
+
+const deleteSessionAndRestart = async () => {
+    suspendAutoSave = true;
+    if (pendingServerSave) {
+        clearTimeout(pendingServerSave);
+        pendingServerSave = null;
+    }
+    try { await saveInFlight; } catch (_) { }
+
+    const currentSessionId = getSessionId();
+    let deleteResponse = null;
+    try {
+        deleteResponse = await remoteDeleteSession(currentSessionId);
+    } catch (e) {
+        deleteResponse = null;
+    }
+
+    await clearLocalGradebookState();
+    suspendAutoSave = false;
+
+    if (deleteResponse && deleteResponse.message) {
+        appendSystemMessage(String(deleteResponse.message));
+    }
+
+    return doStartSession();
+};
+
+const moodleConfirm = async ({title, message, yesLabel, noLabel}) => {
+    return new Promise((resolve) => {
+        notification.confirm(
+            title,
+            message,
+            yesLabel,
+            noLabel,
+            () => resolve(true),
+            () => resolve(false)
+        );
+    });
 };
 
 const softRestartSession = async (systemMessageKey) => {
@@ -1401,13 +1530,40 @@ const finalizeGradebook = async () => {
 };
 
 const resetSessionHandler = async () => {
+    const title = await Str.get_string('gradebook_reset_session', 'block_ai_assistant');
     const confirmMsg = await Str.get_string('gradebook_reset_session_confirm', 'block_ai_assistant');
-    // eslint-disable-next-line no-alert
-    if (!window.confirm(confirmMsg)) {
+    const yesLabel = await Str.get_string('gradebook_reset_session', 'block_ai_assistant');
+    const noLabel = await Str.get_string('cancel', 'moodle');
+    const confirmed = await moodleConfirm({
+        title,
+        message: confirmMsg,
+        yesLabel,
+        noLabel
+    });
+    if (!confirmed) {
         return;
     }
     await withRequestLock(async () => {
         await resetSession(null);
+    });
+};
+
+const deleteSessionHandler = async () => {
+    const title = await Str.get_string('gradebook_delete_session', 'block_ai_assistant');
+    const confirmMsg = await Str.get_string('gradebook_delete_session_confirm', 'block_ai_assistant');
+    const yesLabel = await Str.get_string('gradebook_delete_session', 'block_ai_assistant');
+    const noLabel = await Str.get_string('cancel', 'moodle');
+    const confirmed = await moodleConfirm({
+        title,
+        message: confirmMsg,
+        yesLabel,
+        noLabel
+    });
+    if (!confirmed) {
+        return;
+    }
+    await withRequestLock(async () => {
+        await deleteSessionAndRestart();
     });
 };
 
@@ -1622,6 +1778,7 @@ export const init = (courseId) => {
     attachListener('btn-gradebook-finalize', 'click', guardedAction(finalizeGradebook));
     attachListener('btn-gradebook-generate', 'click', guardedAction(finalizeGradebook));
     attachListener('btn-gradebook-reset', 'click', guardedAction(resetSessionHandler));
+    attachListener('btn-gradebook-delete', 'click', guardedAction(deleteSessionHandler));
     attachListener('btn-gradebook-download-word', 'click', () => downloadFinalizeResultAsWord());
     attachListener('btn-gradebook-download-pdf', 'click', () => downloadFinalizeResultAsPdf());
 

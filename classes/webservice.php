@@ -192,6 +192,21 @@ class webservice
                     return $resp['raw'];
                 }
 
+                case 'cria_gradebook_reset': {
+                    $session_id = trim((string)($data['session_id'] ?? ''));
+                    $body = [
+                        'keep_extraction' => isset($data['keep_extraction']) ? (bool)$data['keep_extraction'] : true,
+                    ];
+                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/reset', $headers, $body, 30);
+                    return $resp['raw'];
+                }
+
+                case 'cria_gradebook_delete': {
+                    $session_id = trim((string)($data['session_id'] ?? ''));
+                    $resp = self::request_json('DELETE', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id), $headers, null, 30);
+                    return $resp['raw'];
+                }
+
                 case 'cria_gradebook_finalize': {
                     $session_id = trim((string)($data['session_id'] ?? ''));
                     $body = [

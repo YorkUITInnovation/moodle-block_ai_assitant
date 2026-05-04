@@ -5,6 +5,7 @@ namespace block_ai_assistant;
 
 use block_ai_assistant\webservice;
 use Exception;
+use Throwable;
 
 class cria
 {
@@ -1418,7 +1419,26 @@ class cria
         return webservice::exec($method, $data);
     }
 
-    public static function gradebook_finalize(string $session_id, array $confirmed_mapping): string
+    public static function gradebook_reset(string $session_id, bool $keep_extraction = true): string
+    {
+        $method = 'cria_gradebook_reset';
+        $data = array(
+            'session_id' => trim($session_id),
+            'keep_extraction' => $keep_extraction,
+        );
+        return webservice::exec($method, $data);
+    }
+
+    public static function gradebook_delete(string $session_id): string
+    {
+        $method = 'cria_gradebook_delete';
+        $data = array(
+            'session_id' => trim($session_id),
+        );
+        return webservice::exec($method, $data);
+    }
+
+    public static function gradebook_finalize(int $courseid, string $session_id, array $confirmed_mapping): string
     {
         $method = 'cria_gradebook_finalize';
         $data = array(
@@ -1427,7 +1447,272 @@ class cria
             'create_categories' => true,
             'reorganize_resources' => false,
         );
-        return webservice::exec($method, $data);
+        $response_json = webservice::exec($method, $data);
+
+        if ($courseid > 0) {
+            try {
+                $response = json_decode($response_json, true);
+                if (is_array($response) && isset($response['proposal'])) {
+                    self::apply_gradebook_to_course($courseid, $response['proposal'], $confirmed_mapping);
+                }
+            } catch (Throwable $e) {
+                // Never block finalization on gradebook update failure
+                debugging('Error applying gradebook to course: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+        }
+
+        return $response_json;
+    }
+
+    /**
+     * Apply the finalized gradebook proposal to the Moodle course gradebook.
+     * Creates grade categories with the chosen aggregation method, sets weights,
+     * drop/keep rules, and moves grade items for mapped activities into their categories.
+     */
+    private static function apply_gradebook_to_course(int $courseid, array $proposal, array $confirmed_mapping): void
+    {
+        global $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
+        require_once($CFG->libdir . '/grade/grade_category.php');
+        require_once($CFG->libdir . '/grade/grade_item.php');
+
+        if (!isset($proposal['categories']) || !is_array($proposal['categories'])) {
+            return;
+        }
+
+        $aggregation_method = (int)($proposal['aggregation_method'] ?? 13);
+
+        // Get or create top-level parent category for this AI-generated structure
+        $parent = self::get_or_create_grade_category(
+            $courseid,
+            'AI Assistant - Gradebook',
+            $aggregation_method,
+            null,
+            1.0,
+              ['droplow' => 0, 'keephigh' => 0, 'aggregateonlygraded' => 1, 'aggregateoutcomes' => 0, 'extra_credit' => false,
+               'grade_min' => null, 'grade_max' => 100.0, 'grade_pass' => null,
+               'hidden' => false, 'hidden_until' => null,
+               'locked' => false, 'lock_time' => null,
+               'display_type' => 0, 'decimals' => -1]
+        );
+
+        // Create / update each sub-category
+        $category_id_map = [];
+        foreach ($proposal['categories'] as $cat) {
+            $name       = trim($cat['name'] ?? '');
+            $pct        = floatval($cat['weight'] ?? 0);
+            if ($name === '') {
+                continue;
+            }
+            $weight_fraction = $pct / 100.0;
+            $settings = [
+                'droplow'              => (int)($cat['drop_lowest'] ?? 0),
+                'keephigh'             => (int)($cat['keep_highest'] ?? 0),
+                'aggregateonlygraded'  => (bool)($cat['aggregate_only_graded'] ?? true) ? 1 : 0,
+                'aggregateoutcomes'    => (bool)($cat['aggregate_outcomes'] ?? false) ? 1 : 0,
+                'extra_credit'         => (bool)($cat['extra_credit'] ?? false),
+                'grade_min'            => isset($cat['grade_min']) && $cat['grade_min'] !== null ? (float)$cat['grade_min'] : null,
+                'grade_max'            => isset($cat['grade_max']) ? (float)$cat['grade_max'] : 100.0,
+                'grade_pass'           => isset($cat['grade_pass']) && $cat['grade_pass'] !== null ? (float)$cat['grade_pass'] : null,
+                'hidden'               => (bool)($cat['hidden'] ?? false),
+                'hidden_until'         => isset($cat['hidden_until']) && $cat['hidden_until'] !== null ? (int)$cat['hidden_until'] : null,
+                'locked'               => (bool)($cat['locked'] ?? false),
+                'lock_time'            => isset($cat['lock_time']) && $cat['lock_time'] !== null ? (int)$cat['lock_time'] : null,
+                'display_type'         => (int)($cat['display_type'] ?? 0),
+                'decimals'             => (int)($cat['decimals'] ?? -1),
+            ];
+
+            $cat_obj = self::get_or_create_grade_category(
+                $courseid,
+                $name,
+                $aggregation_method,
+                $parent,
+                $weight_fraction,
+                $settings
+            );
+            $category_id_map[$name] = $cat_obj->id;
+        }
+
+        // Move activity grade items into their mapped categories
+        $modinfo = get_fast_modinfo($courseid);
+        foreach ($confirmed_mapping as $mapping) {
+            $cmid          = intval($mapping['moodle_cmid'] ?? 0);
+            $category_name = $mapping['category'] ?? null;
+
+            if ($cmid <= 0 || !$category_name || !isset($category_id_map[$category_name])) {
+                continue;
+            }
+
+            try {
+                $cm = $modinfo->get_cm($cmid);
+                if (!$cm) {
+                    continue;
+                }
+                $grade_items = \grade_item::fetch_all([
+                    'courseid'     => $courseid,
+                    'iteminstance' => $cm->instance,
+                    'itemmodule'   => $cm->modname,
+                    'itemtype'     => 'mod',
+                ]);
+                if (!$grade_items) {
+                    continue;
+                }
+                foreach ($grade_items as $gi) {
+                    $gi->categoryid = $category_id_map[$category_name];
+                    $gi->update('block_ai_assistant');
+                }
+            } catch (Throwable $e) {
+                debugging("Error mapping cmid $cmid: " . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+        }
+
+        // Recalculate grades after structural change
+        grade_regrade_final_grades($courseid);
+    }
+
+    /**
+     * Fetch an existing grade category (by course + fullname + optional parent) or create it.
+     * Uses Moodle's grade_category API so the associated grade_item is created automatically.
+     *
+     * Weight is stored differently depending on the aggregation method:
+     *   - Weighted mean (10) / Simple weighted mean (11): aggregationcoef (numeric, proportional)
+     *   - Natural (13): aggregationcoef2 (0–1 fraction) with weightoverride = 1
+     *   - Mean / Mean+extra credits (0, 12): weight ignored (all categories equal)
+     *
+     * @param int                  $courseid
+     * @param string               $fullname
+     * @param int                  $aggregation  Moodle aggregation constant
+     * @param \grade_category|null $parent        null = top-level under course total
+     * @param float                $weight        0–1 fraction (weight / 100)
+     * @param array                $settings      droplow, keephigh, aggregateonlygraded, extra_credit
+     */
+    private static function get_or_create_grade_category(
+        int $courseid,
+        string $fullname,
+        int $aggregation,
+        ?\grade_category $parent,
+        float $weight,
+        array $settings = []
+    ): \grade_category {
+        $parent_id = $parent ? $parent->id : null;
+
+        $existing_list = \grade_category::fetch_all([
+            'courseid' => $courseid,
+            'fullname' => $fullname,
+        ]);
+
+        $gc = null;
+        if ($existing_list) {
+            foreach ($existing_list as $existing) {
+                if ($parent_id === null || $existing->parent == $parent_id) {
+                    $gc = $existing;
+                    break;
+                }
+            }
+        }
+
+        if ($gc === null) {
+            $gc = new \grade_category(['courseid' => $courseid], false);
+            $gc->fullname = $fullname;
+            $gc->courseid = $courseid;
+            if ($parent) {
+                $gc->set_parent($parent->id);
+            }
+        }
+
+        $gc->aggregation         = $aggregation;
+        $gc->aggregateonlygraded = $settings['aggregateonlygraded'] ?? 1;
+        $gc->aggregateoutcomes   = $settings['aggregateoutcomes'] ?? 0;
+        $gc->droplow             = $settings['droplow'] ?? 0;
+        $gc->keephigh            = $settings['keephigh'] ?? 0;
+
+        if (isset($gc->id)) {
+            $gc->update('block_ai_assistant');
+        } else {
+            $gc->insert('block_ai_assistant');
+        }
+
+        self::apply_category_grade_item($gc, $aggregation, $weight, $settings);
+        return $gc;
+    }
+
+    /**
+     * Apply weight, display format, pass threshold, hidden, locked to the grade_item
+     * that represents this category inside its parent aggregation.
+     *
+     * Weight fields per aggregation method:
+     *   Natural (13 = GRADE_AGGREGATE_SUM):       aggregationcoef2 = 0–1, weightoverride = 1
+     *   Weighted mean (10/11):                     aggregationcoef  = percent value (e.g. 25 for 25%)
+     *   Mean (0) / Mean+extra credits (12):        weight ignored; aggregationcoef = extra-credit flag
+     */
+    private static function apply_category_grade_item(
+        \grade_category $gc,
+        int $aggregation,
+        float $weight,
+        array $settings = []
+    ): void {
+        $gi = \grade_item::fetch(['itemtype' => 'category', 'iteminstance' => $gc->id]);
+        if (!$gi) {
+            return;
+        }
+
+        // Weight
+        $extra_credit = (bool)($settings['extra_credit'] ?? false);
+        if ($aggregation === 13) {
+            $gi->weightoverride   = 1;
+            $gi->aggregationcoef2 = $weight;
+            $gi->aggregationcoef  = (int)$extra_credit;
+        } elseif ($aggregation === 10 || $aggregation === 11) {
+            $gi->aggregationcoef  = $weight * 100.0;
+            $gi->aggregationcoef2 = 0;
+            $gi->weightoverride   = 0;
+        } else {
+            $gi->aggregationcoef  = (int)$extra_credit;
+            $gi->aggregationcoef2 = 0;
+            $gi->weightoverride   = 0;
+        }
+
+        // Grade range
+        if (isset($settings['grade_min']) && $settings['grade_min'] !== null) {
+            $gi->grademin = (float)$settings['grade_min'];
+        }
+        if (isset($settings['grade_max']) && $settings['grade_max'] > 0) {
+            $gi->grademax = (float)$settings['grade_max'];
+        }
+        if (isset($settings['grade_pass']) && $settings['grade_pass'] !== null) {
+            $gi->gradepass = (float)$settings['grade_pass'];
+        }
+
+        // Visibility
+        if (isset($settings['hidden_until']) && !empty($settings['hidden_until'])) {
+            $gi->hidden = (int)$settings['hidden_until'];
+        } elseif (isset($settings['hidden'])) {
+            $gi->hidden = (bool)$settings['hidden'] ? 1 : 0;
+        }
+
+        // Locking
+        if (isset($settings['lock_time']) && !empty($settings['lock_time'])) {
+            $gi->locktime = (int)$settings['lock_time'];
+            $gi->locked = 0;
+        } elseif (!empty($settings['locked'])) {
+            $gi->locked = time(); // lock now
+            $gi->locktime = 0;
+        } elseif (array_key_exists('locked', $settings)) {
+            $gi->locked = 0;
+            $gi->locktime = 0;
+        }
+
+        // Display format (GRADE_DISPLAY_TYPE_* constants: 0=default, 1=real, 2=pct, 3=letter ...)
+        if (isset($settings['display_type'])) {
+            $gi->display = (int)$settings['display_type'];
+        }
+
+        // Decimal places (-1 = course default)
+        if (isset($settings['decimals']) && (int)$settings['decimals'] >= -1) {
+            $gi->decimals = (int)$settings['decimals'];
+        }
+
+        $gi->update('block_ai_assistant');
     }
 
     private static function is_syllabus_like_filename(string $filename): bool
