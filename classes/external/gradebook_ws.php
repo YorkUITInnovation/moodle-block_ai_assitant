@@ -221,7 +221,7 @@ class block_ai_assistant_gradebook_ws extends external_api
         $context = \context_course::instance($courseid);
         self::validate_context($context);
 
-        return cria::gradebook_delete($session_id);
+        return cria::gradebook_delete($session_id, $courseid);
     }
 
     public static function delete_returns(): external_description

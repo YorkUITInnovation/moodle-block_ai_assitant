@@ -373,12 +373,12 @@
                 </div>
 
                 <div id="gradebook-result-panel" class="d-none" role="region" aria-label="Gradebook finalize result">
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <div>
-                            <div class="fw-semibold">{{#str}}gradebook_result_heading, block_ai_assistant{{/str}}</div>
-                            <div id="gradebook-result-summary" class="small" style="white-space: pre-wrap;"></div>
-                        </div>
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <div class="fw-semibold mb-0">{{#str}}gradebook_result_heading, block_ai_assistant{{/str}}</div>
                         <div class="btn-group btn-group-sm">
+                            <a href="#" class="btn btn-outline-primary" id="btn-gradebook-open-setup">
+                                {{#str}}gradebook_open_setup, block_ai_assistant{{/str}}
+                            </a>
                             <button type="button" class="btn btn-outline-success" id="btn-gradebook-download-word">
                                 {{#str}}gradebook_download_word, block_ai_assistant{{/str}}
                             </button>
@@ -387,6 +387,7 @@
                             </button>
                         </div>
                     </div>
+                    <div id="gradebook-result-summary" class="small"></div>
                 </div>
 
                 <div id="gradebook-chat-messages" class="chat-messages">

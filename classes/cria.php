@@ -1429,13 +1429,328 @@ class cria
         return webservice::exec($method, $data);
     }
 
-    public static function gradebook_delete(string $session_id): string
+    public static function gradebook_delete(string $session_id, int $courseid = 0): string
     {
+        $session_id = trim($session_id);
+        $hascoursechanges = $courseid > 0 ? self::course_has_ai_gradebook($courseid) : false;
+        $sessionispristine = self::is_pristine_gradebook_session($session_id);
+
+        if ($sessionispristine && !$hascoursechanges) {
+            return json_encode([
+                'status' => 200,
+                'code' => 'SUCCESS',
+                'message' => get_string('gradebook_delete_nothing', 'block_ai_assistant'),
+                'data' => [
+                    'success' => false,
+                    'existed' => true,
+                    'blocked' => true,
+                    'grade_setup_cleaned' => false,
+                    'grade_setup_message' => '',
+                ],
+            ]);
+        }
+
         $method = 'cria_gradebook_delete';
         $data = array(
-            'session_id' => trim($session_id),
+            'session_id' => $session_id,
         );
-        return webservice::exec($method, $data);
+        $result = webservice::exec($method, $data);
+        $decoded = json_decode($result, true);
+
+        $backendnotfound = is_array($decoded)
+            && ((int)($decoded['status'] ?? 0) === 404 || (string)($decoded['code'] ?? '') === 'NOT_FOUND');
+
+        $cleanup_result = null;
+        if ($hascoursechanges) {
+            $cleanup_result = self::remove_ai_gradebook_from_course($courseid);
+        }
+
+        if (!is_array($decoded)) {
+            $decoded = [
+                'status' => 200,
+                'code' => 'SUCCESS',
+                'message' => get_string('gradebook_delete_completed', 'block_ai_assistant'),
+            ];
+        }
+
+        if ($backendnotfound && $hascoursechanges) {
+            $decoded['status'] = 200;
+            $decoded['code'] = 'SUCCESS';
+            $decoded['message'] = get_string('gradebook_delete_cleanup_only', 'block_ai_assistant');
+        }
+
+        $decoded['data'] = array_merge(
+            is_array($decoded['data'] ?? null) ? $decoded['data'] : [],
+            [
+                'success' => !$backendnotfound || $hascoursechanges,
+                'existed' => !$backendnotfound,
+                'blocked' => false,
+                'grade_setup_cleaned' => (bool)($cleanup_result['cleaned'] ?? false),
+                'grade_setup_message' => (string)($cleanup_result['message'] ?? ''),
+            ]
+        );
+
+        return json_encode($decoded);
+    }
+
+    private static function course_has_ai_gradebook(int $courseid): bool
+    {
+        global $DB;
+
+        return $DB->record_exists('grade_categories', [
+            'courseid' => $courseid,
+            'fullname' => 'AI Assistant - Gradebook',
+        ]);
+    }
+
+    private static function is_pristine_gradebook_session(string $session_id): bool
+    {
+        try {
+            $status_json = self::gradebook_status($session_id);
+            $status = json_decode($status_json, true);
+            if (!is_array($status) || !is_array($status['session'] ?? null)) {
+                return false;
+            }
+
+            $session = $status['session'];
+            $phase = strtoupper(trim((string)($session['phase'] ?? '')));
+            $hasproposal = !empty($session['proposal']);
+            $hasmapping = !empty($session['content_mapping']);
+
+            return in_array($phase, ['INITIAL', 'INTAKE', 'ANALYSIS'], true)
+                && !$hasproposal
+                && !$hasmapping;
+        } catch (Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Remove the "AI Assistant - Gradebook" category and all its children from the
+     * course grade setup, returning all grade items to the top-level course category.
+     * This undoes everything that apply_gradebook_to_course creates.
+     * 
+     * @return array with keys 'cleaned' (bool) and 'message' (string)
+     */
+    public static function remove_ai_gradebook_from_course(int $courseid): array
+    {
+        global $CFG, $DB;
+        require_once($CFG->libdir . '/gradelib.php');
+        require_once($CFG->libdir . '/grade/grade_category.php');
+        require_once($CFG->libdir . '/grade/grade_item.php');
+
+        try {
+            $all_cats = $DB->get_records('grade_categories', ['courseid' => $courseid]);
+            if (!$all_cats) {
+                return [
+                    'cleaned' => false,
+                    'message' => 'No grade categories found in course.'
+                ];
+            }
+
+            $roots = [];
+            foreach ($all_cats as $cat) {
+                if ((string)$cat->fullname === 'AI Assistant - Gradebook') {
+                    $roots[] = (int)$cat->id;
+                }
+            }
+
+            if (empty($roots)) {
+                return [
+                    'cleaned' => false,
+                    'message' => 'No "AI Assistant - Gradebook" categories found to remove.'
+                ];
+            }
+
+            debugging("Removing " . count($roots) . " AI Assistant gradebook root categories from course $courseid", DEBUG_DEVELOPER);
+
+            $snapshot = $DB->get_records('grade_categories', ['courseid' => $courseid]);
+            $children_by_parent = [];
+            foreach (($snapshot ?: []) as $cat) {
+                $pid = (int)($cat->parent ?? 0);
+                if (!isset($children_by_parent[$pid])) {
+                    $children_by_parent[$pid] = [];
+                }
+                $children_by_parent[$pid][] = (int)$cat->id;
+            }
+
+            foreach ($roots as $rootid) {
+                self::_delete_grade_category_tree($courseid, $rootid, $children_by_parent);
+            }
+
+            grade_regrade_final_grades($courseid);
+
+            $remainingroots = $DB->count_records('grade_categories', [
+                'courseid' => $courseid,
+                'fullname' => 'AI Assistant - Gradebook',
+            ]);
+            if ($remainingroots > 0) {
+                $forced = self::_force_purge_ai_gradebook_tree($courseid);
+                if (!$forced['cleaned']) {
+                    return [
+                        'cleaned' => false,
+                        'message' => 'Cleanup attempted, but ' . $remainingroots . ' AI Assistant gradebook categor' . ($remainingroots === 1 ? 'y remains.' : 'ies remain.') . ' ' . ($forced['message'] ?? '')
+                    ];
+                }
+                return $forced;
+            }
+
+            return [
+                'cleaned' => true,
+                'message' => 'Removed ' . count($roots) . ' AI Assistant gradebook categor' . (count($roots) === 1 ? 'y' : 'ies') . '.'
+            ];
+        } catch (Throwable $e) {
+            debugging('Error removing AI gradebook from course: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return [
+                'cleaned' => false,
+                'message' => 'Error during cleanup: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Delete a grade category tree bottom-up. Moves leaf grade items to course total first.
+     */
+    private static function _delete_grade_category_tree(int $courseid, int $category_id, array $children_by_parent): void
+    {
+        $children = $children_by_parent[$category_id] ?? [];
+        foreach ($children as $child_id) {
+            self::_delete_grade_category_tree($courseid, (int)$child_id, $children_by_parent);
+        }
+
+        self::_move_items_to_course_total($courseid, $category_id);
+        self::_delete_category_total_item($courseid, $category_id);
+
+        $cat = \grade_category::fetch(['id' => $category_id]);
+        if ($cat) {
+            $cat->delete('block_ai_assistant');
+        }
+    }
+
+    /**
+     * Move all mod-type grade_items inside a given category back to the course-total category.
+     */
+    private static function _move_items_to_course_total(int $courseid, int $from_category_id): void
+    {
+        $course_cat = \grade_category::fetch_course_category($courseid);
+        if (!$course_cat) {
+            return;
+        }
+
+        // Get all grade items in this category
+        $all_items = \grade_item::fetch_all(['courseid' => $courseid, 'categoryid' => $from_category_id]);
+        if (!$all_items) {
+            return;
+        }
+
+        foreach ($all_items as $gi) {
+            // Move all leaf grade items back to course total; skip structural category totals.
+            if ((string)$gi->itemtype !== 'category') {
+                $gi->categoryid = $course_cat->id;
+                $gi->update('block_ai_assistant');
+            }
+        }
+    }
+
+    private static function _delete_category_total_item(int $courseid, int $category_id): void
+    {
+        $category_items = \grade_item::fetch_all([
+            'courseid' => $courseid,
+            'itemtype' => 'category',
+            'iteminstance' => $category_id,
+        ]);
+        if (!$category_items) {
+            return;
+        }
+
+        foreach ($category_items as $item) {
+            $item->delete('block_ai_assistant');
+        }
+    }
+
+    private static function _force_purge_ai_gradebook_tree(int $courseid): array
+    {
+        global $DB;
+
+        $roots = $DB->get_records('grade_categories', [
+            'courseid' => $courseid,
+            'fullname' => 'AI Assistant - Gradebook',
+        ]);
+        if (!$roots) {
+            return [
+                'cleaned' => true,
+                'message' => 'Force purge was not needed; no AI Assistant gradebook categories remain.'
+            ];
+        }
+
+        $allcats = $DB->get_records('grade_categories', ['courseid' => $courseid]);
+        $childrenbyparent = [];
+        foreach ($allcats as $cat) {
+            $pid = (int)($cat->parent ?? 0);
+            if (!isset($childrenbyparent[$pid])) {
+                $childrenbyparent[$pid] = [];
+            }
+            $childrenbyparent[$pid][] = (int)$cat->id;
+        }
+
+        $stack = array_map(static fn($c) => (int)$c->id, $roots);
+        $treeids = [];
+        while (!empty($stack)) {
+            $cid = array_pop($stack);
+            if (isset($treeids[$cid])) {
+                continue;
+            }
+            $treeids[$cid] = true;
+            foreach (($childrenbyparent[$cid] ?? []) as $childid) {
+                $stack[] = (int)$childid;
+            }
+        }
+
+        $ids = array_keys($treeids);
+        if (empty($ids)) {
+            return [
+                'cleaned' => false,
+                'message' => 'Force purge could not resolve AI Assistant category IDs.'
+            ];
+        }
+
+        list($inSql, $inParams) = $DB->get_in_or_equal($ids);
+
+        $coursecat = \grade_category::fetch_course_category($courseid);
+        if ($coursecat) {
+            $moditems = $DB->get_records_select(
+                'grade_items',
+                'courseid = ? AND categoryid ' . $inSql . ' AND itemtype <> ?',
+                array_merge([$courseid], $inParams, ['category'])
+            );
+            foreach ($moditems as $item) {
+                $item->categoryid = $coursecat->id;
+                $DB->update_record('grade_items', $item);
+            }
+        }
+
+        $DB->delete_records_select('grade_items', 'courseid = ? AND itemtype = ? AND iteminstance ' . $inSql,
+            array_merge([$courseid, 'category'], $inParams));
+        $DB->delete_records_select('grade_categories', 'courseid = ? AND id ' . $inSql,
+            array_merge([$courseid], $inParams));
+
+        grade_regrade_final_grades($courseid);
+
+        $remaining = $DB->count_records('grade_categories', [
+            'courseid' => $courseid,
+            'fullname' => 'AI Assistant - Gradebook',
+        ]);
+        if ($remaining > 0) {
+            return [
+                'cleaned' => false,
+                'message' => 'Force purge attempted, but AI Assistant gradebook categories still remain.'
+            ];
+        }
+
+        return [
+            'cleaned' => true,
+            'message' => 'AI Assistant gradebook categories were removed using force purge fallback.'
+        ];
     }
 
     public static function gradebook_finalize(int $courseid, string $session_id, array $confirmed_mapping): string
@@ -1496,14 +1811,20 @@ class cria
                'display_type' => 0, 'decimals' => -1]
         );
 
-        // Create / update each sub-category
+        // Create / update each top-level category and optional nested subcategories.
         $category_id_map = [];
+        $subcategory_by_parent = [];
+        $subcategory_global_map = [];
+        $subcategory_rr_index = [];
+
         foreach ($proposal['categories'] as $cat) {
-            $name       = trim($cat['name'] ?? '');
-            $pct        = floatval($cat['weight'] ?? 0);
+            $name = trim((string)($cat['name'] ?? ''));
+            $pct = floatval($cat['weight'] ?? 0);
             if ($name === '') {
                 continue;
             }
+
+            $category_key = strtolower($name);
             $weight_fraction = $pct / 100.0;
             $settings = [
                 'droplow'              => (int)($cat['drop_lowest'] ?? 0),
@@ -1530,16 +1851,61 @@ class cria
                 $weight_fraction,
                 $settings
             );
-            $category_id_map[$name] = $cat_obj->id;
+            $category_id_map[$category_key] = $cat_obj->id;
+
+            $subcategories = is_array($cat['subcategories'] ?? null) ? $cat['subcategories'] : [];
+            foreach ($subcategories as $sub) {
+                $sub_name = trim((string)($sub['name'] ?? ''));
+                if ($sub_name === '') {
+                    continue;
+                }
+
+                $sub_weight = floatval($sub['weight'] ?? 0);
+                $sub_weight_fraction = $sub_weight / 100.0;
+                $sub_settings = [
+                    'droplow' => 0,
+                    'keephigh' => 0,
+                    'aggregateonlygraded' => 1,
+                    'aggregateoutcomes' => 0,
+                    'extra_credit' => false,
+                    'grade_min' => null,
+                    'grade_max' => 100.0,
+                    'grade_pass' => null,
+                    'hidden' => false,
+                    'hidden_until' => null,
+                    'locked' => false,
+                    'lock_time' => null,
+                    'display_type' => 0,
+                    'decimals' => -1,
+                ];
+
+                $sub_obj = self::get_or_create_grade_category(
+                    $courseid,
+                    $sub_name,
+                    $aggregation_method,
+                    $cat_obj,
+                    $sub_weight_fraction,
+                    $sub_settings
+                );
+
+                $sub_key = strtolower($sub_name);
+                $subcategory_by_parent[$category_key][$sub_key] = $sub_obj->id;
+                $subcategory_global_map[$sub_key] = $sub_obj->id;
+            }
+
+            if (!empty($subcategory_by_parent[$category_key])) {
+                $subcategory_rr_index[$category_key] = 0;
+            }
         }
 
-        // Move activity grade items into their mapped categories
+        // Move activity grade items into mapped categories/subcategories.
         $modinfo = get_fast_modinfo($courseid);
         foreach ($confirmed_mapping as $mapping) {
-            $cmid          = intval($mapping['moodle_cmid'] ?? 0);
-            $category_name = $mapping['category'] ?? null;
+            $cmid = intval($mapping['moodle_cmid'] ?? 0);
+            $category_name = trim((string)($mapping['category'] ?? ''));
+            $category_key = strtolower($category_name);
 
-            if ($cmid <= 0 || !$category_name || !isset($category_id_map[$category_name])) {
+            if ($cmid <= 0 || $category_name === '') {
                 continue;
             }
 
@@ -1548,6 +1914,25 @@ class cria
                 if (!$cm) {
                     continue;
                 }
+
+                $target_category_id = null;
+                if (isset($subcategory_global_map[$category_key])) {
+                    $target_category_id = (int)$subcategory_global_map[$category_key];
+                } elseif (isset($category_id_map[$category_key])) {
+                    $target_category_id = (int)$category_id_map[$category_key];
+                    if (!empty($subcategory_by_parent[$category_key])) {
+                        $target_category_id = self::pick_subcategory_target(
+                            (string)($cm->name ?? ''),
+                            $subcategory_by_parent[$category_key],
+                            $subcategory_rr_index[$category_key]
+                        );
+                    }
+                }
+
+                if ($target_category_id === null) {
+                    continue;
+                }
+
                 $grade_items = \grade_item::fetch_all([
                     'courseid'     => $courseid,
                     'iteminstance' => $cm->instance,
@@ -1557,8 +1942,9 @@ class cria
                 if (!$grade_items) {
                     continue;
                 }
+
                 foreach ($grade_items as $gi) {
-                    $gi->categoryid = $category_id_map[$category_name];
+                    $gi->categoryid = $target_category_id;
                     $gi->update('block_ai_assistant');
                 }
             } catch (Throwable $e) {
@@ -1568,6 +1954,36 @@ class cria
 
         // Recalculate grades after structural change
         grade_regrade_final_grades($courseid);
+    }
+
+    /**
+     * Pick a subcategory for an activity name.
+     * 1) Prefer token match with subcategory name.
+     * 2) Fallback to round-robin to avoid leaving all items under parent category.
+     */
+    private static function pick_subcategory_target(string $activity_name, array $subcategories, int &$round_robin_index): int
+    {
+        if (empty($subcategories)) {
+            return 0;
+        }
+
+        $activity_l = strtolower($activity_name);
+        foreach ($subcategories as $sub_name => $sub_id) {
+            $tokens = preg_split('/[^a-z0-9]+/', strtolower((string)$sub_name));
+            foreach ($tokens as $token) {
+                if ($token === '' || strlen($token) < 3) {
+                    continue;
+                }
+                if (strpos($activity_l, $token) !== false) {
+                    return (int)$sub_id;
+                }
+            }
+        }
+
+        $sub_ids = array_values($subcategories);
+        $idx = $round_robin_index % max(1, count($sub_ids));
+        $round_robin_index++;
+        return (int)$sub_ids[$idx];
     }
 
     /**
@@ -1616,7 +2032,7 @@ class cria
             $gc->fullname = $fullname;
             $gc->courseid = $courseid;
             if ($parent) {
-                $gc->set_parent($parent->id);
+                $gc->parent = (int)$parent->id;
             }
         }
 
@@ -1632,7 +2048,13 @@ class cria
             $gc->insert('block_ai_assistant');
         }
 
-        self::apply_category_grade_item($gc, $aggregation, $weight, $settings);
+        // Ensure nested categories are attached to the expected parent in all Moodle variants.
+        if ($parent && (int)$gc->parent !== (int)$parent->id) {
+            $gc->set_parent((int)$parent->id);
+            $gc = \grade_category::fetch(['id' => $gc->id]);
+        }
+
+        self::apply_category_grade_item($gc, $aggregation, $weight, $settings, $parent);
         return $gc;
     }
 
@@ -1649,7 +2071,8 @@ class cria
         \grade_category $gc,
         int $aggregation,
         float $weight,
-        array $settings = []
+        array $settings = [],
+        ?\grade_category $parent = null
     ): void {
         $gi = \grade_item::fetch(['itemtype' => 'category', 'iteminstance' => $gc->id]);
         if (!$gi) {
@@ -1658,11 +2081,13 @@ class cria
 
         // Weight
         $extra_credit = (bool)($settings['extra_credit'] ?? false);
-        if ($aggregation === 13) {
+        // Category item weight is interpreted by its parent category aggregation method.
+        $parent_aggregation = $parent ? (int)($parent->aggregation ?? 13) : $aggregation;
+        if ($parent_aggregation === 13) {
             $gi->weightoverride   = 1;
             $gi->aggregationcoef2 = $weight;
             $gi->aggregationcoef  = (int)$extra_credit;
-        } elseif ($aggregation === 10 || $aggregation === 11) {
+        } elseif ($parent_aggregation === 10 || $parent_aggregation === 11) {
             $gi->aggregationcoef  = $weight * 100.0;
             $gi->aggregationcoef2 = 0;
             $gi->weightoverride   = 0;

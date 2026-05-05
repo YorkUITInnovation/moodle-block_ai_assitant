@@ -633,6 +633,37 @@ const extractProposalCategories = (proposal) => {
     return [];
 };
 
+const summarizeProposalCategories = (proposal) => {
+    if (!proposal || !Array.isArray(proposal.categories)) {
+        return '';
+    }
+    return proposal.categories.map((c) => {
+        const base = `${c.name}: ${c.weight}%`;
+        const subs = Array.isArray(c.subcategories) ? c.subcategories : [];
+        if (!subs.length) {
+            return base;
+        }
+        const subText = subs
+            .map((s) => `${s.name} ${s.weight}%`)
+            .join(', ');
+        return `${base} [${subText}]`;
+    }).join(' | ');
+};
+
+const extractProposalEffects = (proposal) => {
+    const notes = Array.isArray(proposal?.notes) ? proposal.notes : [];
+    const effects = notes
+        .filter((n) => typeof n === 'string' && n.startsWith('Effect:'))
+        .map((n) => n.slice('Effect:'.length).trim());
+    // Keep newest first for display.
+    return effects.reverse();
+};
+
+const extractProposalChecks = (proposal) => {
+    const notes = Array.isArray(proposal?.notes) ? proposal.notes : [];
+    return notes.filter((n) => typeof n === 'string' && !n.startsWith('Effect:'));
+};
+
 const setProposalCategories = (cats) => {
     proposalCategories = Array.isArray(cats) ? cats : [];
     if (proposalCategories.length > 0) {
@@ -951,18 +982,70 @@ const buildSummaryText = (result) => {
     return lines.join('\n');
 };
 
+const escapeHtml = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const summarizeResultCategories = (categories) => {
+    if (!Array.isArray(categories) || !categories.length) {
+        return '';
+    }
+    return categories.map((c) => {
+        const base = `${c.name || ''}: ${c.weight != null ? c.weight + '%' : ''}`;
+        const subs = Array.isArray(c.subcategories) ? c.subcategories : [];
+        if (!subs.length) {
+            return base;
+        }
+        const subText = subs.map((s) => `${s.name} ${s.weight}%`).join(', ');
+        return `${base} [${subText}]`;
+    }).join(' | ');
+};
+
+const buildSummaryHtml = (result) => {
+    const summary = result && result.summary ? result.summary : {};
+    const mapping = extractContentMapping(result) || {};
+    const categories = mapping.categories || (result.proposal && result.proposal.categories) || [];
+
+    const parts = [];
+    if (summary.total_weight != null) {
+        parts.push(`<div class="mb-1"><strong>Total weight:</strong> ${escapeHtml(summary.total_weight)}%</div>`);
+    }
+    if (summary.created_categories != null) {
+        parts.push(`<div class="mb-1"><strong>Created categories:</strong> ${escapeHtml(summary.created_categories)}</div>`);
+    }
+    if (Array.isArray(categories) && categories.length) {
+        parts.push(`<div class="mb-0"><strong>Categories:</strong> ${escapeHtml(summarizeResultCategories(categories))}</div>`);
+    }
+    if (!parts.length) {
+        parts.push('<div>Gradebook finalized.</div>');
+    }
+    return parts.join('');
+};
+
 const renderResultPanel = (result) => {
     const panel = el('gradebook-result-panel');
     const summaryEl = el('gradebook-result-summary');
+    const setupBtn = el('btn-gradebook-open-setup');
     if (!panel || !summaryEl) {
         return;
     }
     if (!result) {
         panel.classList.add('d-none');
-        summaryEl.textContent = '';
+        summaryEl.innerHTML = '';
+        if (setupBtn) {
+            setupBtn.setAttribute('href', '#');
+        }
         return;
     }
-    summaryEl.textContent = buildSummaryText(result);
+    summaryEl.innerHTML = buildSummaryHtml(result);
+    if (setupBtn) {
+        const root = (typeof M !== 'undefined' && M.cfg && M.cfg.wwwroot) ? String(M.cfg.wwwroot) : '';
+        const href = `${root}/grade/edit/tree/index.php?id=${encodeURIComponent(getCourseId())}`;
+        setupBtn.setAttribute('href', href);
+    }
     panel.classList.remove('d-none');
 };
 
@@ -1141,12 +1224,32 @@ const deleteSessionAndRestart = async () => {
         deleteResponse = null;
     }
 
+    if (deleteResponse && deleteResponse.data && deleteResponse.data.blocked) {
+        suspendAutoSave = false;
+        appendSystemMessage(String(deleteResponse.message || 'Nothing to delete.'));
+        return currentSessionId;
+    }
+
     await clearLocalGradebookState();
     suspendAutoSave = false;
 
+    // Build detailed delete message
+    const messages = [];
     if (deleteResponse && deleteResponse.message) {
-        appendSystemMessage(String(deleteResponse.message));
+        messages.push(String(deleteResponse.message));
     }
+    
+    if (deleteResponse && deleteResponse.data) {
+        const data = deleteResponse.data;
+        if (data.grade_setup_cleaned) {
+            messages.push(data.grade_setup_message || '✓ Grade setup cleaned.');
+        } else if (data.grade_setup_message) {
+            messages.push('⚠ ' + data.grade_setup_message);
+        }
+    }
+
+    const finalMessage = messages.length > 0 ? messages.join(' ') : 'Session deleted.';
+    appendSystemMessage(finalMessage);
 
     return doStartSession();
 };
@@ -1352,8 +1455,22 @@ const fetchProposal = async () => {
             if (cats.length) {
                 setProposalCategories(cats);
             }
-            const lines = proposal.categories.map((c) => `${c.name}: ${c.weight}%`).join(' | ');
+
+            const lines = summarizeProposalCategories(proposal);
             appendSystemMessage(`Current proposal: ${lines}`);
+
+            const effects = extractProposalEffects(proposal);
+            if (effects.length) {
+                const recent = effects.slice(0, 6).join(' | ');
+                appendSystemMessage(`Effects (newest first): ${recent}`);
+            }
+
+            const checks = extractProposalChecks(proposal);
+            if (checks.length) {
+                const checkText = checks.slice(-3).join(' | ');
+                appendSystemMessage(`Checks: ${checkText}`);
+            }
+
             applyProposalWeightGate(proposal);
         } else {
             appendSystemMessage('No proposal yet. Send a prompt to generate one.');
@@ -1781,6 +1898,14 @@ export const init = (courseId) => {
     attachListener('btn-gradebook-delete', 'click', guardedAction(deleteSessionHandler));
     attachListener('btn-gradebook-download-word', 'click', () => downloadFinalizeResultAsWord());
     attachListener('btn-gradebook-download-pdf', 'click', () => downloadFinalizeResultAsPdf());
+    attachListener('btn-gradebook-open-setup', 'click', (e) => {
+        const root = (typeof M !== 'undefined' && M.cfg && M.cfg.wwwroot) ? String(M.cfg.wwwroot) : '';
+        if (!root) {
+            return;
+        }
+        e.preventDefault();
+        window.location.href = `${root}/grade/edit/tree/index.php?id=${encodeURIComponent(getCourseId())}`;
+    });
 
     attachListener('gradebook-confirmed-mapping', 'input', () => {
         syncMappingUIFromJson();
