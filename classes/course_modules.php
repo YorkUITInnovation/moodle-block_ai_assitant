@@ -6,6 +6,20 @@ use block_ai_assistant\cria;
 
 class course_modules
 {
+    /**
+     * Extracts document name from stored label suffix: "... [doc:<name>]".
+     *
+     * @param string $label
+     * @return string
+     */
+    private static function extract_document_name_from_label(string $label): string
+    {
+        if (preg_match('/\[doc:([^\]]+)\]\s*$/', $label, $matches)) {
+            return trim((string)$matches[1]);
+        }
+        return '';
+    }
+
     private static function __accepted_modules()
     {
         return [
@@ -221,10 +235,19 @@ class course_modules
     public static function delete_course_module_files(int $bacmid)
     {
         global $DB;
+        $module = $DB->get_record('block_aia_course_modules', ['id' => $bacmid], 'id, courseid');
         // Get all file records for bacmid
         $file_records = $DB->get_records('block_aia_course_mod_files', ['bacmid' => $bacmid]);
         // Loop through each file record and delete it from Cria
         foreach ($file_records as $file_record) {
+            if (empty($file_record->cria_fileid) || (int)$file_record->cria_fileid === 0) {
+                $doc_name = self::extract_document_name_from_label((string)$file_record->name);
+                if ($doc_name !== '' && $module && isset($module->courseid)) {
+                    cria::delete_content_document_name_from_bot((int)$module->courseid, $doc_name, 'documents');
+                }
+                $DB->delete_records('block_aia_course_mod_files', ['id' => $file_record->id]);
+                continue;
+            }
             // Delete the file from Cria
             $status = cria::delete_content_from_bot($file_record->cria_fileid);
             if ($status == 200 || $status == 404) {
@@ -772,8 +795,15 @@ class course_modules
         $count = count($files);
         $trained_files = 0;
         foreach ($files as $file) {
+            if ((int)$file->trained === 1) {
+                $trained_files++;
+                continue;
+            }
+
             // Check if the file has a valid Cria file ID
             if (empty($file->cria_fileid) || $file->cria_fileid == 0) {
+                // Keep status based on local record when no legacy ID exists.
+                $module_status[] = (int)$file->trained;
                 continue; // Skip files without a valid Cria file ID
             }
             // If already trained, skip
@@ -797,24 +827,21 @@ class course_modules
             } else {
                 $trained_files++;
             }
-
-            if ($trained_files == $count) {
-                return 1; // All files are trained
-            } else {
-                // count how many files are training (2)
-                if (in_array(2, $module_status)) {
-                    return 2; // Some files are training
-                }
-                // count how many files have errors (3)
-                if (in_array(3, $module_status)) {
-                    return 3; // Some files have errors
-                }
-                // If no files are trained, return 0
-                if (in_array(0, $module_status)) {
-                    return 0; // No files are trained
-                }
-            }
         }
+
+        if ($trained_files == $count) {
+            return 1; // All files are trained
+        }
+        // count how many files are training (2)
+        if (in_array(2, $module_status)) {
+            return 2; // Some files are training
+        }
+        // count how many files have errors (3)
+        if (in_array(3, $module_status)) {
+            return 3; // Some files have errors
+        }
+        // If no files are trained, return 0
+        return 0;
     }
 
     /**

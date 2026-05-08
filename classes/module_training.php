@@ -49,6 +49,46 @@ abstract class module_training
     }
 
     /**
+     * Persist trained file reference while keeping legacy int schema compatibility.
+     *
+     * New Criabot flows return document_name (string) instead of numeric content id.
+     * The legacy schema expects int in cria_fileid, so we store 0 as a safe placeholder
+     * and keep the document name in the display name for traceability.
+     *
+     * @param mixed $cria_file_id
+     * @param string $display_name
+     * @return void
+     * @throws \dml_exception
+     */
+    private function save_module_file_record($cria_file_id, string $display_name): void
+    {
+        global $DB;
+
+        $legacy_id = 0;
+        if (is_int($cria_file_id) || (is_string($cria_file_id) && ctype_digit($cria_file_id))) {
+            $legacy_id = (int)$cria_file_id;
+        } else if (!empty($cria_file_id)) {
+            error_log(
+                'block_ai_assistant: non-numeric cria file id received for bacmid=' . (int)$this->bacmid
+                . ' value=' . substr((string)$cria_file_id, 0, 180)
+            );
+        }
+
+        $name = (string)$display_name;
+        if ($legacy_id === 0 && !empty($cria_file_id)) {
+            $name = trim($name . ' [doc:' . (string)$cria_file_id . ']');
+        }
+        $name = substr($name, 0, 255);
+
+        $DB->insert_record('block_aia_course_mod_files', [
+            'bacmid' => $this->bacmid,
+            'cria_fileid' => $legacy_id,
+            'trained' => 1,
+            'name' => $name,
+        ]);
+    }
+
+    /**
      * Train the page module content
      * @return bool
      * @throws \coding_exception
@@ -93,12 +133,7 @@ abstract class module_training
         if (!$cria_file_id) {
             return false; // If there was an error uploading the content
         } else {
-            // Insert record into block_aia_course_mod_files
-            $DB->insert_record('block_aia_course_mod_files', [
-                'bacmid' => $this->bacmid,
-                'cria_fileid' => $cria_file_id,
-                'name' => $this->mod[0]->name,
-            ]);
+            $this->save_module_file_record($cria_file_id, (string)$this->mod[0]->name);
         }
         return true;
     }
@@ -132,12 +167,7 @@ abstract class module_training
         if (!$cria_file_id) {
             return false; // If there was an error uploading the content
         } else {
-            // Insert record into block_aia_course_mod_files
-            $DB->insert_record('block_aia_course_mod_files', [
-                'bacmid' => $this->bacmid,
-                'cria_fileid' => $cria_file_id,
-                'name' => $name,
-            ]);
+            $this->save_module_file_record($cria_file_id, (string)$name);
         }
         return true;
     }
@@ -182,11 +212,7 @@ abstract class module_training
         if (!$cria_file_id) {
             return false; // If there was an error uploading the content
         } else {
-            $DB->insert_record('block_aia_course_mod_files', [
-                'bacmid' => $this->bacmid,
-                'cria_fileid' => $cria_file_id,
-                'name' => $this->mod[0]->name
-            ]);
+            $this->save_module_file_record($cria_file_id, (string)$this->mod[0]->name);
         }
         return true;
     }
@@ -234,12 +260,7 @@ abstract class module_training
         if (!$cria_file_id) {
             return false; // If there was an error uploading the content
         } else {
-            // Insert record into block_aia_course_mod_files
-            $DB->insert_record('block_aia_course_mod_files', [
-                'bacmid' => $this->bacmid,
-                'cria_fileid' => $cria_file_id,
-                'name' => $this->mod[0]->name
-            ]);
+            $this->save_module_file_record($cria_file_id, (string)$this->mod[0]->name);
         }
 
         return true;
@@ -296,11 +317,7 @@ abstract class module_training
         if (!$cria_file_id) {
             return false; // If there was an error uploading the content
         } else {
-            $DB->insert_record('block_aia_course_mod_files', [
-                'bacmid' => $this->bacmid,
-                'cria_fileid' => $cria_file_id,
-                'name' => $this->mod[0]->name
-            ]);
+            $this->save_module_file_record($cria_file_id, (string)$this->mod[0]->name);
         }
         return true;
     }
@@ -373,12 +390,7 @@ abstract class module_training
                     if (!$cria_file_id) {
                         continue; // If there was an error uploading the content
                     } else {
-                        // Insert record into block_aia_course_mod_files
-                        $DB->insert_record('block_aia_course_mod_files', [
-                            'bacmid' => $this->bacmid,
-                            'cria_fileid' => $cria_file_id,
-                            'name' => $file_name_for_saving
-                        ]);
+                        $this->save_module_file_record($cria_file_id, (string)$file_name_for_saving);
                     }
                 }
 
@@ -469,12 +481,7 @@ abstract class module_training
                     if (!$cria_file_id) {
                         continue; // If there was an error uploading the content
                     } else {
-                        // Insert record into block_aia_course_mod_files
-                        $DB->insert_record('block_aia_course_mod_files', [
-                            'bacmid' => $this->bacmid,
-                            'cria_fileid' => $cria_file_id,
-                            'name' => $file_name_for_saving
-                        ]);
+                        $this->save_module_file_record($cria_file_id, (string)$file_name_for_saving);
                     }
                     // Wait 2 seconds before moving to the next file
                     sleep(2);

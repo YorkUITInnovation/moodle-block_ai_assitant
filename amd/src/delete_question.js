@@ -14,29 +14,32 @@ function delete_question() {
     if (!document.getElementById('btn-ai-assistant-delete-question')) {
         return;
     }
-    document.getElementById('btn-ai-assistant-delete-question').addEventListener('click', function() {
+        var deleteButton = document.getElementById('btn-ai-assistant-delete-question');
+        deleteButton.addEventListener('click', function() {
             // get data-courseid from current element
-            var questionid = this.getAttribute('data-questionid');
+            var questionid = parseInt(this.getAttribute('data-questionid') || '0', 10);
             var courseid = this.getAttribute('data-courseid');
 
             // Pop up notificaiton to confirm delete
             notification.confirm(Str.get_string('delete', 'block_ai_assistant'),
                 Str.get_string('delete_question_help', 'block_ai_assistant'),
                 Str.get_string('delete', 'block_ai_assistant'),
-                Str.get_string('cancel', 'block_ai_assistant'), function () {
+                Str.get_string('cancel', 'core'), function () {
+                    deleteButton.disabled = true;
                     //Delete the record
                     var delete_content = ajax.call([{
                         methodname: 'block_ai_assistant_delete_question_file',
                         args: {
-                            'questionid': questionid,
+                            'questionid': questionid || 0,
                             'courseid': courseid
                         }
                     }]);
 
                     delete_content[0].done(function () {
                         location.reload();
-                    }).fail(function () {
-                        alert('An error has occurred. The record was not deleted');
+                    }).fail(function (error) {
+                        deleteButton.disabled = false;
+                        notification.exception(error);
                     });
                 });
     });

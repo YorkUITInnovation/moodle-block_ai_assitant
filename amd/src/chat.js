@@ -2,6 +2,64 @@ import {get_string as getString} from 'core/str';
 import ajax from 'core/ajax';
 import config from 'core/config';
 
+const normalizeChatResult = (result) => {
+    if (typeof result === 'string') {
+        return result;
+    }
+
+    if (result && typeof result === 'object') {
+        if (result.reply && result.reply.content && typeof result.reply.content.content === 'string') {
+            return result.reply.content.content;
+        }
+        if (result.response && result.response.data && result.response.data.reply &&
+            result.response.data.reply.content && typeof result.response.data.reply.content.content === 'string') {
+            return result.response.data.reply.content.content;
+        }
+        if (typeof result.message === 'string') {
+            return result.message;
+        }
+        if (typeof result.reply === 'string') {
+            return result.reply;
+        }
+        if (result.reply && typeof result.reply.message === 'string') {
+            return result.reply.message;
+        }
+        if (result.response && typeof result.response === 'object') {
+            if (result.response.data && typeof result.response.data.answer === 'string') {
+                return result.response.data.answer;
+            }
+            if (typeof result.response.message === 'string') {
+                return result.response.message;
+            }
+        }
+        if (typeof result.response === 'string') {
+            return result.response;
+        }
+    }
+
+    return String(result ?? '');
+};
+
+const normalizeAjaxError = (error) => {
+    if (typeof error === 'string') {
+        return error;
+    }
+
+    if (error && typeof error === 'object') {
+        if (typeof error.message === 'string' && error.message) {
+            return error.message;
+        }
+        if (error.error && typeof error.error === 'string') {
+            return error.error;
+        }
+        if (error.exception && typeof error.exception === 'string') {
+            return error.exception;
+        }
+    }
+
+    return 'Unable to get a response from AI Assistant.';
+};
+
 export const sendMessage = async () => {
     const input = document.getElementById('block-ai-assistant-chat-input');
     const prompt = input.value;
@@ -43,13 +101,21 @@ export const sendMessage = async () => {
                 if (deleteMe) {
                     deleteMe.remove();
                 }
+                const message = normalizeChatResult(result);
                 const bot_html = `<div class="chat-message bot-message">
-                            <div class="message-content">${result}</div>
+                            <div class="message-content">${message}</div>
                          </div>`;
                 chatMessages.innerHTML += bot_html;
                 input.focus();
             }).fail((error) => {
-                alert(error);
+                const deleteMe = document.getElementById('block-ai-assistant-delete-me');
+                if (deleteMe) {
+                    deleteMe.remove();
+                }
+                const message = normalizeAjaxError(error);
+                const botHtml = `<div class="chat-message bot-message"><div class="message-content">${message}</div></div>`;
+                chatMessages.innerHTML += botHtml;
+                input.focus();
             });
         }
     }

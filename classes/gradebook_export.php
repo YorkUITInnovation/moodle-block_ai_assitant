@@ -99,12 +99,72 @@ class gradebook_export
             $name = isset($cat['name']) ? (string)$cat['name'] : '';
             $weight = isset($cat['weight']) ? (float)$cat['weight'] : 0.0;
             $total_weight += $weight;
+
+            // Per-category settings.
+            $drop_lowest = isset($cat['drop_lowest']) ? (int)$cat['drop_lowest'] : 0;
+            $keep_highest = isset($cat['keep_highest']) ? (int)$cat['keep_highest'] : 0;
+            $hidden = !empty($cat['hidden']);
+            $hidden_until = isset($cat['hidden_until']) && $cat['hidden_until'] > 0
+                ? date('Y-m-d', (int)$cat['hidden_until']) : null;
+            $extra_credit = !empty($cat['extra_credit']);
+
+            // Subcategories.
+            $subcategories = [];
+            if (isset($cat['subcategories']) && is_array($cat['subcategories'])) {
+                foreach ($cat['subcategories'] as $sub) {
+                    $subcategories[] = [
+                        'name' => isset($sub['name']) ? (string)$sub['name'] : '',
+                        'weight' => isset($sub['weight']) ? (float)$sub['weight'] : 0.0,
+                    ];
+                }
+            }
+
             $categories[] = [
                 'name' => $name,
                 'weight' => $weight,
                 'items' => [],
+                'drop_lowest' => $drop_lowest,
+                'keep_highest' => $keep_highest,
+                'hidden' => $hidden,
+                'hidden_until' => $hidden_until,
+                'extra_credit' => $extra_credit,
+                'subcategories' => $subcategories,
             ];
         }
+
+        // ---- Effects (from proposal notes with "Effect:" prefix) ----------
+        $effects = [];
+        $proposal_notes = isset($proposal['notes']) && is_array($proposal['notes'])
+            ? $proposal['notes'] : [];
+        // Deduplicate effects by topic key (newest = last occurrence wins).
+        $effect_log = [];
+        foreach ($proposal_notes as $note) {
+            if (is_string($note) && strncmp($note, 'Effect:', 7) === 0) {
+                $effect_log[] = trim(substr($note, 7));
+            }
+        }
+        // Newest first, deduplicate by simple prefix (category name).
+        $seen_effects = [];
+        foreach (array_reverse($effect_log) as $eff) {
+            $key = strtolower($eff);
+            if (!isset($seen_effects[$key])) {
+                $seen_effects[$key] = true;
+                $effects[] = $eff;
+            }
+        }
+
+        // ---- Aggregation method ------------------------------------------
+        $aggregation_method_code = isset($proposal['aggregation_method'])
+            ? (int)$proposal['aggregation_method'] : 13;
+        $aggregation_method_names = [
+            0 => 'Mean of grades',
+            10 => 'Weighted mean of grades',
+            11 => 'Simple weighted mean of grades',
+            12 => 'Mean of grades (with extra credits)',
+            13 => 'Natural',
+        ];
+        $aggregation_method_name = $aggregation_method_names[$aggregation_method_code]
+            ?? ('Method ' . $aggregation_method_code);
 
         // ---- Activities + Not-graded -------------------------------------
         $activities_by_cmid = [];
@@ -259,6 +319,8 @@ class gradebook_export
             'not_graded' => $not_graded,
             'decisions' => $decisions,
             'transcript' => is_array($transcript) ? $transcript : [],
+            'effects' => $effects,
+            'aggregation_method' => $aggregation_method_name,
         ];
 
         return $this->model;
@@ -469,21 +531,52 @@ class gradebook_export
             . ', covering <b>' . (int)$s['graded_count'] . '</b> graded activit' . ((int)$s['graded_count'] === 1 ? 'y' : 'ies')
             . ' and <b>' . (int)$s['not_graded_count'] . '</b> non-graded activit' . ((int)$s['not_graded_count'] === 1 ? 'y' : 'ies')
             . '. Total weight across categories: <b>' . $h($total_weight_str) . '</b>. '
+            . 'Grade aggregation method: <b>' . $h($m['aggregation_method']) . '</b>. '
             . 'Grade categories will ' . ($s['create_categories'] ? '' : '<b>not</b> ') . 'be created in Moodle: <b>' . $create_cats . '</b>.</p>';
 
         // 3) Categories table
         $out .= '<h2>1. Grade categories</h2>';
         if (!empty($m['categories'])) {
             $out .= '<table><thead><tr>'
-                . '<th>Category</th><th class="right">Weight (%)</th><th class="right"># of items</th><th>Items</th>'
+                . '<th>Category</th><th class="right">Weight (%)</th><th class="right"># of items</th><th>Settings</th><th>Items / Subcategories</th>'
                 . '</tr></thead><tbody>';
             foreach ($m['categories'] as $c) {
                 $items = array_map(fn($i) => $h($i['name']), $c['items']);
+                $settings = [];
+                if ($c['drop_lowest'] > 0) {
+                    $settings[] = 'Drop lowest ' . $c['drop_lowest'];
+                }
+                if ($c['keep_highest'] > 0) {
+                    $settings[] = 'Keep top ' . $c['keep_highest'];
+                }
+                if ($c['extra_credit']) {
+                    $settings[] = 'Extra credit';
+                }
+                if ($c['hidden']) {
+                    $settings[] = $c['hidden_until'] ? 'Hidden until ' . $h($c['hidden_until']) : 'Hidden';
+                }
+                $settings_str = $settings ? implode('<br/>', $settings) : '<span class="muted">—</span>';
+
+                $subs_html = '';
+                if (!empty($c['subcategories'])) {
+                    $sub_parts = [];
+                    foreach ($c['subcategories'] as $sub) {
+                        $sub_parts[] = $h($sub['name']) . ' (' . number_format((float)$sub['weight'], 1) . '%)';
+                    }
+                    $subs_html = '<i>Subcategories:</i> ' . implode(', ', $sub_parts);
+                    if ($items) {
+                        $subs_html .= '<br/>' . implode('<br/>', $items);
+                    }
+                } else {
+                    $subs_html = $items ? implode('<br/>', $items) : '<span class="muted">—</span>';
+                }
+
                 $out .= '<tr>'
                     . '<td><b>' . $h($c['name']) . '</b></td>'
                     . '<td class="right">' . $h(number_format((float)$c['weight'], 2)) . '</td>'
                     . '<td class="right">' . count($items) . '</td>'
-                    . '<td>' . ($items ? implode('<br/>', $items) : '<span class="muted">—</span>') . '</td>'
+                    . '<td>' . $settings_str . '</td>'
+                    . '<td>' . $subs_html . '</td>'
                     . '</tr>';
             }
             $out .= '</tbody></table>';
@@ -525,8 +618,20 @@ class gradebook_export
             $out .= '</tbody></table>';
         }
 
-        // 5) Decisions
-        $out .= '<h2>3. Decisions from the conversation</h2>';
+        // 5) Effects
+        $out .= '<h2>3. Applied effects &amp; configuration</h2>';
+        if (!empty($m['effects'])) {
+            $out .= '<ul>';
+            foreach ($m['effects'] as $eff) {
+                $out .= '<li>' . $h($eff) . '</li>';
+            }
+            $out .= '</ul>';
+        } else {
+            $out .= '<p class="muted">No effects or configuration changes recorded.</p>';
+        }
+
+        // 6) Decisions
+        $out .= '<h2>4. Decisions from the conversation</h2>';
         if (!empty($m['decisions'])) {
             $out .= '<ul>';
             foreach ($m['decisions'] as $d) {
@@ -537,8 +642,8 @@ class gradebook_export
             $out .= '<p class="muted">No explicit adjustments were made during the conversation.</p>';
         }
 
-        // 6) Transcript
-        $out .= '<h2>4. Appendix: conversation transcript</h2>';
+        // 7) Transcript
+        $out .= '<h2>5. Appendix: conversation transcript</h2>';
         if (!empty($m['transcript'])) {
             $out .= '<div class="tscript">';
             foreach ($m['transcript'] as $t) {
@@ -632,18 +737,49 @@ class gradebook_export
             . ', covering <b>' . (int)$s['graded_count'] . '</b> graded activit' . ((int)$s['graded_count'] === 1 ? 'y' : 'ies')
             . ' and <b>' . (int)$s['not_graded_count'] . '</b> non-graded activit' . ((int)$s['not_graded_count'] === 1 ? 'y' : 'ies')
             . '. Total weight across categories: <b>' . $h($total_weight_str) . '</b>. '
+            . 'Grade aggregation method: <b>' . $h($m['aggregation_method']) . '</b>. '
             . 'Grade categories will ' . ($s['create_categories'] ? '' : '<b>not</b> ') . 'be created in Moodle: <b>' . ($s['create_categories'] ? 'Yes' : 'No') . '</b>.</p>';
 
         // Categories
         $out .= '<h2>1. Grade categories</h2>';
         if (!empty($m['categories'])) {
-            $out .= '<table><thead><tr><th>Category</th><th class="right">Weight (%)</th><th class="right"># of items</th><th>Items</th></tr></thead><tbody>';
+            $out .= '<table><thead><tr><th>Category</th><th class="right">Weight (%)</th><th class="right"># of items</th><th>Settings</th><th>Items / Subcategories</th></tr></thead><tbody>';
             foreach ($m['categories'] as $c) {
                 $items = array_map(fn($i) => $h($i['name']), $c['items']);
+                $settings = [];
+                if ($c['drop_lowest'] > 0) {
+                    $settings[] = 'Drop lowest ' . $c['drop_lowest'];
+                }
+                if ($c['keep_highest'] > 0) {
+                    $settings[] = 'Keep top ' . $c['keep_highest'];
+                }
+                if ($c['extra_credit']) {
+                    $settings[] = 'Extra credit';
+                }
+                if ($c['hidden']) {
+                    $settings[] = $c['hidden_until'] ? 'Hidden until ' . $h($c['hidden_until']) : 'Hidden';
+                }
+                $settings_str = $settings ? implode('<br/>', $settings) : '<span class="muted">—</span>';
+
+                $subs_html = '';
+                if (!empty($c['subcategories'])) {
+                    $sub_parts = [];
+                    foreach ($c['subcategories'] as $sub) {
+                        $sub_parts[] = $h($sub['name']) . ' (' . number_format((float)$sub['weight'], 1) . '%)';
+                    }
+                    $subs_html = '<i>Subcategories:</i> ' . implode(', ', $sub_parts);
+                    if ($items) {
+                        $subs_html .= '<br/>' . implode('<br/>', $items);
+                    }
+                } else {
+                    $subs_html = $items ? implode('<br/>', $items) : '<span class="muted">—</span>';
+                }
+
                 $out .= '<tr><td><b>' . $h($c['name']) . '</b></td>'
                     . '<td class="right">' . $h(number_format((float)$c['weight'], 2)) . '</td>'
                     . '<td class="right">' . count($items) . '</td>'
-                    . '<td>' . ($items ? implode('<br/>', $items) : '<span class="muted">—</span>') . '</td></tr>';
+                    . '<td>' . $settings_str . '</td>'
+                    . '<td>' . $subs_html . '</td></tr>';
             }
             $out .= '</tbody></table>';
         } else {
@@ -670,8 +806,20 @@ class gradebook_export
             $out .= '</tbody></table>';
         }
 
+        // Effects
+        $out .= '<h2>3. Applied effects &amp; configuration</h2>';
+        if (!empty($m['effects'])) {
+            $out .= '<ul>';
+            foreach ($m['effects'] as $eff) {
+                $out .= '<li>' . $h($eff) . '</li>';
+            }
+            $out .= '</ul>';
+        } else {
+            $out .= '<p class="muted">No effects or configuration changes recorded.</p>';
+        }
+
         // Decisions
-        $out .= '<h2>3. Decisions from the conversation</h2>';
+        $out .= '<h2>4. Decisions from the conversation</h2>';
         if (!empty($m['decisions'])) {
             $out .= '<ul>';
             foreach ($m['decisions'] as $d) {
@@ -683,7 +831,7 @@ class gradebook_export
         }
 
         // Transcript
-        $out .= '<h2>4. Appendix: conversation transcript</h2>';
+        $out .= '<h2>5. Appendix: conversation transcript</h2>';
         if (!empty($m['transcript'])) {
             $out .= '<div class="tscript">';
             foreach ($m['transcript'] as $t) {

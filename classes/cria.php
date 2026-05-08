@@ -313,12 +313,84 @@ class cria
     }
 
     /**
+     * Delete a document from Criabot by document name.
+     *
+     * @param int $course_id
+     * @param string $document_name
+     * @param string $index_type
+     * @return bool
+     */
+    public static function delete_content_document_name_from_bot(int $course_id, string $document_name, string $index_type = 'documents'): bool
+    {
+        global $CFG, $DB;
+        require_once($CFG->libdir . '/filelib.php');
+
+        $document_name = trim($document_name);
+        if ($document_name === '') {
+            return false;
+        }
+
+        $block = get_config('block_ai_assistant');
+        $local = get_config('local_cria');
+        $get = static function ($obj, string $key): string {
+            if (is_object($obj) && isset($obj->{$key}) && (string)$obj->{$key} !== '') {
+                return (string)$obj->{$key};
+            }
+            return '';
+        };
+
+        $criabot_url = rtrim($get($local, 'criabot_url') ?: $get($block, 'criabot_url'), '/');
+        $api_key = $get($local, 'criadex_api_key') ?: $get($block, 'criadex_api_key');
+        if ($criabot_url === '' || $api_key === '') {
+            return false;
+        }
+
+        $bot_name = (string)$DB->get_field('block_aia_settings', 'bot_name', ['courseid' => $course_id]);
+        if ($bot_name === '') {
+            return false;
+        }
+
+        $path = ($index_type === 'questions') ? 'questions' : 'documents';
+        $url = $criabot_url . '/bots/' . rawurlencode($bot_name) . '/' . $path
+            . '/delete?document_name=' . rawurlencode($document_name);
+
+        $curl = new \curl();
+        $opts = [
+            'CURLOPT_TIMEOUT' => 30,
+            'CURLOPT_CUSTOMREQUEST' => 'DELETE',
+            'CURLOPT_HTTPHEADER' => [
+                'Accept: application/json',
+                'X-API-Key: ' . $api_key,
+            ],
+        ];
+
+        try {
+            $raw = (string)$curl->get($url, [], $opts);
+            $info = $curl->get_info();
+            $status = isset($info['http_code']) ? (int)$info['http_code'] : 0;
+            if ($status === 200 || $status === 404) {
+                return true;
+            }
+
+            // Backward-compatible idempotency: some deployments return 500 for
+            // missing files even though delete outcome is effectively complete.
+            if ($status === 500 && strpos($raw, 'FILE_NOT_FOUND') !== false) {
+                return true;
+            }
+
+            return false;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
      * Uploads content to bot and returns file_id
      * @param string $file_path
      * @param int $course_id
      * @return int file_id
      */
-    public static function upload_content_to_bot($course_id, $file_name, $file_content, $parsing_strategy = '')
+    public static function upload_content_to_bot($course_id, $file_name, $file_content, $parsing_strategy = '', $persist_syllabus_metadata = false)
     {
         global $CFG, $DB;
         require_once($CFG->libdir . '/filelib.php');
@@ -344,6 +416,7 @@ class cria
         if ($criabot_url !== '' && $criaparse_url !== '' && $api_key !== '') {
             $bot_name = $DB->get_field('block_aia_settings', 'bot_name', ['courseid' => $course_id]);
             if (!$bot_name) {
+                error_log('block_ai_assistant: upload_content_to_bot failed, missing bot_name for course ' . (int)$course_id);
                 return '';
             }
 
@@ -352,9 +425,9 @@ class cria
             file_put_contents($tmp_path, base64_decode($file_content));
 
             $strategy = $parsing_strategy ?: 'GENERIC';
-            // CriaParse expects a valid string `dataset_id` for SemanticDocumentParser.
-            // Using `course_id` keeps it stable and avoids invalid dataset/index names.
-            $dataset_id = (string)$course_id;
+            // Keep parser dataset aligned with the bot document group used by Criabot
+            // so parser-side uploads do not target non-existent numeric groups.
+            $dataset_id = (string)$bot_name . '-document-index';
 
             // Ensure the Criadex/Ragflow group exists before queuing parsing.
             // CriaParse uploads parsed content into this group; if missing, the job fails with GROUP_NOT_FOUND.
@@ -384,9 +457,11 @@ class cria
                     $status = isset($info['http_code']) ? (int)$info['http_code'] : 0;
                     if ($status !== 200 && $status !== 409) {
                         // If group creation fails for reasons other than "already exists", stop early.
+                        error_log('block_ai_assistant: upload_content_to_bot failed creating dataset group ' . $dataset_id . ' status=' . $status);
                         return '';
                     }
                 } catch (\Throwable $e) {
+                    error_log('block_ai_assistant: upload_content_to_bot exception creating dataset group ' . $dataset_id . ' error=' . $e->getMessage());
                     return '';
                 }
 
@@ -438,6 +513,7 @@ class cria
             $queued = json_decode($queue_raw, true);
             $job_id = is_array($queued) ? (string)($queued['job']['job_id'] ?? '') : '';
             if ($job_id === '') {
+                error_log('block_ai_assistant: upload_content_to_bot failed queueing parser job for course ' . (int)$course_id . ' response=' . substr($queue_raw, 0, 500));
                 return '';
             }
 
@@ -458,7 +534,8 @@ class cria
                 $polled = json_decode($poll_raw, true);
                 $job = is_array($polled) ? ($polled['job'] ?? null) : null;
                 if (!is_array($job)) {
-                    sleep(1);
+                    // Back off when parser poll returns transient non-JSON/5xx payloads.
+                    sleep(2);
                     continue;
                 }
 
@@ -489,7 +566,43 @@ class cria
             }
 
             if (empty($nodes) && empty($assets)) {
+                error_log('block_ai_assistant: upload_content_to_bot parser returned no nodes/assets for course ' . (int)$course_id . ' job_id=' . $job_id);
                 return '';
+            }
+
+            // Ensure bot-named group exists before uploading (required by Criabot)
+            // Criabot will upload to {bot_name}-document-index group in Criadex
+            if ($criadex_url !== '' && $llm_model_id > 0 && $embedding_model_id > 0) {
+                $curl = new \curl();
+                $bot_group_name = rawurlencode($bot_name . '-document-index');
+                $create_bot_group_url = $criadex_url . '/groups/' . $bot_group_name . '/create';
+                $create_bot_group_body = [
+                    'type' => 'DOCUMENT',
+                    'llm_model_id' => $llm_model_id,
+                    'embedding_model_id' => $embedding_model_id,
+                    'rerank_model_id' => $rerank_model_id,
+                ];
+
+                $create_bot_opts = [
+                    'CURLOPT_TIMEOUT' => 30,
+                    'CURLOPT_HTTPHEADER' => [
+                        'Accept: application/json',
+                        'Content-Type: application/json',
+                        'X-API-Key: ' . $api_key,
+                    ],
+                ];
+                try {
+                    $curl->post($create_bot_group_url, json_encode($create_bot_group_body), $create_bot_opts);
+                    $info = $curl->get_info();
+                    $status = isset($info['http_code']) ? (int)$info['http_code'] : 0;
+                    if ($status !== 200 && $status !== 409) {
+                        error_log('block_ai_assistant: upload_content_to_bot failed creating bot group ' . $bot_name . '-document-index status=' . $status);
+                        return '';
+                    }
+                } catch (\Throwable $e) {
+                    error_log('block_ai_assistant: upload_content_to_bot exception creating bot group ' . $bot_name . ' error=' . $e->getMessage());
+                    return '';
+                }
             }
 
             $upload_body = [
@@ -510,15 +623,61 @@ class cria
                     'X-API-Key: ' . $api_key
                 ]
             ];
-            $upload_raw = (string)$curl->post($upload_url, json_encode($upload_body), $upload_opts);
 
-            $uploaded = json_decode((string)$upload_raw, true);
-            if (!is_array($uploaded) || ($uploaded['status'] ?? null) !== 200) {
+            // Ensure retraining is idempotent when the same document name already exists.
+            self::delete_content_document_name_from_bot((int)$course_id, (string)$file_name, 'documents');
+
+            $try_upload = static function () use ($curl, $upload_url, $upload_body, $upload_opts): array {
+                $upload_raw = (string)$curl->post($upload_url, json_encode($upload_body), $upload_opts);
+                $uploaded = json_decode((string)$upload_raw, true);
+                $status = is_array($uploaded) ? (int)($uploaded['status'] ?? 0) : 0;
+                $is_duplicate = false;
+                if (is_string($upload_raw) && (
+                    strpos($upload_raw, '"code":"DUPLICATE"') !== false
+                    || strpos($upload_raw, 'Requested content already exists') !== false
+                    || strpos($upload_raw, 'already exists in the database') !== false
+                )) {
+                    $is_duplicate = true;
+                }
+                return [
+                    'raw' => $upload_raw,
+                    'uploaded' => $uploaded,
+                    'status' => $status,
+                    'duplicate' => $is_duplicate,
+                ];
+            };
+
+            $attempt = $try_upload();
+            $uploaded = $attempt['uploaded'];
+            $upload_raw = $attempt['raw'];
+            $is_duplicate = (bool)$attempt['duplicate'];
+            $upload_status = (int)$attempt['status'];
+
+            // Retry once for transient validation/network race failures.
+            if (!$is_duplicate && $upload_status !== 200 && ($upload_status === 422 || $upload_status >= 500)) {
+                self::delete_content_document_name_from_bot((int)$course_id, (string)$file_name, 'documents');
+                $attempt = $try_upload();
+                $uploaded = $attempt['uploaded'];
+                $upload_raw = $attempt['raw'];
+                $is_duplicate = (bool)$attempt['duplicate'];
+                $upload_status = (int)$attempt['status'];
+            }
+
+            if ((!is_array($uploaded) || $upload_status !== 200) && !$is_duplicate) {
+                error_log('block_ai_assistant: upload_content_to_bot failed Criabot upload for bot ' . $bot_name . ' status=' . $upload_status . ' response=' . substr((string)$upload_raw, 0, 500));
                 return '';
             }
 
             $document_name = (string)($uploaded['document_name'] ?? '');
-            if ($document_name !== '') {
+            if ($document_name === '' && is_array($uploaded) && (($uploaded['status'] ?? null) === 200)) {
+                // Some Criabot deployments omit document_name in success payloads.
+                $document_name = (string)$file_name;
+            }
+            if ($document_name === '' && $is_duplicate) {
+                // Duplicate means the same document is already indexed; keep deterministic name.
+                $document_name = (string)$file_name;
+            }
+            if ($document_name !== '' && $persist_syllabus_metadata) {
                 $DB->set_field('block_aia_settings', 'syllabus_document_name', $document_name, ['courseid' => $course_id]);
                 $DB->set_field('block_aia_settings', 'syllabus_trained', 1, ['courseid' => $course_id]);
             }
@@ -620,6 +779,9 @@ class cria
         $data = array("id" => $contentid);
         $status = webservice::exec($method, $data);
         $results = new \stdClass();
+        $training_status_id = 2;
+        $training_status = '<div class="badge badge-danger">'
+            . get_string('error', 'block_ai_assistant') . '</div>';
 
         switch ($status) {
             case 0:
@@ -641,6 +803,8 @@ class cria
                 $training_status_id = 3;
                 $training_status = '<div class="badge badge-info">'
                     . get_string('training', 'block_ai_assistant') . '</div>';
+                break;
+            default:
                 break;
         }
 
@@ -1195,7 +1359,57 @@ class cria
         if (is_array($resp) && isset($resp['chat_id'])) {
             return (string)$resp['chat_id'];
         }
+        if (is_array($resp)) {
+            $fallback = self::first_non_empty_string($resp, [
+                'response.chat_id',
+                'data.chat_id',
+                'response.data.chat_id',
+            ]);
+            if ($fallback !== '') {
+                return $fallback;
+            }
+        }
         return '';
+    }
+
+    /**
+     * Returns the first non-empty string found at one of the provided dot-path keys.
+     *
+     * @param array $payload
+     * @param array $paths
+     * @return string
+     */
+    private static function first_non_empty_string(array $payload, array $paths): string
+    {
+        foreach ($paths as $path) {
+            $value = self::get_by_path($payload, $path);
+            if (is_string($value)) {
+                $value = trim($value);
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+        }
+        return '';
+    }
+
+    /**
+     * Resolve a value from an array using a dot-path.
+     *
+     * @param array $payload
+     * @param string $path
+     * @return mixed|null
+     */
+    private static function get_by_path(array $payload, string $path)
+    {
+        $current = $payload;
+        foreach (explode('.', $path) as $segment) {
+            if (!is_array($current) || !array_key_exists($segment, $current)) {
+                return null;
+            }
+            $current = $current[$segment];
+        }
+        return $current;
     }
 
     /**
@@ -1216,24 +1430,46 @@ class cria
         $response = webservice::exec($method, $data);
         $decoded = json_decode($response, true);
         if (!is_array($decoded)) {
-            return '';
+            return trim((string)$response);
         }
 
-        if (($decoded['status'] ?? null) === 200) {
-            $reply = $decoded['reply'] ?? null;
-            if (is_array($reply) && isset($reply['message'])) {
-                return (string)$reply['message'];
-            }
-            if (is_string($reply)) {
-                return $reply;
-            }
-            return '';
+        // Prefer assistant payload content over top-level API status message.
+        $message = self::first_non_empty_string($decoded, [
+            'reply.content.content',
+            'reply.content',
+            'reply.message',
+            'response.reply.content.content',
+            'response.reply.content',
+            'response.reply.message',
+            'response.data.answer',
+            'response.data.reply.message',
+            'response.data.reply.content.content',
+            'response.data.reply.content',
+            'response.answer',
+            'data.answer',
+            'data.reply.message',
+            'data.reply.content.content',
+            'data.reply.content',
+            'answer',
+        ]);
+        if ($message !== '') {
+            return $message;
         }
 
-        $status = (string)($decoded['status'] ?? '');
-        $code = (string)($decoded['code'] ?? '');
-        $message = (string)($decoded['message'] ?? '');
-        return trim($status . ' ' . ($code ?: $message));
+        $status = self::first_non_empty_string($decoded, ['status', 'response.status']);
+        $code = self::first_non_empty_string($decoded, ['code', 'response.code']);
+        $error = self::first_non_empty_string($decoded, [
+            'error',
+            'response.error',
+            'message',
+            'response.message',
+            'data.message',
+        ]);
+        if ($status !== '' || $code !== '' || $error !== '') {
+            return trim($status . ' ' . ($code !== '' ? $code : $error));
+        }
+
+        return '';
     }
 
     /**
@@ -1433,9 +1669,11 @@ class cria
     {
         $session_id = trim($session_id);
         $hascoursechanges = $courseid > 0 ? self::course_has_ai_gradebook($courseid) : false;
-        $sessionispristine = self::is_pristine_gradebook_session($session_id);
 
-        if ($sessionispristine && !$hascoursechanges) {
+        // Prevent delete when no AI gradebook structure exists in course.
+        // In this case there is nothing to clean up from Moodle grade setup,
+        // so we block delete and let the user continue the current session.
+        if (!$hascoursechanges) {
             return json_encode([
                 'status' => 200,
                 'code' => 'SUCCESS',
@@ -1495,12 +1733,110 @@ class cria
 
     private static function course_has_ai_gradebook(int $courseid): bool
     {
+        return self::count_ai_gradebook_roots($courseid) > 0;
+    }
+
+    /**
+     * Match AI gradebook root names robustly so cleanup also works for legacy/localized labels.
+     */
+    private static function is_ai_gradebook_root_label(string $fullname): bool
+    {
+        $normalized = self::normalize_ai_gradebook_label($fullname);
+        if ($normalized === '') {
+            return false;
+        }
+
+        $known = [
+            'ai assistant gradebook',
+            'ai assistant - gradebook',
+            'ai assistant grade book',
+            'carnet de notes assistante ia',
+            'carnet de notes - assistante ia',
+            'carnet de notes assistante ai',
+            'carnet de notes - assistante ai',
+        ];
+        if (in_array($normalized, $known, true)) {
+            return true;
+        }
+
+        // Backward-compatible fallback for slight naming variants.
+        return ((strpos($normalized, 'assistant') !== false || strpos($normalized, 'assistante') !== false)
+            && (strpos($normalized, 'gradebook') !== false || strpos($normalized, 'carnet de notes') !== false));
+    }
+
+    private static function normalize_ai_gradebook_label(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (function_exists('mb_strtolower')) {
+            $value = mb_strtolower($value, 'UTF-8');
+        } else {
+            $value = strtolower($value);
+        }
+
+        $value = str_replace(["\u{2013}", "\u{2014}", "\u{2212}"], '-', $value);
+        $value = preg_replace('/\s+/u', ' ', $value) ?? $value;
+
+        return trim($value);
+    }
+
+    // ------------------------------------------------------------------ Ownership marker --
+    // Stores the root category IDs that this plugin created for a given course so that
+    // cleanup can find them even if the category name was changed after finalize.
+    // Stored as a JSON-encoded array in Moodle plugin config (no schema change required).
+
+    private static function _get_ai_ownership_ids(int $courseid): array
+    {
+        $raw = get_config('block_ai_assistant', 'ai_gb_roots_' . $courseid);
+        if (!$raw) {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? array_map('intval', $decoded) : [];
+    }
+
+    private static function _set_ai_ownership_id(int $courseid, int $categoryid): void
+    {
+        $existing = self::_get_ai_ownership_ids($courseid);
+        $existing[] = $categoryid;
+        set_config('ai_gb_roots_' . $courseid, json_encode(array_values(array_unique($existing))), 'block_ai_assistant');
+    }
+
+    private static function _clear_ai_ownership_ids(int $courseid): void
+    {
+        unset_config('ai_gb_roots_' . $courseid, 'block_ai_assistant');
+    }
+
+    private static function get_ai_gradebook_root_ids(int $courseid): array
+    {
         global $DB;
 
-        return $DB->record_exists('grade_categories', [
-            'courseid' => $courseid,
-            'fullname' => 'AI Assistant - Gradebook',
-        ]);
+        // Start from the ownership registry – most reliable (survives name changes).
+        $registered = self::_get_ai_ownership_ids($courseid);
+
+        // Also scan by label so we catch categories created before the registry existed.
+        $cats = $DB->get_records('grade_categories', ['courseid' => $courseid]);
+        $existing_ids = [];
+        $name_ids = [];
+        foreach (($cats ?: []) as $cat) {
+            $existing_ids[] = (int)$cat->id;
+            if (self::is_ai_gradebook_root_label((string)($cat->fullname ?? ''))) {
+                $name_ids[] = (int)$cat->id;
+            }
+        }
+
+        // Keep only registered IDs that still exist in the DB (skip stale entries).
+        $valid_registered = array_filter($registered, static fn($id) => in_array($id, $existing_ids, true));
+
+        return array_values(array_unique(array_merge(array_values($valid_registered), $name_ids)));
+    }
+
+    private static function count_ai_gradebook_roots(int $courseid): int
+    {
+        return count(self::get_ai_gradebook_root_ids($courseid));
     }
 
     private static function is_pristine_gradebook_session(string $session_id): bool
@@ -1526,10 +1862,9 @@ class cria
     }
 
     /**
-     * Remove the "AI Assistant - Gradebook" category and all its children from the
-     * course grade setup, returning all grade items to the top-level course category.
-     * This undoes everything that apply_gradebook_to_course creates.
-     * 
+     * Remove the AI Assistant gradebook category tree from the course grade setup.
+     * Uses raw SQL throughout to avoid grade_item::fetch_all() filter unreliability.
+     *
      * @return array with keys 'cleaned' (bool) and 'message' (string)
      */
     public static function remove_ai_gradebook_from_course(int $courseid): array
@@ -1540,33 +1875,19 @@ class cria
         require_once($CFG->libdir . '/grade/grade_item.php');
 
         try {
-            $all_cats = $DB->get_records('grade_categories', ['courseid' => $courseid]);
-            if (!$all_cats) {
-                return [
-                    'cleaned' => false,
-                    'message' => 'No grade categories found in course.'
-                ];
-            }
-
-            $roots = [];
-            foreach ($all_cats as $cat) {
-                if ((string)$cat->fullname === 'AI Assistant - Gradebook') {
-                    $roots[] = (int)$cat->id;
-                }
-            }
-
+            $roots = self::get_ai_gradebook_root_ids($courseid);
             if (empty($roots)) {
+                // Nothing to remove – clear stale ownership entry just in case.
+                self::_clear_ai_ownership_ids($courseid);
                 return [
                     'cleaned' => false,
-                    'message' => 'No "AI Assistant - Gradebook" categories found to remove.'
+                    'message' => 'No AI Assistant gradebook categories found to remove.'
                 ];
             }
 
-            debugging("Removing " . count($roots) . " AI Assistant gradebook root categories from course $courseid", DEBUG_DEVELOPER);
-
-            $snapshot = $DB->get_records('grade_categories', ['courseid' => $courseid]);
+            $allcats = $DB->get_records('grade_categories', ['courseid' => $courseid]);
             $children_by_parent = [];
-            foreach (($snapshot ?: []) as $cat) {
+            foreach (($allcats ?: []) as $cat) {
                 $pid = (int)($cat->parent ?? 0);
                 if (!isset($children_by_parent[$pid])) {
                     $children_by_parent[$pid] = [];
@@ -1574,30 +1895,70 @@ class cria
                 $children_by_parent[$pid][] = (int)$cat->id;
             }
 
-            foreach ($roots as $rootid) {
-                self::_delete_grade_category_tree($courseid, $rootid, $children_by_parent);
+            $tree_ids = self::_collect_category_tree_ids($roots, $children_by_parent);
+            if (empty($tree_ids)) {
+                self::_clear_ai_ownership_ids($courseid);
+                return ['cleaned' => false, 'message' => 'Could not resolve AI gradebook category tree IDs.'];
             }
+
+            debugging('Removing AI gradebook tree (' . implode(',', $tree_ids) . ') from course ' . $courseid, DEBUG_DEVELOPER);
+
+            list($inSql, $inParams) = $DB->get_in_or_equal($tree_ids);
+
+            // 1. Move non-structural grade items (activities/manual) back to course total.
+            $coursecat = \grade_category::fetch_course_category($courseid);
+            if ($coursecat) {
+                $moditems = $DB->get_records_select(
+                    'grade_items',
+                    'courseid = ? AND categoryid ' . $inSql . " AND itemtype <> 'category'",
+                    array_merge([$courseid], $inParams)
+                );
+                foreach ($moditems as $item) {
+                    $item->categoryid = $coursecat->id;
+                    $DB->update_record('grade_items', $item);
+                }
+            }
+
+            // 2. Delete structural category-total grade items for the removed categories.
+            $DB->delete_records_select(
+                'grade_items',
+                "courseid = ? AND itemtype = 'category' AND iteminstance " . $inSql,
+                array_merge([$courseid], $inParams)
+            );
+
+            // 3. Delete the category records themselves.
+            $DB->delete_records_select(
+                'grade_categories',
+                'courseid = ? AND id ' . $inSql,
+                array_merge([$courseid], $inParams)
+            );
 
             grade_regrade_final_grades($courseid);
 
-            $remainingroots = $DB->count_records('grade_categories', [
-                'courseid' => $courseid,
-                'fullname' => 'AI Assistant - Gradebook',
-            ]);
-            if ($remainingroots > 0) {
-                $forced = self::_force_purge_ai_gradebook_tree($courseid);
-                if (!$forced['cleaned']) {
-                    return [
-                        'cleaned' => false,
-                        'message' => 'Cleanup attempted, but ' . $remainingroots . ' AI Assistant gradebook categor' . ($remainingroots === 1 ? 'y remains.' : 'ies remain.') . ' ' . ($forced['message'] ?? '')
-                    ];
-                }
-                return $forced;
+            // 4. Verify cleanup was complete.
+            $remaining_roots = self::count_ai_gradebook_roots($courseid);
+            if ($remaining_roots > 0) {
+                return [
+                    'cleaned' => false,
+                    'message' => $remaining_roots . ' AI Assistant gradebook ' . ($remaining_roots === 1 ? 'category' : 'categories') . ' could not be removed. Check Moodle grade setup manually.'
+                ];
             }
 
+            // 5. Repair any items that somehow still point at deleted category IDs.
+            if (self::_repair_dangling_grade_items($courseid, $tree_ids) > 0) {
+                return [
+                    'cleaned' => false,
+                    'message' => 'Categories removed but some grade items still referenced deleted AI categories. Please re-run delete session once.'
+                ];
+            }
+
+            // 6. Clear ownership registry now that cleanup succeeded.
+            self::_clear_ai_ownership_ids($courseid);
+
+            $root_count = count($roots);
             return [
                 'cleaned' => true,
-                'message' => 'Removed ' . count($roots) . ' AI Assistant gradebook categor' . (count($roots) === 1 ? 'y' : 'ies') . '.'
+                'message' => 'Removed ' . $root_count . ' AI Assistant gradebook ' . ($root_count === 1 ? 'category' : 'categories') . '.'
             ];
         } catch (Throwable $e) {
             debugging('Error removing AI gradebook from course: ' . $e->getMessage(), DEBUG_DEVELOPER);
@@ -1628,129 +1989,130 @@ class cria
     }
 
     /**
-     * Move all mod-type grade_items inside a given category back to the course-total category.
+     * Move non-structural grade_items inside a category back to course total.
+     * Uses direct DB query because grade_item::fetch_all() does not reliably filter by parameters.
      */
     private static function _move_items_to_course_total(int $courseid, int $from_category_id): void
     {
+        global $DB;
+
         $course_cat = \grade_category::fetch_course_category($courseid);
         if (!$course_cat) {
             return;
         }
 
-        // Get all grade items in this category
-        $all_items = \grade_item::fetch_all(['courseid' => $courseid, 'categoryid' => $from_category_id]);
-        if (!$all_items) {
-            return;
-        }
-
-        foreach ($all_items as $gi) {
-            // Move all leaf grade items back to course total; skip structural category totals.
-            if ((string)$gi->itemtype !== 'category') {
-                $gi->categoryid = $course_cat->id;
-                $gi->update('block_ai_assistant');
-            }
+        $items = $DB->get_records_select(
+            'grade_items',
+            "courseid = ? AND categoryid = ? AND itemtype <> 'category'",
+            [$courseid, $from_category_id]
+        );
+        foreach ($items as $item) {
+            $item->categoryid = $course_cat->id;
+            $DB->update_record('grade_items', $item);
         }
     }
 
     private static function _delete_category_total_item(int $courseid, int $category_id): void
     {
-        $category_items = \grade_item::fetch_all([
-            'courseid' => $courseid,
-            'itemtype' => 'category',
-            'iteminstance' => $category_id,
-        ]);
-        if (!$category_items) {
-            return;
-        }
+        global $DB;
 
-        foreach ($category_items as $item) {
-            $item->delete('block_ai_assistant');
+        // Use direct DB query – grade_item::fetch_all() does not reliably filter by parameters.
+        $items = $DB->get_records_select(
+            'grade_items',
+            "courseid = ? AND itemtype = 'category' AND iteminstance = ?",
+            [$courseid, $category_id]
+        );
+        foreach ($items as $item) {
+            $gi = \grade_item::fetch(['id' => $item->id]);
+            if ($gi) {
+                $gi->delete('block_ai_assistant');
+            }
         }
     }
 
-    private static function _force_purge_ai_gradebook_tree(int $courseid): array
+    private static function _collect_category_tree_ids(array $rootids, array $children_by_parent): array
+    {
+        $stack = array_values(array_map('intval', $rootids));
+        $treeids = [];
+
+        while (!empty($stack)) {
+            $cid = (int)array_pop($stack);
+            if (isset($treeids[$cid])) {
+                continue;
+            }
+            $treeids[$cid] = true;
+            foreach (($children_by_parent[$cid] ?? []) as $childid) {
+                $stack[] = (int)$childid;
+            }
+        }
+
+        return array_keys($treeids);
+    }
+
+    /**
+     * If any non-structural grade items still reference removed category IDs,
+     * move them to course total and return remaining dangling count.
+     */
+    private static function _repair_dangling_grade_items(int $courseid, array $removed_category_ids): int
     {
         global $DB;
 
-        $roots = $DB->get_records('grade_categories', [
-            'courseid' => $courseid,
-            'fullname' => 'AI Assistant - Gradebook',
-        ]);
-        if (!$roots) {
+        if (empty($removed_category_ids)) {
+            return 0;
+        }
+
+        list($inSql, $inParams) = $DB->get_in_or_equal($removed_category_ids);
+        $remaining = $DB->count_records_select(
+            'grade_items',
+            'courseid = ? AND categoryid ' . $inSql . ' AND itemtype <> ?',
+            array_merge([$courseid], $inParams, ['category'])
+        );
+        if ($remaining < 1) {
+            return 0;
+        }
+
+        $coursecat = \grade_category::fetch_course_category($courseid);
+        if (!$coursecat) {
+            return (int)$remaining;
+        }
+
+        $items = $DB->get_records_select(
+            'grade_items',
+            'courseid = ? AND categoryid ' . $inSql . ' AND itemtype <> ?',
+            array_merge([$courseid], $inParams, ['category'])
+        );
+        foreach ($items as $item) {
+            $item->categoryid = $coursecat->id;
+            $DB->update_record('grade_items', $item);
+        }
+
+        grade_regrade_final_grades($courseid);
+
+        return (int)$DB->count_records_select(
+            'grade_items',
+            'courseid = ? AND categoryid ' . $inSql . ' AND itemtype <> ?',
+            array_merge([$courseid], $inParams, ['category'])
+        );
+    }
+
+    /**
+     * Force-purge fallback – delegates to remove_ai_gradebook_from_course which now uses
+     * raw SQL throughout. Retained for backward-compatibility with any external call paths.
+     */
+    private static function _force_purge_ai_gradebook_tree(int $courseid): array
+    {
+        if (self::count_ai_gradebook_roots($courseid) < 1) {
             return [
                 'cleaned' => true,
                 'message' => 'Force purge was not needed; no AI Assistant gradebook categories remain.'
             ];
         }
 
-        $allcats = $DB->get_records('grade_categories', ['courseid' => $courseid]);
-        $childrenbyparent = [];
-        foreach ($allcats as $cat) {
-            $pid = (int)($cat->parent ?? 0);
-            if (!isset($childrenbyparent[$pid])) {
-                $childrenbyparent[$pid] = [];
-            }
-            $childrenbyparent[$pid][] = (int)$cat->id;
+        $result = self::remove_ai_gradebook_from_course($courseid);
+        if ($result['cleaned']) {
+            $result['message'] = 'AI Assistant gradebook categories were removed using force purge fallback.';
         }
-
-        $stack = array_map(static fn($c) => (int)$c->id, $roots);
-        $treeids = [];
-        while (!empty($stack)) {
-            $cid = array_pop($stack);
-            if (isset($treeids[$cid])) {
-                continue;
-            }
-            $treeids[$cid] = true;
-            foreach (($childrenbyparent[$cid] ?? []) as $childid) {
-                $stack[] = (int)$childid;
-            }
-        }
-
-        $ids = array_keys($treeids);
-        if (empty($ids)) {
-            return [
-                'cleaned' => false,
-                'message' => 'Force purge could not resolve AI Assistant category IDs.'
-            ];
-        }
-
-        list($inSql, $inParams) = $DB->get_in_or_equal($ids);
-
-        $coursecat = \grade_category::fetch_course_category($courseid);
-        if ($coursecat) {
-            $moditems = $DB->get_records_select(
-                'grade_items',
-                'courseid = ? AND categoryid ' . $inSql . ' AND itemtype <> ?',
-                array_merge([$courseid], $inParams, ['category'])
-            );
-            foreach ($moditems as $item) {
-                $item->categoryid = $coursecat->id;
-                $DB->update_record('grade_items', $item);
-            }
-        }
-
-        $DB->delete_records_select('grade_items', 'courseid = ? AND itemtype = ? AND iteminstance ' . $inSql,
-            array_merge([$courseid, 'category'], $inParams));
-        $DB->delete_records_select('grade_categories', 'courseid = ? AND id ' . $inSql,
-            array_merge([$courseid], $inParams));
-
-        grade_regrade_final_grades($courseid);
-
-        $remaining = $DB->count_records('grade_categories', [
-            'courseid' => $courseid,
-            'fullname' => 'AI Assistant - Gradebook',
-        ]);
-        if ($remaining > 0) {
-            return [
-                'cleaned' => false,
-                'message' => 'Force purge attempted, but AI Assistant gradebook categories still remain.'
-            ];
-        }
-
-        return [
-            'cleaned' => true,
-            'message' => 'AI Assistant gradebook categories were removed using force purge fallback.'
-        ];
+        return $result;
     }
 
     public static function gradebook_finalize(int $courseid, string $session_id, array $confirmed_mapping): string
@@ -1763,12 +2125,23 @@ class cria
             'reorganize_resources' => false,
         );
         $response_json = webservice::exec($method, $data);
+        $applywarnings = [];
 
         if ($courseid > 0) {
             try {
                 $response = json_decode($response_json, true);
                 if (is_array($response) && isset($response['proposal'])) {
-                    self::apply_gradebook_to_course($courseid, $response['proposal'], $confirmed_mapping);
+                    $applywarnings = self::apply_gradebook_to_course($courseid, $response['proposal'], $confirmed_mapping);
+
+                    if (!empty($applywarnings)) {
+                        $warningtext = implode(' ', $applywarnings);
+                        $response['message'] = trim((string)($response['message'] ?? 'Gradebook finalized.')) . ' ' . $warningtext;
+                        $response['data'] = array_merge(
+                            is_array($response['data'] ?? null) ? $response['data'] : [],
+                            ['grade_setup_warnings' => $applywarnings]
+                        );
+                        $response_json = json_encode($response);
+                    }
                 }
             } catch (Throwable $e) {
                 // Never block finalization on gradebook update failure
@@ -1784,7 +2157,7 @@ class cria
      * Creates grade categories with the chosen aggregation method, sets weights,
      * drop/keep rules, and moves grade items for mapped activities into their categories.
      */
-    private static function apply_gradebook_to_course(int $courseid, array $proposal, array $confirmed_mapping): void
+    private static function apply_gradebook_to_course(int $courseid, array $proposal, array $confirmed_mapping): array
     {
         global $CFG;
         require_once($CFG->libdir . '/gradelib.php');
@@ -1792,8 +2165,13 @@ class cria
         require_once($CFG->libdir . '/grade/grade_item.php');
 
         if (!isset($proposal['categories']) || !is_array($proposal['categories'])) {
-            return;
+            return [];
         }
+
+        $warnings = [];
+        $forcedkeephigh = isset($CFG->grade_keephigh_flag) && (((int)$CFG->grade_keephigh_flag & 1) === 1);
+        $forcedkeephighvalue = isset($CFG->grade_keephigh) ? (int)$CFG->grade_keephigh : 0;
+        $keephighoverriddencategories = [];
 
         $aggregation_method = (int)($proposal['aggregation_method'] ?? 13);
 
@@ -1811,6 +2189,9 @@ class cria
                'display_type' => 0, 'decimals' => -1]
         );
 
+        // Register root so cleanup can find it even if the name is later changed.
+        self::_set_ai_ownership_id($courseid, (int)$parent->id);
+
         // Create / update each top-level category and optional nested subcategories.
         $category_id_map = [];
         $subcategory_by_parent = [];
@@ -1826,9 +2207,15 @@ class cria
 
             $category_key = strtolower($name);
             $weight_fraction = $pct / 100.0;
+            $requestedkeephigh = (int)($cat['keep_highest'] ?? 0);
+            $effectivekeephigh = $forcedkeephigh ? $forcedkeephighvalue : $requestedkeephigh;
+            if ($requestedkeephigh !== $effectivekeephigh) {
+                $keephighoverriddencategories[] = $name;
+            }
+
             $settings = [
                 'droplow'              => (int)($cat['drop_lowest'] ?? 0),
-                'keephigh'             => (int)($cat['keep_highest'] ?? 0),
+                'keephigh'             => $effectivekeephigh,
                 'aggregateonlygraded'  => (bool)($cat['aggregate_only_graded'] ?? true) ? 1 : 0,
                 'aggregateoutcomes'    => (bool)($cat['aggregate_outcomes'] ?? false) ? 1 : 0,
                 'extra_credit'         => (bool)($cat['extra_credit'] ?? false),
@@ -1898,6 +2285,12 @@ class cria
             }
         }
 
+        if (!empty($keephighoverriddencategories)) {
+            $warnings[] = '⚠ WARNING: Keep-highest rules were overridden by Moodle site grade settings for: '
+                . implode(', ', array_values(array_unique($keephighoverriddencategories)))
+                . '.';
+        }
+
         // Move activity grade items into mapped categories/subcategories.
         $modinfo = get_fast_modinfo($courseid);
         foreach ($confirmed_mapping as $mapping) {
@@ -1954,6 +2347,8 @@ class cria
 
         // Recalculate grades after structural change
         grade_regrade_final_grades($courseid);
+
+        return $warnings;
     }
 
     /**

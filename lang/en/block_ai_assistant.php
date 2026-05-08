@@ -53,6 +53,7 @@ $string['bottom_right'] = 'Bottom right';
 $string['chat_help'] = 'For best results, please ask clear and specific questions.'
     . 'It is important that you use complete sentences with proper punctuation. ';
 $string['chat_summary'] = 'Chat Summary';
+$string['cancel'] = 'Cancel';
 $string['close'] = 'Close';
 $string['column_name_must_exist'] = 'Column {$a} must exist';
 $string['confirm_delete_trained_module'] = 'Are you sure you want to delete the trained module?';
@@ -111,7 +112,7 @@ $string['gradebook_reset_session_tooltip'] = 'Reset keeps the same session and e
 $string['gradebook_delete_session'] = 'Delete session';
 $string['gradebook_delete_session_confirm'] = 'Delete this gradebook session and start a new one? This will also remove the \'AI Assistant - Gradebook\' category and all its subcategories from the course grade setup. This cannot be undone.';
 $string['gradebook_delete_session_tooltip'] = 'Delete permanently removes the current gradebook session and undoes all changes made to the course grade setup (removes the AI Assistant - Gradebook category tree), then starts a brand new session.';
-$string['gradebook_delete_nothing'] = 'Nothing to delete yet. This session is still in its initial analysis state and no AI gradebook has been applied to the course.';
+$string['gradebook_delete_nothing'] = 'Nothing to delete from the course grade setup yet. AI Assistant categories have not been applied to this course.';
 $string['gradebook_delete_completed'] = 'Session deleted.';
 $string['gradebook_delete_cleanup_only'] = 'No active session was found, but the AI Assistant gradebook setup was removed from the course.';
 $string['gradebook_session_expired'] = 'Previous gradebook session has expired or was not found. A new session has been started.';
@@ -166,6 +167,7 @@ $string['letAIGenerate'] = "Let AI generate an answer based on your answer above
 $string['manage_tutorials'] = "Manage AI Learning Assistant";
 $string['modules'] = "Modules";
 $string['name'] = "Name";
+$string['no'] = 'No';
 $string['no_context_message'] = 'No Context Message';
 $string['no_context_message_default'] = 'I\'m sorry, I couldn\'t find any information. Please rephrase your question';
 $string['no_context_message_help'] = 'No Context Message help text here';
@@ -530,3 +532,5 @@ $string['help_intro'] = '<h3>AI Assistant Help</h3>' .
     'To help you get the best results from the AI Assistant, we have provided templates for syllabi and questions. ' .
     'These templates are designed to ensure that the AI Assistant receives accurate and consistent information. ' .
     'Follow the instructions below to use the templates effectively.';
+
+$string['visible_to_students'] = 'Visible to students';

@@ -52,34 +52,42 @@ class block_ai_assistant_syllabus_ws extends external_api
         $context = CONTEXT_COURSE::instance($course_id);
         self::validate_context($context);
 
-        // Get the course record to fetch cria_file_id
+        // Get the course record to fetch cria_file_id or stored document name.
         $courserecord = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
-        if (!$courserecord || !isset($courserecord->cria_file_id)) {
-            throw new invalid_parameter_exception('No cria_file_id found for the specified course');
+        if ($courserecord) {
+            $remote_deleted = false;
+            if (isset($courserecord->cria_file_id) && (int)$courserecord->cria_file_id > 0) {
+                // Call the API to delete the file by legacy numeric ID.
+                cria::delete_content_from_bot($courserecord->cria_file_id);
+                $remote_deleted = true;
+            }
+
+            // Fallback for newer document-name paths when numeric ID is absent.
+            $docname = trim((string)($courserecord->syllabus_document_name ?? ''));
+            if ($docname !== '') {
+                $by_name_deleted = cria::delete_content_document_name_from_bot((int)$course_id, $docname, 'documents');
+                $remote_deleted = $remote_deleted || $by_name_deleted;
+            }
+
+            // Reset local linkage fields after delete attempt.
+            $DB->set_field('block_aia_settings', 'cria_file_id', 0, ['id' => $courserecord->id]);
+            $DB->set_field('block_aia_settings', 'syllabus_document_name', '', ['id' => $courserecord->id]);
+            $DB->set_field('block_aia_settings', 'syllabus_trained', 0, ['id' => $courserecord->id]);
         }
-
-        $cria_file_id = $courserecord->cria_file_id;
-
-        // Call the API to delete the file
-        $api_response = cria::delete_content_from_bot($cria_file_id);
-        $DB->set_field('block_aia_settings', 'cria_file_id', 0, ['id' => $courserecord->id]);
-        // Handle the API response
-        // if ($api_response !== 'true') {
-        //     throw new Exception('Failed to delete content via API: ' . $api_response);
-        // }
 
         $fs = get_file_storage();
         // Get area files
         $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $course_id);
 
+        $deleted = false;
         foreach ($files as $file) {
             $file->delete();
             if ($file->get_filename() != '.') {
-                return true;
+                $deleted = true;
             }
         }
-        // No file was deleted
-        return false;
+        // Idempotent delete: return true even when nothing existed.
+        return true;
     }
 
     /**
@@ -196,12 +204,46 @@ class block_ai_assistant_syllabus_ws extends external_api
         $context = CONTEXT_COURSE::instance($course_id);
         self::validate_context($context);
 
-        // Get the course record to fetch cria_file_id
+        // Get the course record to fetch cria_file_id.
         $courserecord = $DB->get_record('block_aia_settings', array('courseid' => $course_id));
-        $data = cria::get_content_training_status($courserecord->cria_file_id);
-        $results = [];
-        $results[]['training_status_id'] = $data->training_status_id;
-        $results[]['training_status'] = $data->training_status;
+
+        $data = new \stdClass();
+        $data->training_status_id = 4;
+        $data->training_status = '';
+
+        $criafileid = 0;
+        $syllabus_doc_name = '';
+        if ($courserecord && isset($courserecord->cria_file_id)) {
+            $criafileid = (int)$courserecord->cria_file_id;
+        }
+        if ($courserecord && isset($courserecord->syllabus_document_name)) {
+            $syllabus_doc_name = trim((string)$courserecord->syllabus_document_name);
+        }
+
+        if ($criafileid > 0) {
+            $data = cria::get_content_training_status($criafileid);
+        } else if ($syllabus_doc_name !== '') {
+            $data->training_status_id = 1;
+            $data->training_status = '<div class="badge badge-success">'
+                . get_string('trained', 'block_ai_assistant') . '</div>';
+        } else {
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $course_id, 'itemid', false);
+            $haslocalsyllabus = false;
+            foreach ($files as $file) {
+                if (!$file->is_directory()) {
+                    $haslocalsyllabus = true;
+                    break;
+                }
+            }
+
+            if ($haslocalsyllabus) {
+                $data->training_status_id = 0;
+                $data->training_status = '<div class="badge badge-warning">'
+                    . get_string('pending', 'block_ai_assistant') . '</div>';
+            }
+        }
+
         return  json_encode($data);
     }
 

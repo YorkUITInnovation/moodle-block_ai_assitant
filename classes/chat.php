@@ -44,6 +44,7 @@ class chat
             ['tutorialchatid' => $tutorial_chat_id],
             'timecreated ASC'
         );
+        $messages = [];
         $i = 0;
         foreach ($history_records as $history) {
             if ($i > 0) {
@@ -156,19 +157,29 @@ class chat
         {
             global $DB;
 
-            // Check if a chat already exists for the given parameters.
-            $chatid = $DB->get_field(
+            // Select the newest matching chat row deterministically.
+            // We intentionally avoid get_field/get_record here because historical
+            // duplicates can exist and would otherwise trigger a debugging exception.
+            $records = $DB->get_records(
                 'block_aia_tutorial_chats',
-                'chatid',
                 [
                     'courseid' => $courseid,
                     'tutorialid' => $tutorialid,
                     'userid' => $userid,
                     'cmid' => $cmid
-                ]
+                ],
+                'id DESC',
+                'id, chatid',
+                0,
+                1
             );
 
-            return $chatid;
+            if (empty($records)) {
+                return false;
+            }
+
+            $record = reset($records);
+            return (string)$record->chatid;
         }
 
     }

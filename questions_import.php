@@ -20,6 +20,42 @@ require_once($CFG->dirroot . "/blocks/ai_assistant/classes/forms/questions_uploa
 use block_ai_assistant\cria;
 use block_ai_assistant\import;
 
+/**
+ * Extract document name from stored label suffix: "... [doc:<name>]".
+ *
+ * @param string $label
+ * @return string
+ */
+function block_ai_assistant_extract_doc_name(string $label): string {
+    if (preg_match('/\[doc:([^\]]+)\]\s*$/', $label, $matches)) {
+        return trim((string)$matches[1]);
+    }
+    return '';
+}
+
+/**
+ * Resolve a stable question document name for Criabot flows.
+ *
+ * @param mixed $upload_result
+ * @param int $legacy_cria_id
+ * @param string $file_name
+ * @return string
+ */
+function block_ai_assistant_resolve_question_doc_name($upload_result, int $legacy_cria_id, string $file_name): string {
+    if ($legacy_cria_id !== 0) {
+        return '';
+    }
+
+    $doc_name = trim((string)$upload_result);
+    if ($doc_name !== '') {
+        return $doc_name;
+    }
+
+    // Some Criabot deployments return an empty upload identifier even after
+    // successful /documents/upload; use filename as deterministic fallback.
+    return trim($file_name);
+}
+
 
 global $CFG, $OUTPUT, $USER, $PAGE, $DB;
 
@@ -70,11 +106,8 @@ if ($mform->is_cancelled()) {
     );
     foreach ($files as $file) {
         if (!$file->is_directory()) {
-            echo $file->get_filename();
             if ($file->delete()) {
-                echo 'File deleted';
-            } else {
-                echo 'File not deleted';
+                // Existing question file deleted.
             }
         }
     }
@@ -87,22 +120,43 @@ if ($mform->is_cancelled()) {
         // Delete file on Cria
         if ($record->cria_fileid != 0) {
             cria::delete_content_from_bot($record->cria_fileid);
+        } else {
+            $doc_name = block_ai_assistant_extract_doc_name((string)$record->name);
+            if ($doc_name !== '') {
+                cria::delete_content_document_name_from_bot((int)$data->courseid, $doc_name, 'documents');
+            }
         }
         // Create file on Cria
         $cria_file_id = cria::upload_content_to_bot($data->courseid, $file_name, $file_content, 'GENERIC');
+        $legacy_cria_id = 0;
+        if (is_int($cria_file_id) || (is_string($cria_file_id) && ctype_digit($cria_file_id))) {
+            $legacy_cria_id = (int)$cria_file_id;
+        }
+        $doc_name = block_ai_assistant_resolve_question_doc_name($cria_file_id, $legacy_cria_id, $file_name);
         $record->name = $file_name;
-        $record->cria_fileid = $cria_file_id;
+        if ($doc_name !== '') {
+            $record->name = substr(trim($file_name . ' [doc:' . $doc_name . ']'), 0, 255);
+        }
+        $record->cria_fileid = $legacy_cria_id;
         $record->usermodified = $USER->id;
         $record->timemodified = time();
         $DB->update_record('block_aia_question_files', $record);
     } else {
         // Create file on Cria
         $cria_file_id = cria::upload_content_to_bot($data->courseid, $file_name, $file_content, 'GENERIC');
+        $legacy_cria_id = 0;
+        if (is_int($cria_file_id) || (is_string($cria_file_id) && ctype_digit($cria_file_id))) {
+            $legacy_cria_id = (int)$cria_file_id;
+        }
+        $doc_name = block_ai_assistant_resolve_question_doc_name($cria_file_id, $legacy_cria_id, $file_name);
         // Add record into block_aia_quesiton_files
         $record = new stdClass();
         $record->courseid = $data->courseid;
         $record->name = $file_name;
-        $record->cria_fileid = $cria_file_id;
+        if ($doc_name !== '') {
+            $record->name = substr(trim($file_name . ' [doc:' . $doc_name . ']'), 0, 255);
+        }
+        $record->cria_fileid = $legacy_cria_id;
         $record->usermodified = $USER->id;
         $record->timecreated = time();
         $record->timemodified = time();

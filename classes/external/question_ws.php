@@ -15,6 +15,21 @@ use block_ai_assistant\cria;
 class block_ai_assistant_question_ws extends external_api
 {
     /**
+     * Extract document name from stored label suffix: "... [doc:<name>]".
+     *
+     * @param string $label
+     * @return string
+     */
+    private static function extract_document_name_from_label(string $label): string
+    {
+        if (preg_match('/\[doc:([^\]]+)\]\s*$/', $label, $matches)) {
+            return trim((string)$matches[1]);
+        }
+        // Backward compatibility: older rows stored plain filename without [doc:*] suffix.
+        return trim($label);
+    }
+
+    /**
      * Returns description of method parameters
      * @return external_function_parameters
      */
@@ -89,7 +104,7 @@ class block_ai_assistant_question_ws extends external_api
     {
         return new external_function_parameters(
             array(
-                'questionid' => new external_value(PARAM_INT, 'Question id', VALUE_REQUIRED),
+                'questionid' => new external_value(PARAM_INT, 'Question id', VALUE_DEFAULT, 0),
                 'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED)
             )
         );
@@ -121,26 +136,46 @@ class block_ai_assistant_question_ws extends external_api
         $context = CONTEXT_COURSE::instance($course_id);
         self::validate_context($context);
 
-        $question_file = $DB->get_record('block_aia_question_files', array('id' => $question_id));
+        $question_file = null;
+        if ((int)$question_id > 0) {
+            $question_file = $DB->get_record('block_aia_question_files', array('id' => (int)$question_id));
+        }
+        if (!$question_file) {
+            $question_file = $DB->get_record('block_aia_question_files', array('courseid' => (int)$course_id));
+        }
+
         if ($question_file) {
             // Delete fiel from Cria
-            cria::delete_content_from_bot($question_file->cria_fileid);
+            if (!empty($question_file->cria_fileid) && (int)$question_file->cria_fileid > 0) {
+                cria::delete_content_from_bot($question_file->cria_fileid);
+            } else {
+                $doc_name = self::extract_document_name_from_label((string)$question_file->name);
+                if ($doc_name !== '') {
+                    cria::delete_content_document_name_from_bot((int)$course_id, $doc_name, 'documents');
+                }
+            }
             // Get file storage
             $fs = get_file_storage();
+            $storedfilename = (string)$question_file->name;
+            if (preg_match('/\s*\[doc:[^\]]+\]\s*$/', $storedfilename)) {
+                $storedfilename = trim((string)preg_replace('/\s*\[doc:[^\]]+\]\s*$/', '', $storedfilename));
+            }
+
             if ($file = $fs->get_file(
                 $context->id,
                 'block_ai_assistant',
                 'questions',
                 $course_id,
                 '/',
-                $question_file->name)
+                $storedfilename)
             ) {
                 $file->delete();
             }
             $DB->delete_records('block_aia_question_files', array('id' => $question_id));
             return true;
         } else {
-            return false;
+            // Idempotent delete: already absent should still be treated as success.
+            return true;
         }
     }
 
@@ -185,6 +220,12 @@ class block_ai_assistant_question_ws extends external_api
         );
 
         $question = $DB->get_record('block_aia_question_files', array('id' => $question_id));
+        if (!$question) {
+            $data = new \stdClass();
+            $data->training_status_id = 4;
+            $data->training_status = '';
+            return json_encode($data);
+        }
 
         //Context validation
         //OPTIONAL but in most web service it should present
@@ -193,7 +234,21 @@ class block_ai_assistant_question_ws extends external_api
 
         // Get the course record to fetch cria_file_id
 
-        $data = cria::get_content_training_status($question->cria_fileid);
+        // Prefer document-name marker for Criabot flow; legacy numeric IDs are fallback.
+        $doc_name = self::extract_document_name_from_label((string)$question->name);
+        if ($doc_name !== '') {
+            $data = new \stdClass();
+            $data->training_status_id = 1;
+            $data->training_status = '<div class="badge badge-success">'
+                . get_string('trained', 'block_ai_assistant') . '</div>';
+        } else if (!empty($question->cria_fileid) && (int)$question->cria_fileid > 0) {
+            $data = cria::get_content_training_status($question->cria_fileid);
+        } else {
+            $data = new \stdClass();
+            $data->training_status_id = 0;
+            $data->training_status = '<div class="badge badge-warning">'
+                . get_string('pending', 'block_ai_assistant') . '</div>';
+        }
 
         return  json_encode($data);
     }

@@ -159,6 +159,7 @@ class block_ai_assistant extends block_base
             'syllabus',
             $this->page->course->id
         );
+        $has_syllabus_file = false;
         $bot_id = '';
         if ($availability->exception == 'success') {
             $bot_id = cria::get_bot_id($this->page->course->id);
@@ -169,6 +170,7 @@ class block_ai_assistant extends block_base
         $syllabus_url = '';
         foreach ($syllabus_files as $file) {
             if ($file->get_filename() != '.') {
+                $has_syllabus_file = true;
                 $syllabus_file = moodle_url::make_pluginfile_url(
                     $file->get_contextid(),
                     $file->get_component(),
@@ -275,11 +277,29 @@ class block_ai_assistant extends block_base
         // Get training status
         $show_bot = false;
         if ($availability->exception == 'success') {
+            $syllabus_file_id = isset($course_record->cria_file_id) ? (int)$course_record->cria_file_id : 0;
+            $syllabus_document_name = trim((string)($course_record->syllabus_document_name ?? ''));
             if (!empty($course_record->syllabus_trained)) {
                 $training_status_id = 1;
                 $training_status = '<div class="badge badge-success">'
                     . get_string('trained', 'block_ai_assistant') . '</div>';
                 $show_bot = true;
+            } else if ($syllabus_file_id > 0) {
+                $results = cria::get_content_training_status($syllabus_file_id);
+                $training_status_id = $results->training_status_id;
+                $training_status = $results->training_status;
+                if ((int)$training_status_id === 1) {
+                    $show_bot = true;
+                }
+            } else if ($syllabus_document_name !== '') {
+                $training_status_id = 1;
+                $training_status = '<div class="badge badge-success">'
+                    . get_string('trained', 'block_ai_assistant') . '</div>';
+                $show_bot = true;
+            } else if ($has_syllabus_file) {
+                $training_status_id = 0;
+                $training_status = '<div class="badge badge-warning">'
+                    . get_string('pending', 'block_ai_assistant') . '</div>';
             } else {
                 $training_status_id = 4;
                 $training_status = '';
@@ -307,14 +327,28 @@ class block_ai_assistant extends block_base
         $question_training_status = '';
         if ($availability->exception == 'success') {
             if ($question_file) {
-                if ($question_file->cria_fileid) {
+                $stored_question_name = trim((string)$question_file->name);
+                $has_doc_marker = strpos($stored_question_name, '[doc:') !== false;
+                if ($stored_question_name !== '' && $question_file->cria_fileid == 0) {
+                    if ($has_doc_marker) {
+                        $question_training_status_id = 1;
+                        $question_training_status = '<div class="badge badge-success">'
+                            . get_string('trained', 'block_ai_assistant') . '</div>';
+                        $teacher_embed_code = $embed_code_data;
+                    } else {
+                        $question_training_status_id = 0;
+                        $question_training_status = '<div class="badge badge-warning">'
+                            . get_string('pending', 'block_ai_assistant') . '</div>';
+                    }
+                } else if ($question_file->cria_fileid) {
                     $results = cria::get_content_training_status($question_file->cria_fileid);
                     $question_training_status_id = $results->training_status_id;
                     $question_training_status = $results->training_status;
                     $teacher_embed_code = $embed_code_data;
                 } else {
-                    $question_training_status_id = 4;
-                    $question_training_status = '';
+                    $question_training_status_id = 0;
+                    $question_training_status = '<div class="badge badge-warning">'
+                        . get_string('pending', 'block_ai_assistant') . '</div>';
                 }
             } else {
                 $question_training_status_id = 4;

@@ -202,7 +202,8 @@ class block_ai_assistant_chat_ws extends external_api
 
             $chatid = $params->chat_id;
             $tutorial_name = $params->tutorial_name;
-            $messages = json_decode($params->messages)[0];
+            $decoded_messages = json_decode((string)$params->messages, true);
+            $messages = is_array($decoded_messages) ? $decoded_messages : [];
         } else {
             // Get chat history from table block_aia_tutorial_chats.
             $chat_exists = $DB->get_record(

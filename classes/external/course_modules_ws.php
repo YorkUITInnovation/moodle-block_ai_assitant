@@ -151,7 +151,7 @@ class block_ai_assistant_course_modules_ws extends external_api
      * inserts course modules
      * @param int $courseid
      * @param array $selected_modules
-     * @return bool
+     * @return array
      * @throws dml_exception
      * @throws invalid_parameter_exception
      * @throws restricted_context_exception
@@ -171,21 +171,79 @@ class block_ai_assistant_course_modules_ws extends external_api
 
         $context = \context_course::instance($courseid);
         self::validate_context($context);
+        $attempted = 0;
+        $trainedcount = 0;
+        $failures = [];
+
         foreach ($selected_modules as $key => $module) {
             if (isset($module['cmid']) && isset($module['courseid'])) {
+                $attempted++;
                 $file_id = course_modules::insert_record((object)$module); // Ensure the data is cast to an object
                 // If there is a file id, send the content to cria
                 if ($file_id > 0) {
-                    // Train the module
-                    $trained = self::train_module($module['cmid']);
-                    if ($trained) {
-                        // Delete the module from the array
-                        unset($selected_modules[$key]);
+                    try {
+                        // Train the module
+                        $trained = self::train_module((int)$module['cmid']);
+                        if ($trained) {
+                            $trainedcount++;
+                            // Delete the module from the array
+                            unset($selected_modules[$key]);
+                        } else {
+                            $failures[] = 'cmid=' . (int)$module['cmid'] . ' training returned false';
+                        }
+                    } catch (\Throwable $e) {
+                        $failures[] = 'cmid=' . (int)$module['cmid'] . ' exception: ' . $e->getMessage();
                     }
+                } else {
+                    $failures[] = 'cmid=' . (int)$module['cmid'] . ' failed to insert module record';
                 }
             }
         }
-        return true;
+
+        if ($attempted === 0) {
+            error_log('block_ai_assistant: no modules selected for training in course ' . (int)$courseid);
+            return [
+                'success' => false,
+                'attempted' => 0,
+                'trained' => 0,
+                'failed' => 0,
+                'message' => 'No modules were selected for training.',
+            ];
+        }
+
+        if (!empty($failures)) {
+            error_log('block_ai_assistant: module training issues for course ' . (int)$courseid . ': ' . implode(' | ', $failures));
+        }
+
+        $failedcount = max(0, $attempted - $trainedcount);
+        $success = $trainedcount > 0;
+        $message = 'Training result: 0/' . $attempted . ' modules trained, ' . $failedcount . ' failed.';
+        if ($success && $failedcount === 0) {
+            $message = 'Training result: ' . $trainedcount . '/' . $attempted . ' modules trained, 0 failed.';
+        } else if ($success) {
+            $message = 'Training result: ' . $trainedcount . '/' . $attempted . ' modules trained, ' . $failedcount . ' failed.';
+        }
+
+        if ($failedcount > 0 && !empty($failures)) {
+            $failedcmids = [];
+            foreach ($failures as $failure) {
+                if (preg_match('/cmid=(\d+)/', (string)$failure, $matches)) {
+                    $failedcmids[] = (int)$matches[1];
+                }
+            }
+            $failedcmids = array_values(array_unique($failedcmids));
+            if (!empty($failedcmids)) {
+                $message .= ' Failed module IDs: ' . implode(', ', $failedcmids) . '.';
+            }
+        }
+
+        return [
+            'success' => $success,
+            'attempted' => $attempted,
+            'trained' => $trainedcount,
+            'failed' => $failedcount,
+            'message' => $message,
+        ];
     }
 
     /**
@@ -194,7 +252,15 @@ class block_ai_assistant_course_modules_ws extends external_api
      */
     public static function insert_returns()
     {
-        return new external_value(PARAM_BOOL, 'True or false');
+        return new external_single_structure(
+            array(
+                'success' => new external_value(PARAM_BOOL, 'True when at least one module was trained'),
+                'attempted' => new external_value(PARAM_INT, 'Number of selected modules processed'),
+                'trained' => new external_value(PARAM_INT, 'Number of modules successfully trained'),
+                'failed' => new external_value(PARAM_INT, 'Number of modules that failed training'),
+                'message' => new external_value(PARAM_TEXT, 'Human-readable status message'),
+            )
+        );
     }
 
 
@@ -250,16 +316,15 @@ class block_ai_assistant_course_modules_ws extends external_api
     /**
      * Trains the module based on its type.
      * @param int $cmid
-     * @return void
+     * @return bool|null
      * @throws coding_exception
      * @throws dml_exception
      * @throws moodle_exception
      */
     private static function train_module(int $cmid)
     {
-        global $CFG;
-
         $TRAINING = new course_module_training($cmid);
+        $trained = false;
 
         switch ($TRAINING->get_module_type()) {
             case 'forum':
@@ -282,6 +347,10 @@ class block_ai_assistant_course_modules_ws extends external_api
                 break;
             case 'glossary':
                 $trained = $TRAINING->glossary();
+                break;
+            default:
+                error_log('block_ai_assistant: unsupported module type for cmid=' . $cmid . ' type=' . $TRAINING->get_module_type());
+                $trained = false;
                 break;
         }
 

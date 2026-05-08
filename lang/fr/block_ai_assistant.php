@@ -53,6 +53,7 @@ $string['bottom_right'] = 'En bas à droite';
 $string['chat_help'] = 'Pour de meilleurs résultats, veuillez poser des questions claires et spécifiques.'
     . 'Il est important d\'utiliser des phrases complètes avec une ponctuation appropriée. ';
 $string['chat_summary'] = 'Résumé de la discussion';
+$string['cancel'] = 'Annuler';
 $string['close'] = 'Fermer';
 $string['column_name_must_exist'] = 'La colonne {$a} doit exister';
 $string['confirm_delete_trained_module'] = 'Êtes-vous sûr de vouloir supprimer le module entraîné ?';
@@ -105,7 +106,7 @@ $string['gradebook_reset_session_tooltip'] = 'La réinitialisation conserve la m
 $string['gradebook_delete_session'] = 'Supprimer la session';
 $string['gradebook_delete_session_confirm'] = 'Supprimer cette session du carnet de notes et en démarrer une nouvelle ? Cela supprimera également la catégorie « Carnet de notes – Assistante IA » et toutes ses sous-catégories de la configuration des notes du cours. Cette action est irréversible.';
 $string['gradebook_delete_session_tooltip'] = 'La suppression retire définitivement la session actuelle du carnet de notes et annule toutes les modifications apportées à la configuration des notes du cours (suppression de l\'arborescence de la catégorie Carnet de notes – Assistante IA), puis démarre une nouvelle session.';
-$string['gradebook_delete_nothing'] = 'Il n\'y a encore rien à supprimer. Cette session est toujours dans son état initial d\'analyse et aucun carnet de notes IA n\'a été appliqué au cours.';
+$string['gradebook_delete_nothing'] = 'Rien à supprimer dans la configuration des notes du cours pour le moment. Les catégories de l\'assistante IA n\'ont pas été appliquées à ce cours.';
 $string['gradebook_delete_completed'] = 'Session supprimée.';
 $string['gradebook_delete_cleanup_only'] = 'Aucune session active n\'a été trouvée, mais la configuration du carnet de notes de l\'assistante IA a bien été supprimée du cours.';
 $string['gradebook_session_expired'] = 'La session précédente du carnet de notes a expiré ou est introuvable. Une nouvelle session a été démarrée.';
@@ -160,6 +161,7 @@ $string['letAIGenerate'] = "Laisser l\'IA générer une réponse basée sur votr
 $string['manage_tutorials'] = "Gérer l\'Assistant d\'apprentissage IA";
 $string['modules'] = "Modules";
 $string['name'] = "Nom";
+$string['no'] = 'Non';
 $string['no_context_message'] = 'Message sans contexte';
 $string['no_context_message_default'] = 'Je suis désolé, je n\'ai trouvé aucune information. Veuillez reformuler votre question';
 $string['no_context_message_help'] = 'Texte d\'aide pour le message sans contexte ici';
@@ -524,3 +526,5 @@ $string['help_intro'] = '<h3>Aide de l\'Assistant IA</h3>' .
     'Pour vous aider à obtenir les meilleurs résultats de l\'Assistant IA, nous avons fourni des modèles pour les plans de cours et les questions. ' .
     'Ces modèles sont conçus pour s\'assurer que l\'Assistant IA reçoit des informations précises et cohérentes. ' .
     'Suivez les instructions ci-dessous pour utiliser efficacement les modèles.';
+
+$string['visible_to_students'] = 'Visible aux étudiants';
