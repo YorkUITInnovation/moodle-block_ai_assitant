@@ -203,6 +203,44 @@ const parseResponse = (raw) => {
     }
 };
 
+const getExcelFormulaInput = () => {
+    const node = el('gradebook-excel-formula');
+    return String(node ? (node.value || '') : '').trim();
+};
+
+const buildPromptWithFormula = (typedPrompt) => {
+    const typed = String(typedPrompt || '').trim();
+    const formula = getExcelFormulaInput();
+    if (!formula) {
+        return {
+            displayText: typed,
+            prompt: normalizePrompt(typed)
+        };
+    }
+
+    if (!typed) {
+        const formulaOnly = `Use this formula for grade calculation: ${formula}`;
+        return {
+            displayText: formulaOnly,
+            prompt: normalizePrompt(formulaOnly)
+        };
+    }
+
+    const lower = typed.toLowerCase();
+    if (lower.includes('formula') || typed.includes('[') || typed.includes('=')) {
+        return {
+            displayText: typed,
+            prompt: normalizePrompt(typed)
+        };
+    }
+
+    const combined = `${typed}\nUse this formula for grade calculation: ${formula}`;
+    return {
+        displayText: typed,
+        prompt: normalizePrompt(combined)
+    };
+};
+
 const callWs = async (methodname, args) => {
     const response = await ajax.call([{methodname, args}])[0];
     return response;
@@ -226,6 +264,40 @@ const isSessionNotFound = (parsed) => {
         message.indexOf('no such session') !== -1;
 };
 
+const convertMarkdownToHtml = (text) => {
+    if (!text) {
+        return '';
+    }
+    
+    // Helper to escape HTML special characters
+    const escapeHtml = (str) => {
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return str.replace(/[&<>"']/g, (char) => map[char]);
+    };
+    
+    // Convert Markdown links [text](url) to HTML <a> tags
+    // and preserve newlines as <br>
+    let html = escapeHtml(text);
+    
+    // Convert Markdown links: [text](url) -> <a href="url" target="_blank" rel="noopener">text</a>
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
+        const escapedUrl = escapeHtml(url);
+        const escapedText = escapeHtml(text);
+        return `<a href="${escapedUrl}" target="_blank" rel="noopener">${escapedText}</a>`;
+    });
+    
+    // Convert newlines to <br> tags
+    html = html.replace(/\n/g, '<br>');
+    
+    return html;
+};
+
 const appendMessage = (container, text, isHuman, skipPersist) => {
     if (!container) {
         return;
@@ -236,7 +308,7 @@ const appendMessage = (container, text, isHuman, skipPersist) => {
 
     const content = document.createElement('div');
     content.className = 'message-content';
-    content.textContent = text || '';
+    content.innerHTML = convertMarkdownToHtml(text || '');
 
     div.appendChild(content);
     container.appendChild(div);
@@ -1224,12 +1296,6 @@ const deleteSessionAndRestart = async () => {
         deleteResponse = null;
     }
 
-    if (deleteResponse && deleteResponse.data && deleteResponse.data.blocked) {
-        suspendAutoSave = false;
-        appendSystemMessage(String(deleteResponse.message || 'Nothing to delete.'));
-        return currentSessionId;
-    }
-
     await clearLocalGradebookState();
     suspendAutoSave = false;
 
@@ -1244,7 +1310,8 @@ const deleteSessionAndRestart = async () => {
         if (data.grade_setup_cleaned) {
             messages.push(data.grade_setup_message || '✓ Grade setup cleaned.');
         } else if (data.grade_setup_message) {
-            messages.push('⚠ ' + data.grade_setup_message);
+            // Informational only (e.g., no AI categories were applied yet).
+            messages.push(data.grade_setup_message);
         }
     }
 
@@ -1384,13 +1451,15 @@ const uploadViaFallbackEndpoint = async ({courseid, session_id, filename, filety
 const sendPrompt = async () => {
     const input = el('block-ai-assistant-gradebook-input');
     const typed = String(input.value || '').trim();
-    if (!typed) {
+    const formula = getExcelFormulaInput();
+    if (!typed && !formula) {
         return;
     }
-    const normalized = normalizePrompt(typed);
+    const prepared = buildPromptWithFormula(typed);
+    const normalized = prepared.prompt;
 
     await withRequestLock(async () => {
-        appendMessage(getChatMessages(), typed, true, false);
+        appendMessage(getChatMessages(), prepared.displayText, true, false);
         input.value = '';
 
         await ensureSession();

@@ -437,7 +437,7 @@
                         <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
                             <button class="btn btn-link btn-sm p-0" type="button" data-bs-toggle="collapse"
                                     data-bs-target="#gradebook-advanced" aria-expanded="false" aria-controls="gradebook-advanced">
-                                Advanced (edit JSON)
+                                Advanced Options
                             </button>
                             <button type="button" class="btn btn-success btn-sm" id="btn-gradebook-generate"
                                     title="{{#str}}gradebook_generate_title, block_ai_assistant{{/str}}">
@@ -448,11 +448,24 @@
                             </button>
                         </div>
                         <div class="collapse mt-2" id="gradebook-advanced">
-                            <textarea id="gradebook-confirmed-mapping" class="form-control form-control-sm" rows="5"
-                                      placeholder='[{"moodle_cmid":101,"category":"Assignments"}]'></textarea>
-                            <small class="text-muted">
-                                Synced with the table above. Rows with category "{{#str}}gradebook_not_graded, block_ai_assistant{{/str}}" are excluded from Finalize.
-                            </small>
+                            <div class="mb-3">
+                                <label for="gradebook-excel-formula" class="form-label">Excel-Style Formula</label>
+                                <input type="text" id="gradebook-excel-formula" class="form-control form-control-sm"
+                                       placeholder="e.g., =average([[hw1]],[[hw2]]) or =([[midterm]]*0.3)+([[final]]*0.7)"
+                                       aria-label="Excel-style formula for grade calculation">
+                                <small class="text-muted d-block mt-1">
+                                    Use Moodle refs like [[item_id]]. Supported operators: + - * / () and comma separators.
+                                    <a href="#" data-bs-toggle="modal" data-bs-target="#formula-help-modal" class="ms-1">Learn more</a>
+                                </small>
+                            </div>
+                            <div class="mb-2">
+                                <label for="gradebook-confirmed-mapping" class="form-label">JSON Configuration</label>
+                                <textarea id="gradebook-confirmed-mapping" class="form-control form-control-sm" rows="5"
+                                          placeholder='[{"moodle_cmid":101,"category":"Assignments"}]'></textarea>
+                                <small class="text-muted d-block mt-1">
+                                    Synced with the table above. Rows with category "{{#str}}gradebook_not_graded, block_ai_assistant{{/str}}" are excluded from Finalize.
+                                </small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -496,6 +509,67 @@
                     </div>
                 </div>
 
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Excel Formula Help Modal -->
+<div class="modal fade" id="formula-help-modal" tabindex="-1" aria-labelledby="formula-help-label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="formula-help-label">Excel-Style Formula Syntax</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <h6 class="mb-2">Basic Format</h6>
+                    <p class="small mb-2">Use Moodle double square brackets to reference item IDs:</p>
+                    <code class="d-block bg-light p-2 mb-2">[[item_id]]</code>
+                    <p class="small mb-0 text-muted">Legacy single-bracket input like [item] is accepted and normalized.</p>
+                </div>
+
+                <div class="mb-3">
+                    <h6 class="mb-2">Supported Operators</h6>
+                    <ul class="small mb-0">
+                        <li><code>+</code> Addition</li>
+                        <li><code>-</code> Subtraction</li>
+                        <li><code>*</code> Multiplication</li>
+                        <li><code>/</code> Division</li>
+                        <li><code>( )</code> Parentheses for grouping</li>
+                    </ul>
+                </div>
+
+                <div class="mb-3">
+                    <h6 class="mb-2">Examples</h6>
+                    <div class="small">
+                        <div class="mb-2">
+                            <strong>Simple Average:</strong><br>
+                            <code class="d-block bg-light p-2">=average([[hw1]],[[hw2]],[[hw3]])</code>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Weighted Average:</strong><br>
+                            <code class="d-block bg-light p-2">=([[midterm]]*0.3)+([[final]]*0.7)</code>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Nested Function:</strong><br>
+                            <code class="d-block bg-light p-2">=round(average([[q1]],[[q2]]),2)</code>
+                        </div>
+                        <div>
+                            <strong>Conditional:</strong><br>
+                            <code class="d-block bg-light p-2">=if([[bonus]]&gt;0, [[score]]+[[bonus]], [[score]])</code>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info small mb-0">
+                    <strong>Tip:</strong> Formulas are used to calculate final grades in the generated gradebook.
+                    Use Moodle's built-in grade calculation features for more advanced scenarios.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

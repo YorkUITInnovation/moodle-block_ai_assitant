@@ -166,6 +166,25 @@ class gradebook_export
         $aggregation_method_name = $aggregation_method_names[$aggregation_method_code]
             ?? ('Method ' . $aggregation_method_code);
 
+        // ---- Formulas (from categories) ----------------------------------
+        $formulas = [];
+        foreach ($proposal_categories as $cat) {
+            if (isset($cat['calculation_formula']) && !empty($cat['calculation_formula'])) {
+                $cat_name = isset($cat['name']) ? (string)$cat['name'] : '';
+                $formula = (string)$cat['calculation_formula'];
+                $refs = isset($cat['formula_item_refs']) && is_array($cat['formula_item_refs'])
+                    ? $cat['formula_item_refs']
+                    : [];
+                if ($cat_name && $formula) {
+                    $formulas[] = [
+                        'category' => $cat_name,
+                        'formula' => $formula,
+                        'referenced_items' => $refs,
+                    ];
+                }
+            }
+        }
+
         // ---- Activities + Not-graded -------------------------------------
         $activities_by_cmid = [];
         if (isset($content_mapping['mappings']) && is_array($content_mapping['mappings'])) {
@@ -312,7 +331,6 @@ class gradebook_export
                 'fullname' => $user ? trim(($user->firstname ?? '') . ' ' . ($user->lastname ?? '')) : '',
             ],
             'generated_at' => time(),
-            'session_id' => (string)($this->state['session_id'] ?? ''),
             'summary' => $summary,
             'categories' => $categories,
             'activities' => $activities,
@@ -320,6 +338,7 @@ class gradebook_export
             'decisions' => $decisions,
             'transcript' => is_array($transcript) ? $transcript : [],
             'effects' => $effects,
+            'formulas' => $formulas,
             'aggregation_method' => $aggregation_method_name,
         ];
 
@@ -486,11 +505,11 @@ class gradebook_export
     protected function pdf_html(array $m): string
     {
         $css = '<style>
-            h1 { color: #1a365d; font-size: 20pt; margin: 0 0 4pt 0; }
-            h2 { color: #2a4365; font-size: 13pt; margin: 14pt 0 6pt 0; border-bottom: 1px solid #cbd5e0; padding-bottom: 2pt; }
-            h3 { color: #2a4365; font-size: 11pt; margin: 10pt 0 4pt 0; }
+            h1 { color: #1a365d; font-size: 20pt; margin: 0 0 4pt 0; font-weight: bold; }
+            h2 { color: #2a4365; font-size: 13pt; margin: 14pt 0 6pt 0; border-bottom: 1px solid #cbd5e0; padding-bottom: 2pt; font-weight: bold; }
+            h3 { color: #2a4365; font-size: 11pt; margin: 10pt 0 4pt 0; font-weight: bold; }
             .muted { color: #718096; font-size: 9pt; }
-            table { border-collapse: collapse; width: 100%; font-size: 10pt; }
+            table { border-collapse: collapse; width: 100%; font-size: 10pt; margin: 6pt 0 10pt 0; }
             th { background-color: #edf2f7; color: #2d3748; padding: 6pt; border: 1px solid #cbd5e0; text-align: left; font-weight: bold; }
             td { padding: 6pt; border: 1px solid #cbd5e0; vertical-align: top; }
             .not-graded td { color: #718096; background-color: #f7fafc; }
@@ -498,11 +517,14 @@ class gradebook_export
             .center { text-align: center; }
             ul { margin: 4pt 0 4pt 12pt; padding: 0; }
             li { margin: 2pt 0; }
-            .kvp { margin: 2pt 0; }
+            .kvp { margin: 4pt 0; padding: 4pt 0; }
             .kvp b { color: #2a4365; }
+            code { background: #f5f5f5; padding: 2pt 4pt; font-family: "Courier New", monospace; font-size: 8.5pt; border-radius: 2pt; }
+            .formula-block { background: #fafafa; padding: 6pt; margin: 4pt 0; border-left: 3px solid #4299e1; }
             .tscript { font-size: 8.5pt; }
             .tscript .role { font-weight: bold; color: #2a4365; }
             .tscript .ts { color: #a0aec0; font-size: 7.5pt; }
+            .tscript p { margin: 3pt 0; }
         </style>';
 
         $h = fn($s) => htmlspecialchars((string)$s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -518,9 +540,6 @@ class gradebook_export
             $out .= '<div class="kvp"><b>Prepared by:</b> ' . $h($m['author']['fullname']) . '</div>';
         }
         $out .= '<div class="kvp"><b>Generated:</b> ' . $h($g) . '</div>';
-        if (!empty($m['session_id'])) {
-            $out .= '<div class="muted">Session: ' . $h($m['session_id']) . '</div>';
-        }
 
         // 2) Executive summary
         $out .= '<h2>Executive summary</h2>';
@@ -555,6 +574,17 @@ class gradebook_export
                 if ($c['hidden']) {
                     $settings[] = $c['hidden_until'] ? 'Hidden until ' . $h($c['hidden_until']) : 'Hidden';
                 }
+
+                // Check if this category has a formula
+                $has_formula = false;
+                foreach ($m['formulas'] as $f) {
+                    if ($f['category'] === $c['name']) {
+                        $has_formula = true;
+                        $settings[] = 'Has formula';
+                        break;
+                    }
+                }
+
                 $settings_str = $settings ? implode('<br/>', $settings) : '<span class="muted">—</span>';
 
                 $subs_html = '';
@@ -618,8 +648,23 @@ class gradebook_export
             $out .= '</tbody></table>';
         }
 
-        // 5) Effects
-        $out .= '<h2>3. Applied effects &amp; configuration</h2>';
+        // 5) Formulas (if any)
+        if (!empty($m['formulas'])) {
+            $out .= '<h2>3. Calculation formulas</h2>';
+            $out .= '<p class="muted">Categories with custom Excel-style formulas for grade calculation:</p>';
+            foreach ($m['formulas'] as $f) {
+                $out .= '<div class="formula-block">';
+                $out .= '<b>' . $h($f['category']) . ':</b><br/>';
+                $out .= '<code>' . $h($f['formula']) . '</code>';
+                if (!empty($f['referenced_items'])) {
+                    $out .= '<br/><span class="muted">References: ' . $h(implode(', ', $f['referenced_items'])) . '</span>';
+                }
+                $out .= '</div>';
+            }
+        }
+
+        // 6) Effects
+        $out .= '<h2>4. Applied effects &amp; configuration</h2>';
         if (!empty($m['effects'])) {
             $out .= '<ul>';
             foreach ($m['effects'] as $eff) {
@@ -630,8 +675,8 @@ class gradebook_export
             $out .= '<p class="muted">No effects or configuration changes recorded.</p>';
         }
 
-        // 6) Decisions
-        $out .= '<h2>4. Decisions from the conversation</h2>';
+        // 7) Decisions
+        $out .= '<h2>5. Decisions from the conversation</h2>';
         if (!empty($m['decisions'])) {
             $out .= '<ul>';
             foreach ($m['decisions'] as $d) {
@@ -642,8 +687,8 @@ class gradebook_export
             $out .= '<p class="muted">No explicit adjustments were made during the conversation.</p>';
         }
 
-        // 7) Transcript
-        $out .= '<h2>5. Appendix: conversation transcript</h2>';
+        // 8) Transcript
+        $out .= '<h2>6. Appendix: conversation transcript</h2>';
         if (!empty($m['transcript'])) {
             $out .= '<div class="tscript">';
             foreach ($m['transcript'] as $t) {
@@ -695,21 +740,24 @@ class gradebook_export
             . "<style type=\"text/css\">\n"
             . "@page WordSection1 { size: 8.5in 11in; margin: 1in 1in 1in 1in; }\n"
             . "div.WordSection1 { page: WordSection1; }\n"
-            . "body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1a202c; }\n"
-            . "h1 { color: #1a365d; font-size: 22pt; margin: 0 0 4pt 0; }\n"
-            . "h2 { color: #2a4365; font-size: 14pt; margin: 18pt 0 6pt 0; border-bottom: 1px solid #cbd5e0; padding-bottom: 2pt; }\n"
-            . "h3 { color: #2a4365; font-size: 12pt; margin: 10pt 0 4pt 0; }\n"
+            . "body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #1a202c; line-height: 1.4; }\n"
+            . "h1 { color: #1a365d; font-size: 22pt; margin: 0 0 6pt 0; font-weight: bold; }\n"
+            . "h2 { color: #2a4365; font-size: 14pt; margin: 18pt 0 8pt 0; border-bottom: 1px solid #cbd5e0; padding-bottom: 3pt; font-weight: bold; }\n"
+            . "h3 { color: #2a4365; font-size: 12pt; margin: 10pt 0 6pt 0; font-weight: bold; }\n"
             . ".muted { color: #718096; font-size: 9.5pt; }\n"
-            . "table { border-collapse: collapse; width: 100%; font-size: 10.5pt; margin: 6pt 0 10pt 0; }\n"
-            . "th { background-color: #edf2f7; color: #2d3748; padding: 6pt 8pt; border: 1px solid #cbd5e0; text-align: left; }\n"
-            . "td { padding: 6pt 8pt; border: 1px solid #cbd5e0; vertical-align: top; }\n"
+            . "p { margin: 6pt 0; line-height: 1.5; }\n"
+            . "table { border-collapse: collapse; width: 100%; font-size: 10.5pt; margin: 8pt 0 12pt 0; }\n"
+            . "th { background-color: #edf2f7; color: #2d3748; padding: 8pt; border: 1px solid #cbd5e0; text-align: left; font-weight: bold; }\n"
+            . "td { padding: 8pt; border: 1px solid #cbd5e0; vertical-align: top; }\n"
             . "tr.not-graded td { color: #718096; background-color: #f7fafc; }\n"
             . ".right { text-align: right; }\n"
-            . "ul { margin: 4pt 0 4pt 18pt; padding: 0; }\n"
-            . "li { margin: 2pt 0; }\n"
-            . ".kvp { margin: 2pt 0; }\n"
+            . "ul { margin: 6pt 0 6pt 20pt; padding: 0; }\n"
+            . "li { margin: 3pt 0; }\n"
+            . ".kvp { margin: 4pt 0; padding: 4pt 0; }\n"
             . ".kvp b { color: #2a4365; }\n"
-            . ".tscript p { margin: 4pt 0; font-size: 10pt; }\n"
+            . "code { background: #f5f5f5; padding: 3pt 5pt; font-family: 'Courier New', monospace; font-size: 10pt; display: block; margin: 4pt 0; border-left: 3px solid #4299e1; padding-left: 8pt; }\n"
+            . ".formula-block { background: #fafafa; padding: 8pt; margin: 6pt 0; border-left: 3px solid #4299e1; }\n"
+            . ".tscript p { margin: 4pt 0; font-size: 10pt; line-height: 1.3; }\n"
             . ".tscript .role { font-weight: bold; color: #2a4365; }\n"
             . ".tscript .ts { color: #a0aec0; font-size: 9pt; }\n"
             . "</style>\n"
@@ -725,9 +773,6 @@ class gradebook_export
             $out .= '<div class="kvp"><b>Prepared by:</b> ' . $h($m['author']['fullname']) . '</div>';
         }
         $out .= '<div class="kvp"><b>Generated:</b> ' . $h($g) . '</div>';
-        if (!empty($m['session_id'])) {
-            $out .= '<div class="muted">Session: ' . $h($m['session_id']) . '</div>';
-        }
 
         // Executive summary
         $s = $m['summary'];
@@ -759,6 +804,17 @@ class gradebook_export
                 if ($c['hidden']) {
                     $settings[] = $c['hidden_until'] ? 'Hidden until ' . $h($c['hidden_until']) : 'Hidden';
                 }
+
+                // Check if this category has a formula
+                $has_formula = false;
+                foreach ($m['formulas'] as $f) {
+                    if ($f['category'] === $c['name']) {
+                        $has_formula = true;
+                        $settings[] = 'Has formula';
+                        break;
+                    }
+                }
+
                 $settings_str = $settings ? implode('<br/>', $settings) : '<span class="muted">—</span>';
 
                 $subs_html = '';
@@ -806,8 +862,23 @@ class gradebook_export
             $out .= '</tbody></table>';
         }
 
+        // Formulas (if any)
+        if (!empty($m['formulas'])) {
+            $out .= '<h2>3. Calculation formulas</h2>';
+            $out .= '<p class="muted">Categories with custom Excel-style formulas for grade calculation:</p>';
+            foreach ($m['formulas'] as $f) {
+                $out .= '<div class="formula-block">';
+                $out .= '<b>' . $h($f['category']) . ':</b><br/>';
+                $out .= '<code>' . $h($f['formula']) . '</code>';
+                if (!empty($f['referenced_items'])) {
+                    $out .= '<p class="muted">References: ' . $h(implode(', ', $f['referenced_items'])) . '</p>';
+                }
+                $out .= '</div>';
+            }
+        }
+
         // Effects
-        $out .= '<h2>3. Applied effects &amp; configuration</h2>';
+        $out .= '<h2>' . (!empty($m['formulas']) ? '4' : '3') . '. Applied effects &amp; configuration</h2>';
         if (!empty($m['effects'])) {
             $out .= '<ul>';
             foreach ($m['effects'] as $eff) {
@@ -819,7 +890,7 @@ class gradebook_export
         }
 
         // Decisions
-        $out .= '<h2>4. Decisions from the conversation</h2>';
+        $out .= '<h2>' . (!empty($m['formulas']) ? '5' : '4') . '. Decisions from the conversation</h2>';
         if (!empty($m['decisions'])) {
             $out .= '<ul>';
             foreach ($m['decisions'] as $d) {
@@ -831,7 +902,7 @@ class gradebook_export
         }
 
         // Transcript
-        $out .= '<h2>5. Appendix: conversation transcript</h2>';
+        $out .= '<h2>' . (!empty($m['formulas']) ? '6' : '5') . '. Appendix: conversation transcript</h2>';
         if (!empty($m['transcript'])) {
             $out .= '<div class="tscript">';
             foreach ($m['transcript'] as $t) {

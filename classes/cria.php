@@ -1670,24 +1670,6 @@ class cria
         $session_id = trim($session_id);
         $hascoursechanges = $courseid > 0 ? self::course_has_ai_gradebook($courseid) : false;
 
-        // Prevent delete when no AI gradebook structure exists in course.
-        // In this case there is nothing to clean up from Moodle grade setup,
-        // so we block delete and let the user continue the current session.
-        if (!$hascoursechanges) {
-            return json_encode([
-                'status' => 200,
-                'code' => 'SUCCESS',
-                'message' => get_string('gradebook_delete_nothing', 'block_ai_assistant'),
-                'data' => [
-                    'success' => false,
-                    'existed' => true,
-                    'blocked' => true,
-                    'grade_setup_cleaned' => false,
-                    'grade_setup_message' => '',
-                ],
-            ]);
-        }
-
         $method = 'cria_gradebook_delete';
         $data = array(
             'session_id' => $session_id,
@@ -1698,7 +1680,10 @@ class cria
         $backendnotfound = is_array($decoded)
             && ((int)($decoded['status'] ?? 0) === 404 || (string)($decoded['code'] ?? '') === 'NOT_FOUND');
 
-        $cleanup_result = null;
+        $cleanup_result = [
+            'cleaned' => false,
+            'message' => '',
+        ];
         if ($hascoursechanges) {
             $cleanup_result = self::remove_ai_gradebook_from_course($courseid);
         }
@@ -1715,16 +1700,24 @@ class cria
             $decoded['status'] = 200;
             $decoded['code'] = 'SUCCESS';
             $decoded['message'] = get_string('gradebook_delete_cleanup_only', 'block_ai_assistant');
+        } else if ($backendnotfound && !$hascoursechanges) {
+            // No active backend session and no Moodle grade setup changes.
+            // Keep this as success so UI can still clear local chat/session state.
+            $decoded['status'] = 200;
+            $decoded['code'] = 'SUCCESS';
+            $decoded['message'] = get_string('gradebook_delete_completed', 'block_ai_assistant');
         }
 
         $decoded['data'] = array_merge(
             is_array($decoded['data'] ?? null) ? $decoded['data'] : [],
             [
-                'success' => !$backendnotfound || $hascoursechanges,
+                'success' => true,
                 'existed' => !$backendnotfound,
-                'blocked' => false,
                 'grade_setup_cleaned' => (bool)($cleanup_result['cleaned'] ?? false),
-                'grade_setup_message' => (string)($cleanup_result['message'] ?? ''),
+                'grade_setup_message' => $hascoursechanges
+                    ? (string)($cleanup_result['message'] ?? '')
+                    : get_string('gradebook_delete_nothing', 'block_ai_assistant'),
+                'course_changes_detected' => $hascoursechanges,
             ]
         );
 
@@ -2117,6 +2110,11 @@ class cria
 
     public static function gradebook_finalize(int $courseid, string $session_id, array $confirmed_mapping): string
     {
+        // Clean up any orphaned category items before applying new gradebook structure
+        if ($courseid > 0) {
+            self::cleanup_orphaned_category_items($courseid);
+        }
+
         $method = 'cria_gradebook_finalize';
         $data = array(
             'session_id' => trim($session_id),
@@ -2197,6 +2195,7 @@ class cria
         $subcategory_by_parent = [];
         $subcategory_global_map = [];
         $subcategory_rr_index = [];
+        $category_formula_map = [];
 
         foreach ($proposal['categories'] as $cat) {
             $name = trim((string)($cat['name'] ?? ''));
@@ -2239,6 +2238,14 @@ class cria
                 $settings
             );
             $category_id_map[$category_key] = $cat_obj->id;
+
+            $formula_text = trim((string)($cat['calculation_formula'] ?? ''));
+            if ($formula_text !== '') {
+                $category_formula_map[$category_key] = [
+                    'category_id' => (int)$cat_obj->id,
+                    'formula' => $formula_text,
+                ];
+            }
 
             $subcategories = is_array($cat['subcategories'] ?? null) ? $cat['subcategories'] : [];
             foreach ($subcategories as $sub) {
@@ -2342,6 +2349,14 @@ class cria
                 }
             } catch (Throwable $e) {
                 debugging("Error mapping cmid $cmid: " . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+        }
+
+        // Apply category calculation formulas after category/item mapping is complete.
+        if (!empty($category_formula_map)) {
+            $formula_warnings = self::apply_category_formulas($courseid, $category_formula_map);
+            if (!empty($formula_warnings)) {
+                $warnings = array_merge($warnings, $formula_warnings);
             }
         }
 
@@ -2474,6 +2489,12 @@ class cria
             return;
         }
 
+        // Ensure categoryid is correct: should point to parent category (or NULL if top-level)
+        $expected_categoryid = $parent ? (int)$parent->id : null;
+        if ((int)($gi->categoryid ?? 0) !== ((int)($expected_categoryid ?? 0))) {
+            $gi->categoryid = $expected_categoryid;
+        }
+
         // Weight
         $extra_credit = (bool)($settings['extra_credit'] ?? false);
         // Category item weight is interpreted by its parent category aggregation method.
@@ -2533,6 +2554,214 @@ class cria
         }
 
         $gi->update('block_ai_assistant');
+    }
+
+    /**
+     * Convert a user-facing formula into Moodle-compatible calculation syntax.
+     *
+     * - Normalizes separators to comma (YorkU standard).
+     * - Accepts both [ref] and [[ref]] input.
+     * - Resolves refs against grade_item idnumber first, then itemname.
+     * - Ensures output uses [[idnumber]] references.
+     */
+    private static function resolve_moodle_formula(int $courseid, string $formula): string
+    {
+        global $DB;
+
+        $text = trim($formula);
+        if ($text === '') {
+            return '';
+        }
+        if ($text[0] !== '=') {
+            $text = '=' . $text;
+        }
+        $text = str_replace(';', ',', $text);
+
+        if (!preg_match_all('/\[\[([A-Za-z0-9_]+)\]\]|\[([A-Za-z0-9_]+)\]/', $text, $matches, PREG_SET_ORDER)) {
+            return $text;
+        }
+
+        $resolved = [];
+        foreach ($matches as $m) {
+            $ref = isset($m[1]) && $m[1] !== '' ? $m[1] : (isset($m[2]) ? $m[2] : '');
+            if ($ref === '') {
+                continue;
+            }
+            $key = strtolower($ref);
+            if (isset($resolved[$key])) {
+                continue;
+            }
+
+            $items = $DB->get_records_select(
+                'grade_items',
+                'courseid = ? AND (LOWER(idnumber) = ? OR LOWER(itemname) = ?)',
+                [$courseid, $key, $key],
+                '',
+                'id, idnumber, itemname'
+            );
+
+            if (!$items) {
+                continue;
+            }
+
+            $item = reset($items);
+            if (!$item) {
+                continue;
+            }
+
+            $idnumber = trim((string)($item->idnumber ?? ''));
+            if ($idnumber === '') {
+                $seed = trim((string)($item->itemname ?? ''));
+                if ($seed === '') {
+                    $seed = $ref;
+                }
+                $base = self::build_formula_idnumber($seed);
+                $candidate = $base;
+                $suffix = 2;
+                while ($DB->record_exists_select('grade_items', 'courseid = ? AND idnumber = ? AND id <> ?', [$courseid, $candidate, (int)$item->id])) {
+                    $candidate = $base . '_' . $suffix;
+                    $suffix++;
+                    if ($suffix > 100) {
+                        break;
+                    }
+                }
+
+                $item->idnumber = $candidate;
+                $DB->update_record('grade_items', $item);
+                $idnumber = $candidate;
+            }
+
+            $resolved[$key] = $idnumber;
+        }
+
+        $converted = preg_replace_callback(
+            '/\[\[([A-Za-z0-9_]+)\]\]|\[([A-Za-z0-9_]+)\]/',
+            static function (array $m) use ($resolved): string {
+                $ref = isset($m[1]) && $m[1] !== '' ? $m[1] : (isset($m[2]) ? $m[2] : '');
+                if ($ref === '') {
+                    return $m[0];
+                }
+                $key = strtolower($ref);
+                $target = $resolved[$key] ?? $ref;
+                return '[[' . $target . ']]';
+            },
+            $text
+        );
+
+        return is_string($converted) ? $converted : $text;
+    }
+
+    private static function build_formula_idnumber(string $value): string
+    {
+        $id = strtolower(trim($value));
+        $id = preg_replace('/[^a-z0-9_]+/', '_', $id) ?? '';
+        $id = trim($id, '_');
+        if ($id === '') {
+            $id = 'ai_formula_ref';
+        }
+        if (strlen($id) > 90) {
+            $id = substr($id, 0, 90);
+        }
+        return $id;
+    }
+
+    /**
+     * Apply calculation formulas to category total grade items.
+     * Returns warning strings for any categories that could not be updated.
+     */
+    private static function apply_category_formulas(int $courseid, array $category_formula_map): array
+    {
+        $warnings = [];
+        foreach ($category_formula_map as $key => $entry) {
+            $category_id = (int)($entry['category_id'] ?? 0);
+            $formula = trim((string)($entry['formula'] ?? ''));
+            if ($category_id < 1 || $formula === '') {
+                continue;
+            }
+
+            try {
+                $gi = \grade_item::fetch(['itemtype' => 'category', 'iteminstance' => $category_id]);
+                if (!$gi) {
+                    $warnings[] = '⚠ Formula was not applied for category ' . $key . ' (missing category grade item).';
+                    continue;
+                }
+
+                $resolved = self::resolve_moodle_formula($courseid, $formula);
+                if (method_exists($gi, 'set_calculation')) {
+                    $gi->set_calculation($resolved, null);
+                } else {
+                    $gi->calculation = $resolved;
+                    $gi->update('block_ai_assistant');
+                }
+            } catch (Throwable $e) {
+                $warnings[] = '⚠ Formula was not applied for category ' . $key . ': ' . $e->getMessage();
+            }
+        }
+
+        return $warnings;
+    }
+
+    /**
+     * Clean up orphaned category grade items that may have been left behind
+     * when the block was removed/re-added. These items can have NULL categoryid
+     * which causes "Attempt to assign property 'sortorder' on null" errors.
+     *
+     * Removes category grade_items whose iteminstance points to a non-existent
+     * grade_category, or have NULL categoryid when they shouldn't.
+     *
+     * @param int $courseid Course ID to clean (0 = all courses)
+     * @return int Number of orphaned items removed
+     */
+    public static function cleanup_orphaned_category_items(int $courseid = 0): int {
+        global $DB;
+
+        if (!class_exists('\grade_item')) {
+            return 0;
+        }
+
+        $removed = 0;
+
+        // Find all category-type grade items
+        $sql = 'SELECT gi.id, gi.courseid, gi.iteminstance, gi.categoryid
+                FROM {grade_items} gi
+                WHERE gi.itemtype = ?';
+        $params = ['category'];
+
+        if ($courseid > 0) {
+            $sql .= ' AND gi.courseid = ?';
+            $params[] = $courseid;
+        }
+
+        $items = $DB->get_records_sql($sql, $params);
+
+        foreach ($items as $item) {
+            $category_id = (int)($item->iteminstance ?? 0);
+
+            // Check if the referenced category exists
+            if ($category_id < 1 || !$DB->record_exists('grade_categories', ['id' => $category_id])) {
+                $DB->delete_records('grade_items', ['id' => (int)$item->id]);
+                $removed++;
+                continue;
+            }
+
+            // Verify the category's parent matches the grade_item's categoryid
+            $gc = $DB->get_record('grade_categories', ['id' => $category_id], 'id, parent');
+            if ($gc) {
+                $expected_categoryid = $gc->parent ? (int)$gc->parent : null;
+                $actual_categoryid = (int)($item->categoryid ?? 0);
+                $actual_categoryid = $actual_categoryid === 0 ? null : $actual_categoryid;
+
+                if ($expected_categoryid !== $actual_categoryid) {
+                    // Fix the categoryid on the orphaned item
+                    $update = new \stdClass();
+                    $update->id = (int)$item->id;
+                    $update->categoryid = $expected_categoryid;
+                    $DB->update_record('grade_items', $update);
+                }
+            }
+        }
+
+        return $removed;
     }
 
     private static function is_syllabus_like_filename(string $filename): bool
