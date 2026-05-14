@@ -1519,16 +1519,73 @@ class cria
         $resources = [];
         try {
             $modinfo = get_fast_modinfo($courseid);
+
+            // Build activities from grade_items first so mapping works with real gradeable targets only.
+            $gradeitemsql = "
+                SELECT
+                    gi.id AS grade_item_id,
+                    gi.itemtype,
+                    gi.itemmodule,
+                    gi.iteminstance,
+                    gi.itemname,
+                    cm.id AS cmid
+                FROM {grade_items} gi
+                LEFT JOIN {modules} m
+                    ON m.name = gi.itemmodule
+                LEFT JOIN {course_modules} cm
+                    ON cm.course = gi.courseid
+                   AND cm.module = m.id
+                   AND cm.instance = gi.iteminstance
+                WHERE gi.courseid = :courseid
+                  AND gi.itemtype = 'mod'
+                  AND gi.itemmodule IS NOT NULL
+                  AND gi.itemmodule <> ''
+                ORDER BY gi.id ASC
+            ";
+            $gradeitems = $DB->get_records_sql($gradeitemsql, ['courseid' => $courseid]);
+
+            foreach ($gradeitems as $gi) {
+                $cmid = isset($gi->cmid) ? (int)$gi->cmid : 0;
+                $module = trim((string)($gi->itemmodule ?? ''));
+                if ($module === '') {
+                    continue;
+                }
+
+                $activityname = trim((string)($gi->itemname ?? ''));
+
+                // Respect visibility when the grade item can be resolved to a course module.
+                if ($cmid > 0) {
+                    try {
+                        $cm = $modinfo->get_cm($cmid);
+                        if ($cm && !$cm->uservisible) {
+                            continue;
+                        }
+                        if ($activityname === '' && $cm) {
+                            $activityname = (string)$cm->name;
+                        }
+                    } catch (\Throwable $e) {
+                        // Keep grade item even if cm lookup fails.
+                    }
+                }
+
+                if ($activityname === '') {
+                    $activityname = $module . ' #' . (int)($gi->iteminstance ?? 0);
+                }
+
+                $activities[] = [
+                    'cmid' => $cmid > 0 ? $cmid : null,
+                    'module' => $module,
+                    'name' => $activityname,
+                    'grade_item_id' => (int)$gi->grade_item_id,
+                    'itemtype' => (string)($gi->itemtype ?? 'mod'),
+                ];
+            }
+
             foreach ($modinfo->get_cms() as $cm) {
                 if (!$cm->uservisible) {
                     continue;
                 }
                 $sectionnum = isset($cm->sectionnum) ? (string)$cm->sectionnum : '';
-                $activities[] = [
-                    'cmid' => (int)$cm->id,
-                    'module' => (string)$cm->modname,
-                    'name' => (string)$cm->name,
-                ];
                 if (in_array((string)$cm->modname, ['resource', 'page', 'book', 'folder', 'label'], true)) {
                     $resources[] = [
                         'cmid' => (int)$cm->id,
@@ -2110,6 +2167,11 @@ class cria
 
     public static function gradebook_finalize(int $courseid, string $session_id, array $confirmed_mapping): string
     {
+        global $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
+        require_once($CFG->libdir . '/grade/grade_item.php');
+        require_once($CFG->libdir . '/grade/grade_category.php');
+
         // Clean up any orphaned category items before applying new gradebook structure
         if ($courseid > 0) {
             self::cleanup_orphaned_category_items($courseid);
@@ -2124,12 +2186,16 @@ class cria
         );
         $response_json = webservice::exec($method, $data);
         $applywarnings = [];
+        $normalized_mapping = self::normalize_confirmed_mapping($courseid, $confirmed_mapping, $applywarnings);
 
         if ($courseid > 0) {
             try {
                 $response = json_decode($response_json, true);
                 if (is_array($response) && isset($response['proposal'])) {
-                    $applywarnings = self::apply_gradebook_to_course($courseid, $response['proposal'], $confirmed_mapping);
+                    $localwarnings = self::apply_gradebook_to_course($courseid, $response['proposal'], $normalized_mapping);
+                    if (!empty($localwarnings)) {
+                        $applywarnings = array_merge($applywarnings, $localwarnings);
+                    }
 
                     if (!empty($applywarnings)) {
                         $warningtext = implode(' ', $applywarnings);
@@ -2149,6 +2215,136 @@ class cria
 
         return $response_json;
     }
+
+    /**
+     * Normalize confirmed mapping rows to a grade-item-first shape while
+     * preserving compatibility with legacy activity-only payloads.
+     *
+     * Supported input row fields:
+     * - Legacy: moodle_cmid, category
+     * - New: grade_item_id, grade_item_type, itemmodule, iteminstance, moodle_cmid, category
+     *
+     * @param int $courseid
+     * @param array $confirmed_mapping
+     * @param array $warnings (output accumulator)
+     * @return array normalized rows
+     */
+    private static function normalize_confirmed_mapping(int $courseid, array $confirmed_mapping, array &$warnings = []): array
+    {
+        global $DB;
+
+        $normalized = [];
+        $modinfo = null;
+
+        foreach ($confirmed_mapping as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $category = trim((string)($row['category'] ?? ''));
+            if ($category === '' || strtolower($category) === '__not_graded__') {
+                continue;
+            }
+
+            $cmid = (int)($row['moodle_cmid'] ?? 0);
+            $gradeitemid = (int)($row['grade_item_id'] ?? 0);
+            $activityname = trim((string)($row['activity_name'] ?? $row['grade_item_name'] ?? ''));
+
+            $entry = [
+                'category' => $category,
+                'moodle_cmid' => $cmid,
+                'activity_name' => $activityname,
+                'grade_item_id' => 0,
+                'grade_item_type' => '',
+                'itemmodule' => '',
+                'iteminstance' => 0,
+            ];
+
+            $gi = null;
+            if ($gradeitemid > 0) {
+                $candidate = \grade_item::fetch(['id' => $gradeitemid]);
+                if ($candidate && (int)$candidate->courseid === $courseid) {
+                    $gi = $candidate;
+                }
+            }
+
+            // Legacy fallback: resolve by cmid for mod-type grade items.
+            if (!$gi && $cmid > 0) {
+                try {
+                    if ($modinfo === null) {
+                        $modinfo = get_fast_modinfo($courseid);
+                    }
+                    $cm = $modinfo->get_cm($cmid);
+                    if ($cm) {
+                        $found = \grade_item::fetch_all([
+                            'courseid' => $courseid,
+                            'iteminstance' => $cm->instance,
+                            'itemmodule' => $cm->modname,
+                            'itemtype' => 'mod',
+                        ]);
+                        if ($found) {
+                            $gi = reset($found);
+                        }
+                    }
+                } catch (Throwable $e) {
+                    debugging('Could not resolve mapping CMID ' . $cmid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+            }
+
+            if (!$gi && !empty($row['itemmodule']) && !empty($row['iteminstance'])) {
+                $module = trim((string)$row['itemmodule']);
+                $instance = (int)$row['iteminstance'];
+                if ($module !== '' && $instance > 0) {
+                    $found = \grade_item::fetch_all([
+                        'courseid' => $courseid,
+                        'iteminstance' => $instance,
+                        'itemmodule' => $module,
+                        'itemtype' => 'mod',
+                    ]);
+                    if ($found) {
+                        $gi = reset($found);
+                    }
+                }
+            }
+
+            if ($gi) {
+                $entry['grade_item_id'] = (int)$gi->id;
+                $entry['grade_item_type'] = (string)($gi->itemtype ?? '');
+                $entry['itemmodule'] = (string)($gi->itemmodule ?? '');
+                $entry['iteminstance'] = (int)($gi->iteminstance ?? 0);
+
+                if ($entry['activity_name'] === '') {
+                    $entry['activity_name'] = trim((string)($gi->itemname ?? ''));
+                }
+
+                if ((int)$entry['moodle_cmid'] < 1 && $entry['grade_item_type'] === 'mod' && $entry['itemmodule'] !== '' && $entry['iteminstance'] > 0) {
+                    $cmidrec = $DB->get_record(
+                        'course_modules',
+                        ['course' => $courseid, 'module' => self::resolve_module_id($entry['itemmodule']), 'instance' => $entry['iteminstance']],
+                        'id',
+                        IGNORE_MISSING
+                    );
+                    if ($cmidrec) {
+                        $entry['moodle_cmid'] = (int)$cmidrec->id;
+                    }
+                }
+
+                $normalized[] = $entry;
+                continue;
+            }
+
+            if ($cmid > 0) {
+                $normalized[] = $entry;
+                continue;
+            }
+
+            $warnings[] = '⚠ Skipped one mapping row because no valid Moodle CMID or grade item could be resolved for category ' . $category . '.';
+        }
+
+        return $normalized;
+    }
+
+
 
     /**
      * Apply the finalized gradebook proposal to the Moodle course gradebook.
@@ -2298,23 +2494,18 @@ class cria
                 . '.';
         }
 
-        // Move activity grade items into mapped categories/subcategories.
-        $modinfo = get_fast_modinfo($courseid);
+        // Move mapped grade items into mapped categories/subcategories.
         foreach ($confirmed_mapping as $mapping) {
-            $cmid = intval($mapping['moodle_cmid'] ?? 0);
+            $grade_item_id = intval($mapping['grade_item_id'] ?? 0);
             $category_name = trim((string)($mapping['category'] ?? ''));
             $category_key = strtolower($category_name);
+            $activity_name = trim((string)($mapping['activity_name'] ?? ''));
 
-            if ($cmid <= 0 || $category_name === '') {
+            if ($grade_item_id <= 0 || $category_name === '') {
                 continue;
             }
 
             try {
-                $cm = $modinfo->get_cm($cmid);
-                if (!$cm) {
-                    continue;
-                }
-
                 $target_category_id = null;
                 if (isset($subcategory_global_map[$category_key])) {
                     $target_category_id = (int)$subcategory_global_map[$category_key];
@@ -2322,7 +2513,7 @@ class cria
                     $target_category_id = (int)$category_id_map[$category_key];
                     if (!empty($subcategory_by_parent[$category_key])) {
                         $target_category_id = self::pick_subcategory_target(
-                            (string)($cm->name ?? ''),
+                            $activity_name,
                             $subcategory_by_parent[$category_key],
                             $subcategory_rr_index[$category_key]
                         );
@@ -2333,22 +2524,20 @@ class cria
                     continue;
                 }
 
-                $grade_items = \grade_item::fetch_all([
-                    'courseid'     => $courseid,
-                    'iteminstance' => $cm->instance,
-                    'itemmodule'   => $cm->modname,
-                    'itemtype'     => 'mod',
-                ]);
-                if (!$grade_items) {
+                $gi = \grade_item::fetch(['id' => $grade_item_id]);
+                if (!$gi || (int)$gi->courseid !== $courseid) {
                     continue;
                 }
 
-                foreach ($grade_items as $gi) {
-                    $gi->categoryid = $target_category_id;
-                    $gi->update('block_ai_assistant');
+                // Skip meta items (course and category totals are not movable)
+                if ((string)($gi->itemtype ?? '') === 'course' || (string)($gi->itemtype ?? '') === 'category') {
+                    continue;
                 }
+
+                $gi->categoryid = $target_category_id;
+                $gi->update('block_ai_assistant');
             } catch (Throwable $e) {
-                debugging("Error mapping cmid $cmid: " . $e->getMessage(), DEBUG_DEVELOPER);
+                debugging('Error mapping grade_item_id ' . $grade_item_id . ' to category ' . $category_name . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
         }
 
@@ -2564,21 +2753,24 @@ class cria
      * - Resolves refs against grade_item idnumber first, then itemname.
      * - Ensures output uses [[idnumber]] references.
      */
-    private static function resolve_moodle_formula(int $courseid, string $formula): string
+    private static function resolve_moodle_formula(int $courseid, string $formula): array
     {
         global $DB;
 
         $text = trim($formula);
         if ($text === '') {
-            return '';
+            return ['formula' => '', 'warnings' => [], 'errors' => []];
         }
         if ($text[0] !== '=') {
             $text = '=' . $text;
         }
         $text = str_replace(';', ',', $text);
 
+        $warnings = [];
+        $errors = [];
+
         if (!preg_match_all('/\[\[([A-Za-z0-9_]+)\]\]|\[([A-Za-z0-9_]+)\]/', $text, $matches, PREG_SET_ORDER)) {
-            return $text;
+            return ['formula' => $text, 'warnings' => [], 'errors' => []];
         }
 
         $resolved = [];
@@ -2592,21 +2784,43 @@ class cria
                 continue;
             }
 
-            $items = $DB->get_records_select(
+            $items_by_idnumber = $DB->get_records_select(
                 'grade_items',
-                'courseid = ? AND (LOWER(idnumber) = ? OR LOWER(itemname) = ?)',
-                [$courseid, $key, $key],
+                'courseid = ? AND LOWER(idnumber) = ?',
+                [$courseid, $key],
                 '',
                 'id, idnumber, itemname'
             );
 
-            if (!$items) {
+            $item = null;
+            if ($items_by_idnumber && count($items_by_idnumber) === 1) {
+                $item = reset($items_by_idnumber);
+            } else if ($items_by_idnumber && count($items_by_idnumber) > 1) {
+                $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple grade items share this idnumber).';
                 continue;
             }
 
-            $item = reset($items);
             if (!$item) {
-                continue;
+                $items_by_name = $DB->get_records_select(
+                    'grade_items',
+                    'courseid = ? AND LOWER(itemname) = ?',
+                    [$courseid, $key],
+                    '',
+                    'id, idnumber, itemname'
+                );
+
+                if (!$items_by_name) {
+                    $errors[] = 'Reference [' . $ref . '] does not match any grade item idnumber or item name.';
+                    continue;
+                }
+
+                if (count($items_by_name) > 1) {
+                    $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple grade items share this item name).';
+                    continue;
+                }
+
+                $item = reset($items_by_name);
+                $warnings[] = 'Reference [' . $ref . '] resolved by item name. Prefer using exact idnumber references.';
             }
 
             $idnumber = trim((string)($item->idnumber ?? ''));
@@ -2629,6 +2843,7 @@ class cria
                 $item->idnumber = $candidate;
                 $DB->update_record('grade_items', $item);
                 $idnumber = $candidate;
+                $warnings[] = 'Reference [' . $ref . '] had no idnumber; generated idnumber [[' . $idnumber . ']] for stable formula resolution.';
             }
 
             $resolved[$key] = $idnumber;
@@ -2648,7 +2863,11 @@ class cria
             $text
         );
 
-        return is_string($converted) ? $converted : $text;
+        return [
+            'formula' => is_string($converted) ? $converted : $text,
+            'warnings' => $warnings,
+            'errors' => $errors,
+        ];
     }
 
     private static function build_formula_idnumber(string $value): string
@@ -2686,7 +2905,20 @@ class cria
                     continue;
                 }
 
-                $resolved = self::resolve_moodle_formula($courseid, $formula);
+                $resolved_data = self::resolve_moodle_formula($courseid, $formula);
+                $resolved = trim((string)($resolved_data['formula'] ?? ''));
+                $resolver_warnings = is_array($resolved_data['warnings'] ?? null) ? $resolved_data['warnings'] : [];
+                $resolver_errors = is_array($resolved_data['errors'] ?? null) ? $resolved_data['errors'] : [];
+
+                if (!empty($resolver_errors)) {
+                    $warnings[] = '⚠ Formula was not applied for category ' . $key . ': ' . implode(' ', $resolver_errors);
+                    continue;
+                }
+
+                foreach ($resolver_warnings as $w) {
+                    $warnings[] = '⚠ Formula note for category ' . $key . ': ' . $w;
+                }
+
                 if (method_exists($gi, 'set_calculation')) {
                     $gi->set_calculation($resolved, null);
                 } else {

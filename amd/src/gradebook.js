@@ -18,10 +18,69 @@ let selectCategoryLabel = 'Select a category…';
 let missingCategoryErrorLabel = 'Please pick a category for every row (or set it to Not graded).';
 
 let currentCourseId = 0;
+let promptHistory = [];
+let promptHistoryIndex = -1;
+let promptHistoryDraft = '';
 
 const el = (id) => document.getElementById(id);
 
 const getChatMessages = () => el('gradebook-chat-messages');
+
+const focusPromptInput = () => {
+    const input = el('block-ai-assistant-gradebook-input');
+    if (!input) {
+        return;
+    }
+    setTimeout(() => {
+        input.focus();
+    }, 0);
+};
+
+const rememberPrompt = (prompt) => {
+    const text = String(prompt || '').trim();
+    if (!text) {
+        return;
+    }
+    const last = promptHistory.length > 0 ? promptHistory[promptHistory.length - 1] : null;
+    if (last !== text) {
+        promptHistory.push(text);
+    }
+    promptHistoryIndex = -1;
+    promptHistoryDraft = '';
+};
+
+const navigatePromptHistory = (direction) => {
+    const input = el('block-ai-assistant-gradebook-input');
+    if (!input || promptHistory.length < 1) {
+        return;
+    }
+
+    if (direction === 'up') {
+        if (promptHistoryIndex === -1) {
+            promptHistoryDraft = String(input.value || '');
+            promptHistoryIndex = promptHistory.length - 1;
+        } else if (promptHistoryIndex > 0) {
+            promptHistoryIndex -= 1;
+        }
+        input.value = promptHistory[promptHistoryIndex] || '';
+    } else if (direction === 'down') {
+        if (promptHistoryIndex === -1) {
+            return;
+        }
+        if (promptHistoryIndex < promptHistory.length - 1) {
+            promptHistoryIndex += 1;
+            input.value = promptHistory[promptHistoryIndex] || '';
+        } else {
+            promptHistoryIndex = -1;
+            input.value = promptHistoryDraft || '';
+        }
+    }
+
+    const cursor = input.value.length;
+    if (input.setSelectionRange) {
+        input.setSelectionRange(cursor, cursor);
+    }
+};
 
 const getCourseId = () => {
     if (currentCourseId > 0) {
@@ -676,20 +735,36 @@ const mappingToConfirmedRows = (mapping) => {
     return activities.map((item) => {
         const name = item.activity_name || item.name || item.module_name || '';
         const module = item.module || item.modname || item.activity_type || item.type || '';
+        const gradeItemId = item.grade_item_id != null
+            ? item.grade_item_id
+            : (item.gradeitemid != null ? item.gradeitemid : null);
+        const gradeItemType = item.grade_item_type || item.itemtype || '';
+        const gradeItemName = item.grade_item_name || item.itemname || name;
+        const gradeItemIdnumber = item.grade_item_idnumber || item.idnumber || '';
+        const iteminstance = item.iteminstance != null ? item.iteminstance : null;
         const confirmed = item.confirmed_category && String(item.confirmed_category).trim().length > 0
             ? String(item.confirmed_category).trim()
             : '';
         const suggested = !confirmed && item.suggested_category && String(item.suggested_category).trim().length > 0
             ? String(item.suggested_category).trim()
             : '';
+        const moodleCmid = item.moodle_cmid != null
+            ? item.moodle_cmid
+            : (item.cmid != null ? item.cmid : null);
         return {
-            moodle_cmid: item.moodle_cmid != null ? item.moodle_cmid : (item.cmid != null ? item.cmid : item.id),
+            moodle_cmid: moodleCmid,
             activity_name: name,
             module: module,
-            category: confirmed,
+            itemmodule: module,
+            iteminstance: iteminstance,
+            grade_item_id: gradeItemId,
+            grade_item_type: gradeItemType,
+            grade_item_name: gradeItemName,
+            grade_item_idnumber: gradeItemIdnumber,
+            category: confirmed || suggested,
             suggested_category: suggested
         };
-    }).filter((item) => item.moodle_cmid != null);
+    }).filter((item) => item.grade_item_id != null);
 };
 
 const normalizePrompt = (prompt) => {
@@ -1460,7 +1535,9 @@ const sendPrompt = async () => {
 
     await withRequestLock(async () => {
         appendMessage(getChatMessages(), prepared.displayText, true, false);
+        rememberPrompt(typed);
         input.value = '';
+        focusPromptInput();
 
         await ensureSession();
 
@@ -1499,6 +1576,7 @@ const sendPrompt = async () => {
             if (indicator) {
                 indicator.remove();
             }
+            focusPromptInput();
         }
     });
 };
@@ -1685,8 +1763,15 @@ const finalizeGradebook = async () => {
             return;
         }
 
-        const gradedRows = confirmed.filter((item) => !isNotGraded(item.category))
-            .map((item) => ({moodle_cmid: item.moodle_cmid, category: item.category}));
+        const gradedRows = confirmed
+            .filter((item) => !isNotGraded(item.category))
+            .map((item) => ({
+                grade_item_id: item.grade_item_id,
+                category: item.category,
+                activity_name: item.activity_name || '',
+                moodle_cmid: item.moodle_cmid != null ? item.moodle_cmid : null,
+            }))
+            .filter((item) => item.grade_item_id != null);
         if (gradedRows.length < 1) {
             const msg = 'Every row is set to "Not graded" — nothing would be added to the gradebook. ' +
                 'Pick a real category for at least one activity.';
@@ -1945,6 +2030,16 @@ export const init = (courseId) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             guardedAction(sendPrompt)();
+            return;
+        }
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            navigatePromptHistory('up');
+            return;
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            navigatePromptHistory('down');
         }
     });
 

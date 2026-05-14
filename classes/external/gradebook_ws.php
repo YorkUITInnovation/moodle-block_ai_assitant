@@ -235,7 +235,7 @@ class block_ai_assistant_gradebook_ws extends external_api
             array(
                 'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
                 'session_id' => new external_value(PARAM_RAW, 'Gradebook session id', VALUE_REQUIRED),
-                'confirmed_mapping_json' => new external_value(PARAM_RAW, 'JSON array of {moodle_cmid, category}', VALUE_REQUIRED),
+                'confirmed_mapping_json' => new external_value(PARAM_RAW, 'JSON array of mapping rows: {grade_item_id, activity_name, moodle_cmid, category}', VALUE_REQUIRED),
             )
         );
     }
