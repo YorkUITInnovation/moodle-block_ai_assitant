@@ -8,6 +8,8 @@ const DEFAULT_CATEGORIES = ['Assignments', 'Quizzes', 'Labs', 'Exams', 'Projects
 let sessionInitPromise = null;
 let requestInFlight = false;
 let proposalCategories = [];
+let proposalPanelSyncPromise = null;
+let queuedSystemMessages = [];
 let latestProposalWeightCheck = {known: false, total: null, valid: true};
 let lastKnownStateTimemodified = 0;
 let pendingServerSave = null;
@@ -174,11 +176,14 @@ const resolveNextActionStage = (phase) => {
     if (['PROPOSAL', 'PROPOSED'].includes(phaseUpper)) {
         return 'accept';
     }
+    if (phaseUpper === 'REFINEMENT') {
+        return 'proposal';
+    }
     if (['ACCEPTED', 'MAPPING', 'MAPPED', 'READY_TO_FINALIZE'].includes(phaseUpper)) {
         return 'finalize';
     }
     if (['COMPLETED', 'FINALIZED'].includes(phaseUpper)) {
-        return null;
+        return 'finalize';
     }
     return null;
 };
@@ -186,10 +191,16 @@ const resolveNextActionStage = (phase) => {
 const updateActionStageHighlight = (phase) => {
     const buttons = document.querySelectorAll('[data-stage]');
     const activeStage = resolveNextActionStage(phase);
+    const phaseUpper = String(phase || '').toUpperCase();
+    const completedFinalize = activeStage === 'finalize' && ['COMPLETED', 'FINALIZED'].includes(phaseUpper);
     buttons.forEach((button) => {
         button.classList.remove('gradebook-action-active');
+        button.classList.remove('gradebook-action-complete');
         if (button.getAttribute('data-stage') === activeStage) {
             button.classList.add('gradebook-action-active');
+            if (completedFinalize) {
+                button.classList.add('gradebook-action-complete');
+            }
         }
     });
 };
@@ -267,13 +278,21 @@ const getExcelFormulaInput = () => {
     return String(node ? (node.value || '') : '').trim();
 };
 
+const clearExcelFormulaInput = () => {
+    const node = el('gradebook-excel-formula');
+    if (node) {
+        node.value = '';
+    }
+};
+
 const buildPromptWithFormula = (typedPrompt) => {
     const typed = String(typedPrompt || '').trim();
     const formula = getExcelFormulaInput();
     if (!formula) {
         return {
             displayText: typed,
-            prompt: normalizePrompt(typed)
+            prompt: normalizePrompt(typed),
+            usedFormulaInput: false
         };
     }
 
@@ -281,22 +300,31 @@ const buildPromptWithFormula = (typedPrompt) => {
         const formulaOnly = `Use this formula for grade calculation: ${formula}`;
         return {
             displayText: formulaOnly,
-            prompt: normalizePrompt(formulaOnly)
+            prompt: normalizePrompt(formulaOnly),
+            usedFormulaInput: true
         };
     }
 
     const lower = typed.toLowerCase();
-    if (lower.includes('formula') || typed.includes('[') || typed.includes('=')) {
+    const looksLikeFormulaIntent =
+        lower.includes('formula') ||
+        lower.includes('calculation') ||
+        typed.includes('[[') ||
+        typed.startsWith('=');
+
+    if (looksLikeFormulaIntent) {
         return {
-            displayText: typed,
-            prompt: normalizePrompt(typed)
+            displayText: `${typed}\nUse this formula for grade calculation: ${formula}`,
+            prompt: normalizePrompt(`${typed}\nUse this formula for grade calculation: ${formula}`),
+            usedFormulaInput: true
         };
     }
 
-    const combined = `${typed}\nUse this formula for grade calculation: ${formula}`;
+    // For non-formula prompts, ignore stale advanced-formula input to avoid accidental context pollution.
     return {
         displayText: typed,
-        prompt: normalizePrompt(combined)
+        prompt: normalizePrompt(typed),
+        usedFormulaInput: false
     };
 };
 
@@ -385,6 +413,62 @@ const appendSystemMessage = (text) => {
     appendMessage(getChatMessages(), text, false, false);
 };
 
+const waitForDomSettle = () => new Promise((resolve) => {
+    if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+        setTimeout(resolve, 0);
+        return;
+    }
+    window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+            resolve();
+        });
+    });
+});
+
+const flushQueuedSystemMessages = () => {
+    if (proposalPanelSyncPromise || queuedSystemMessages.length < 1) {
+        return;
+    }
+    const queued = queuedSystemMessages.slice();
+    queuedSystemMessages = [];
+    queued.forEach((msg) => appendSystemMessage(msg));
+};
+
+const appendSystemMessageSafely = (text) => {
+    if (proposalPanelSyncPromise) {
+        queuedSystemMessages.push(String(text || ''));
+        return;
+    }
+    appendSystemMessage(text);
+};
+
+const runWithinProposalPanelSync = async (action) => {
+    const syncPromise = (async () => {
+        await action();
+        await waitForDomSettle();
+    })();
+
+    proposalPanelSyncPromise = syncPromise;
+    try {
+        await syncPromise;
+    } finally {
+        if (proposalPanelSyncPromise === syncPromise) {
+            proposalPanelSyncPromise = null;
+        }
+        flushQueuedSystemMessages();
+    }
+};
+
+const waitForProposalPanelSync = async () => {
+    if (!proposalPanelSyncPromise) {
+        return;
+    }
+    try {
+        await proposalPanelSyncPromise;
+    } catch (e) {
+    }
+};
+
 const clearChatUI = () => {
     const chatMessages = getChatMessages();
     if (chatMessages) {
@@ -414,12 +498,57 @@ const restoreChatHistory = () => {
 
 const isNotGraded = (category) => String(category || '').trim() === NOT_GRADED;
 
+const isUncategorizedToken = (category) => {
+    const normalized = String(category || '').trim().toLowerCase();
+    return normalized === '__uncategorized__' || normalized === 'uncategorized';
+};
+
+const pickFallbackCategory = () => {
+    const source = proposalCategories.length > 0 ? proposalCategories : DEFAULT_CATEGORIES;
+    if (!Array.isArray(source) || source.length < 1) {
+        return 'Assignments';
+    }
+
+    const preferred = source.find((cat) => String(cat || '').trim().toLowerCase() === 'assignments');
+    if (preferred) {
+        return preferred;
+    }
+
+    return String(source[0] || 'Assignments').trim() || 'Assignments';
+};
+
+const normalizeMappedCategory = (category) => {
+    const raw = String(category || '').trim();
+    if (!raw) {
+        return '';
+    }
+    if (isNotGraded(raw)) {
+        return NOT_GRADED;
+    }
+    if (isUncategorizedToken(raw)) {
+        return pickFallbackCategory();
+    }
+    return raw;
+};
+
 const rowHasCategory = (item) => item && String(item.category || '').trim().length > 0;
 
 const getConfirmedMapping = () => {
     const node = el('gradebook-confirmed-mapping');
     try {
-        return JSON.parse((node ? node.value : '') || '[]');
+        const parsed = JSON.parse((node ? node.value : '') || '[]');
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+        return parsed.map((item) => {
+            if (!item || typeof item !== 'object') {
+                return item;
+            }
+            return {
+                ...item,
+                category: normalizeMappedCategory(item.category)
+            };
+        });
     } catch (e) {
         return [];
     }
@@ -510,7 +639,16 @@ const proposalTotalAndValid = (proposal) => {
     if (!proposal || !Array.isArray(proposal.categories)) {
         return {total: null, valid: true};
     }
-    const total = proposal.categories.reduce((sum, c) => sum + Number(c.weight || 0), 0);
+    const method = Number(proposal.aggregation_method);
+    const requiresStrictWeight = method === 10 || method === 11 || method === 12;
+    if (!requiresStrictWeight) {
+        return {total: null, valid: true};
+    }
+
+    const categories = method === 12
+        ? proposal.categories.filter((c) => !Boolean(c && c.extra_credit))
+        : proposal.categories;
+    const total = categories.reduce((sum, c) => sum + Number(c.weight || 0), 0);
     const valid = Math.abs(total - 100.0) <= 0.1;
     return {total, valid};
 };
@@ -555,6 +693,38 @@ const setUiBusy = (isBusy) => {
     if (!isBusy) {
         setFinalizeEnabled(true);
     }
+};
+
+const clearBusyWaitIndicator = () => {
+    const existing = document.getElementById('gradebook-busy-wait-indicator');
+    if (existing) {
+        existing.remove();
+    }
+};
+
+const showBusyWaitIndicator = async () => {
+    if (document.getElementById('gradebook-busy-wait-indicator')) {
+        return;
+    }
+    const chat = getChatMessages();
+    if (!chat) {
+        return;
+    }
+    let loadingText = 'Please wait, still processing your previous request...';
+    try {
+        loadingText = await Str.get_string('gradebook_loading', 'block_ai_assistant');
+    } catch (e) {
+    }
+    const waitDiv = document.createElement('div');
+    waitDiv.className = 'chat-message bot-message';
+    waitDiv.id = 'gradebook-busy-wait-indicator';
+    waitDiv.innerHTML = `
+        <div class="message-content">
+            <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
+            <span>${loadingText}</span>
+        </div>`;
+    chat.appendChild(waitDiv);
+    chat.scrollTop = chat.scrollHeight;
 };
 
 const isWeightGateBlocked = () => latestProposalWeightCheck.known && !latestProposalWeightCheck.valid;
@@ -748,6 +918,7 @@ const mappingToConfirmedRows = (mapping) => {
         const suggested = !confirmed && item.suggested_category && String(item.suggested_category).trim().length > 0
             ? String(item.suggested_category).trim()
             : '';
+        const normalizedCategory = normalizeMappedCategory(confirmed || suggested);
         const moodleCmid = item.moodle_cmid != null
             ? item.moodle_cmid
             : (item.cmid != null ? item.cmid : null);
@@ -761,7 +932,7 @@ const mappingToConfirmedRows = (mapping) => {
             grade_item_type: gradeItemType,
             grade_item_name: gradeItemName,
             grade_item_idnumber: gradeItemIdnumber,
-            category: confirmed || suggested,
+            category: normalizedCategory,
             suggested_category: suggested
         };
     }).filter((item) => item.grade_item_id != null);
@@ -882,12 +1053,22 @@ const collectStateSnapshot = () => {
     const phaseNode = el('gradebook-phase-badge');
     const phaseText = phaseNode ? phaseNode.textContent.trim() : '';
     const mappingNode = el('gradebook-confirmed-mapping');
+    const normalizedMapping = (() => {
+        if (!mappingNode) {
+            return null;
+        }
+        const rows = getConfirmedMapping();
+        if (!Array.isArray(rows) || rows.length < 1) {
+            return '';
+        }
+        return JSON.stringify(rows, null, 2);
+    })();
 
     return {
         session_id: (sid && sid !== 'starting…') ? sid : null,
         phase: (phaseText && phaseText !== '—') ? phaseText : null,
         chat_history_json: JSON.stringify(loadJson(getStorageKey('chat_history'), [])),
-        confirmed_mapping_json: mappingNode ? String(mappingNode.value || '') : null,
+        confirmed_mapping_json: normalizedMapping,
         result_json: JSON.stringify(loadJson(getStorageKey('result'), null))
     };
 };
@@ -943,7 +1124,9 @@ const serverSaveState = (overrides = {}) => {
                 const serverLen = stateHistoryLength(response);
                 const localLen = localHistoryLength();
                 if (serverLen > localLen) {
-                    hydrateFromServerState(response);
+                    if (!requestInFlight && !proposalPanelSyncPromise) {
+                        hydrateFromServerState(response);
+                    }
                 } else if (!force) {
                     setTimeout(() => { serverSaveState({force: true}); }, 0);
                 }
@@ -1169,6 +1352,7 @@ const buildSummaryHtml = (result) => {
     if (!parts.length) {
         parts.push('<div>Gradebook finalized.</div>');
     }
+    parts.push('<div class="mt-2 text-success"><i class="fa fa-pen"></i> Edit mode: send a new prompt to change this setup, then regenerate mapping and finalize again.</div>');
     return parts.join('');
 };
 
@@ -1475,12 +1659,21 @@ const withRequestLock = async (action) => {
         return;
     }
     requestInFlight = true;
+    const previousSuspendAutoSave = suspendAutoSave;
+    suspendAutoSave = true;
     setUiBusy(true);
     try {
+        await waitForProposalPanelSync();
         await action();
+        await waitForProposalPanelSync();
     } finally {
+        suspendAutoSave = previousSuspendAutoSave;
         requestInFlight = false;
+        clearBusyWaitIndicator();
         setUiBusy(false);
+        if (!suspendAutoSave) {
+            scheduleServerSave();
+        }
     }
 };
 
@@ -1523,20 +1716,31 @@ const uploadViaFallbackEndpoint = async ({courseid, session_id, filename, filety
     return parseResponse(text);
 };
 
-const sendPrompt = async () => {
+const sendPreparedPrompt = async ({typed, prepared}) => {
     const input = el('block-ai-assistant-gradebook-input');
-    const typed = String(input.value || '').trim();
-    const formula = getExcelFormulaInput();
-    if (!typed && !formula) {
-        return;
-    }
-    const prepared = buildPromptWithFormula(typed);
     const normalized = prepared.prompt;
 
     await withRequestLock(async () => {
         appendMessage(getChatMessages(), prepared.displayText, true, false);
         rememberPrompt(typed);
         input.value = '';
+        if (prepared.usedFormulaInput) {
+            clearExcelFormulaInput();
+        }
+
+        // Stale/invalid JSON typed in Advanced Options should not persist into normal chat turns.
+        const mappingNode = el('gradebook-confirmed-mapping');
+        if (mappingNode) {
+            const rawMapping = String(mappingNode.value || '').trim();
+            if (rawMapping) {
+                const confirmedRows = getConfirmedMapping();
+                if (!Array.isArray(confirmedRows) || confirmedRows.length < 1) {
+                    mappingNode.value = '';
+                    syncMappingUIFromJson();
+                    clearMappingError();
+                }
+            }
+        }
         focusPromptInput();
 
         await ensureSession();
@@ -1557,6 +1761,7 @@ const sendPrompt = async () => {
         getChatMessages().appendChild(loadingDiv);
 
         try {
+            const previousPhase = String(loadJson(getStorageKey('phase'), '') || '').toUpperCase();
             const parsed = await callWithSessionRetry(async (sid) => {
                 const raw = await callWs('block_ai_assistant_gradebook_chat', {
                     courseid: getCourseId(),
@@ -1565,11 +1770,51 @@ const sendPrompt = async () => {
                 });
                 return parseResponse(raw);
             });
-            setPhase(parsed.phase || parsed.state || '-');
-            appendSystemMessage(parsed.reply || parsed.message || 'Updated.');
-            if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
-                applyProposalWeightGate(parsed.proposal);
-            }
+            await runWithinProposalPanelSync(async () => {
+                setPhase(parsed.phase || parsed.state || '-');
+                const currentPhase = String(parsed.phase || parsed.state || '-').toUpperCase();
+                const movedBackToProposalFlow = ['INTAKE', 'ANALYSIS', 'PROPOSAL', 'REFINEMENT'].includes(currentPhase);
+                const proposalChanged = parsed.proposal_changed === true;
+                const enteredEditFromFinalized =
+                    (previousPhase === 'COMPLETED' || previousPhase === 'ACCEPTED') && currentPhase === 'REFINEMENT';
+
+                if (enteredEditFromFinalized) {
+                    const mappingNode = el('gradebook-confirmed-mapping');
+                    if (mappingNode) {
+                        mappingNode.value = '';
+                    }
+                    syncMappingUIFromJson();
+                    removeKey(getStorageKey('result'));
+                    renderResultPanel(null);
+                    appendSystemMessageSafely('Edit mode enabled. Your previous finalization remains as baseline; regenerate mapping and click Finalize again to apply your updated override.');
+                }
+
+                if (movedBackToProposalFlow) {
+                    removeKey(getStorageKey('result'));
+                    renderResultPanel(null);
+                }
+
+                appendSystemMessageSafely(parsed.reply || parsed.message || 'Updated.');
+                if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
+                    const cats = extractProposalCategories(parsed.proposal);
+                    if (cats.length) {
+                        setProposalCategories(cats);
+                    }
+
+                    const shouldRenderProposalSummary = movedBackToProposalFlow && (proposalChanged || enteredEditFromFinalized);
+                    if (shouldRenderProposalSummary) {
+                        const lines = summarizeProposalCategories(parsed.proposal);
+                        appendSystemMessageSafely(`Updated proposal: ${lines}`);
+
+                        const effects = extractProposalEffects(parsed.proposal);
+                        if (effects.length) {
+                            appendSystemMessageSafely(`Effects (newest first): ${effects.slice(0, 6).join(' | ')}`);
+                        }
+                    }
+
+                    applyProposalWeightGate(parsed.proposal);
+                }
+            });
             await serverSaveState();
         } finally {
             const indicator = document.getElementById('gradebook-loading-indicator');
@@ -1581,48 +1826,77 @@ const sendPrompt = async () => {
     });
 };
 
+const sendPrompt = async () => {
+    const input = el('block-ai-assistant-gradebook-input');
+    const typed = String(input.value || '').trim();
+    const formula = getExcelFormulaInput();
+    if (!typed && !formula) {
+        return;
+    }
+
+    const prepared = buildPromptWithFormula(typed);
+    const payload = {typed, prepared};
+
+    if (requestInFlight) {
+        await showBusyWaitIndicator();
+        focusPromptInput();
+        return;
+    }
+
+    await sendPreparedPrompt(payload);
+};
+
+const loadProposalPanel = async (announceLoaded = false) => {
+    const parsed = await callWithSessionRetry(async (sid) => {
+        const raw = await callWs('block_ai_assistant_gradebook_proposal', {
+            courseid: getCourseId(),
+            session_id: sid
+        });
+        return parseResponse(raw);
+    });
+
+    const proposal = parsed.proposal || null;
+    setPhase(parsed.phase || parsed.state || '-');
+    if (announceLoaded) {
+        appendSystemMessageSafely('Proposal loaded.');
+    }
+
+    if (proposal && Array.isArray(proposal.categories)) {
+        const cats = extractProposalCategories(proposal);
+        if (cats.length) {
+            setProposalCategories(cats);
+        }
+
+        const lines = summarizeProposalCategories(proposal);
+        appendSystemMessageSafely(`Current proposal: ${lines}`);
+
+        const effects = extractProposalEffects(proposal);
+        if (effects.length) {
+            const recent = effects.slice(0, 6).join(' | ');
+            appendSystemMessageSafely(`Effects (newest first): ${recent}`);
+        }
+
+        const checks = extractProposalChecks(proposal);
+        if (checks.length) {
+            const checkText = checks.slice(-3).join(' | ');
+            appendSystemMessageSafely(`Checks: ${checkText}`);
+        }
+
+        applyProposalWeightGate(proposal);
+    } else {
+        appendSystemMessageSafely('No proposal yet. Send a prompt to generate one.');
+        setAcceptEnabled(false);
+    }
+
+    return parsed;
+};
+
 const fetchProposal = async () => {
     await withRequestLock(async () => {
         await ensureSession();
-
-        const parsed = await callWithSessionRetry(async (sid) => {
-            const raw = await callWs('block_ai_assistant_gradebook_proposal', {
-                courseid: getCourseId(),
-                session_id: sid
-            });
-            return parseResponse(raw);
+        await runWithinProposalPanelSync(async () => {
+            await loadProposalPanel(true);
         });
-
-        const proposal = parsed.proposal || null;
-        setPhase(parsed.phase || parsed.state || '-');
-        appendSystemMessage('Proposal loaded.');
-
-        if (proposal && Array.isArray(proposal.categories)) {
-            const cats = extractProposalCategories(proposal);
-            if (cats.length) {
-                setProposalCategories(cats);
-            }
-
-            const lines = summarizeProposalCategories(proposal);
-            appendSystemMessage(`Current proposal: ${lines}`);
-
-            const effects = extractProposalEffects(proposal);
-            if (effects.length) {
-                const recent = effects.slice(0, 6).join(' | ');
-                appendSystemMessage(`Effects (newest first): ${recent}`);
-            }
-
-            const checks = extractProposalChecks(proposal);
-            if (checks.length) {
-                const checkText = checks.slice(-3).join(' | ');
-                appendSystemMessage(`Checks: ${checkText}`);
-            }
-
-            applyProposalWeightGate(proposal);
-        } else {
-            appendSystemMessage('No proposal yet. Send a prompt to generate one.');
-            setAcceptEnabled(false);
-        }
         await serverSaveState();
     });
 };
@@ -1791,12 +2065,40 @@ const finalizeGradebook = async () => {
             return parseResponse(raw);
         });
 
-        setPhase(parsed.phase || parsed.state || 'COMPLETED');
-        appendSystemMessage(parsed.message || 'Gradebook finalized.');
+        const finalizePhase = String(parsed.phase || parsed.state || '').toUpperCase();
+        const finalizeCompleted = ['COMPLETED', 'FINALIZED'].includes(finalizePhase);
 
-        saveJson(getStorageKey('result'), parsed);
-        renderResultPanel(parsed);
-        await serverSaveState({result_json: JSON.stringify(parsed)});
+        await runWithinProposalPanelSync(async () => {
+            setPhase(parsed.phase || parsed.state || 'COMPLETED');
+            if (finalizeCompleted) {
+                saveJson(getStorageKey('result'), parsed);
+                renderResultPanel(parsed);
+            } else {
+                removeKey(getStorageKey('result'));
+                renderResultPanel(null);
+            }
+
+            try {
+                await loadProposalPanel(false);
+            } catch (e) {
+                if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
+                    const cats = extractProposalCategories(parsed.proposal);
+                    if (cats.length) {
+                        setProposalCategories(cats);
+                    }
+                    applyProposalWeightGate(parsed.proposal);
+                }
+            }
+        });
+
+        appendSystemMessageSafely(parsed.message || 'Gradebook finalized.');
+        if (finalizeCompleted) {
+            appendSystemMessageSafely('You can continue editing. If you change anything, regenerate mapping and finalize again to override the current setup.');
+            await serverSaveState({result_json: JSON.stringify(parsed)});
+        } else {
+            appendSystemMessageSafely('Finalize is blocked. Fix the validation issues above (or remove the conflicting rule/formula), then click Generate mapping and Finalize again.');
+            await serverSaveState({result_json: JSON.stringify(null)});
+        }
     });
 };
 

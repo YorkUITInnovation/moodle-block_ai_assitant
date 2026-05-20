@@ -1596,6 +1596,34 @@ class cria
                     ];
                 }
             }
+
+            // Patch: enumerate all files in section 0 and add to moodle_resources if not already present
+            $context = \context_course::instance($courseid);
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'course', 'section', 0, 'filename', false);
+            foreach ($files as $file) {
+                if ($file->get_filesize() <= 0 || $file->is_directory()) {
+                    continue;
+                }
+                $filename = (string)$file->get_filename();
+                $already = false;
+                foreach ($resources as $r) {
+                    if (isset($r['name']) && $r['name'] === $filename) {
+                        $already = true;
+                        break;
+                    }
+                }
+                if (!$already) {
+                    $resources[] = [
+                        'cmid' => null,
+                        'type' => 'file',
+                        'name' => $filename,
+                        'section' => '0',
+                        'content_url' => '',
+                        'content_preview' => 'File in section 0',
+                    ];
+                }
+            }
         } catch (\Throwable $e) {
             // Fallback: leave arrays empty; backend will handle intake mode.
         }
@@ -1623,27 +1651,8 @@ class cria
             // Ignore file area read failures; keep best-effort discovery.
         }
 
-        // Include additional supporting documents uploaded from gradebook chat.
-        try {
-            $context = \context_course::instance($courseid);
-            $fs = get_file_storage();
-            $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'gradebookdocs', $courseid, 'itemid', false);
-            foreach ($files as $file) {
-                if ($file->get_filesize() <= 0 || $file->is_directory()) {
-                    continue;
-                }
-                $resources[] = [
-                    'cmid' => null,
-                    'type' => 'file',
-                    'name' => (string)$file->get_filename(),
-                    'section' => '0',
-                    'content_url' => '',
-                    'content_preview' => 'Supporting document uploaded in gradebook chat.',
-                ];
-            }
-        } catch (\Throwable $e) {
-            // Ignore file area read failures; keep best-effort discovery.
-        }
+        // Intentionally do not include gradebook chat uploads from previous sessions
+        // to avoid stale context leaking into new gradebook sessions.
 
         // Include block-level syllabus metadata as a final signal.
         try {
@@ -1726,6 +1735,11 @@ class cria
     {
         $session_id = trim($session_id);
         $hascoursechanges = $courseid > 0 ? self::course_has_ai_gradebook($courseid) : false;
+        $localuploadedfilesremoved = 0;
+
+        if ($courseid > 0) {
+            $localuploadedfilesremoved = self::remove_gradebook_chat_uploaded_files($courseid);
+        }
 
         $method = 'cria_gradebook_delete';
         $data = array(
@@ -1770,6 +1784,7 @@ class cria
             [
                 'success' => true,
                 'existed' => !$backendnotfound,
+                'local_gradebook_files_removed' => $localuploadedfilesremoved,
                 'grade_setup_cleaned' => (bool)($cleanup_result['cleaned'] ?? false),
                 'grade_setup_message' => $hascoursechanges
                     ? (string)($cleanup_result['message'] ?? '')
@@ -2191,7 +2206,31 @@ class cria
         if ($courseid > 0) {
             try {
                 $response = json_decode($response_json, true);
-                if (is_array($response) && isset($response['proposal'])) {
+                if (is_array($response)) {
+                    $phase = strtoupper(trim((string)($response['phase'] ?? '')));
+                    $iscompleted = ($phase === 'COMPLETED');
+
+                    if (!$iscompleted) {
+                        $response['message'] = trim((string)($response['message'] ?? 'Finalize blocked by validation.'))
+                            . ' No Moodle gradebook changes were applied.';
+                        $response['data'] = array_merge(
+                            is_array($response['data'] ?? null) ? $response['data'] : [],
+                            ['grade_setup_skipped' => true]
+                        );
+                        $response_json = json_encode($response);
+                        return $response_json;
+                    }
+
+                    if (!isset($response['proposal'])) {
+                        return $response_json;
+                    }
+
+                    // Treat repeated finalize as override, not append: clear prior AI tree first.
+                    $precleanup = self::remove_ai_gradebook_from_course($courseid);
+                    if (!empty($precleanup['message']) && empty($precleanup['cleaned'])) {
+                        $applywarnings[] = (string)$precleanup['message'];
+                    }
+
                     $localwarnings = self::apply_gradebook_to_course($courseid, $response['proposal'], $normalized_mapping);
                     if (!empty($localwarnings)) {
                         $applywarnings = array_merge($applywarnings, $localwarnings);
@@ -2472,7 +2511,7 @@ class cria
                 $sub_obj = self::get_or_create_grade_category(
                     $courseid,
                     $sub_name,
-                    $aggregation_method,
+                    (int)($sub['aggregation_method'] ?? $aggregation_method),
                     $cat_obj,
                     $sub_weight_fraction,
                     $sub_settings
@@ -2774,15 +2813,17 @@ class cria
         }
 
         $resolved = [];
+        $seenrefs = [];
         foreach ($matches as $m) {
             $ref = isset($m[1]) && $m[1] !== '' ? $m[1] : (isset($m[2]) ? $m[2] : '');
             if ($ref === '') {
                 continue;
             }
             $key = strtolower($ref);
-            if (isset($resolved[$key])) {
+            if (isset($seenrefs[$key])) {
                 continue;
             }
+            $seenrefs[$key] = true;
 
             $items_by_idnumber = $DB->get_records_select(
                 'grade_items',
@@ -2801,6 +2842,20 @@ class cria
             }
 
             if (!$item) {
+                // Accept direct numeric grade_item ids generated upstream.
+                if (ctype_digit($key)) {
+                    $item_by_id = $DB->get_record(
+                        'grade_items',
+                        ['courseid' => $courseid, 'id' => (int)$key],
+                        'id, idnumber, itemname'
+                    );
+                    if ($item_by_id) {
+                        $item = $item_by_id;
+                    }
+                }
+            }
+
+            if (!$item) {
                 $items_by_name = $DB->get_records_select(
                     'grade_items',
                     'courseid = ? AND LOWER(itemname) = ?',
@@ -2809,18 +2864,84 @@ class cria
                     'id, idnumber, itemname'
                 );
 
-                if (!$items_by_name) {
-                    $errors[] = 'Reference [' . $ref . '] does not match any grade item idnumber or item name.';
+                if ($items_by_name) {
+                    if (count($items_by_name) > 1) {
+                        $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple grade items share this item name).';
+                        continue;
+                    }
+
+                    $item = reset($items_by_name);
+                    $warnings[] = 'Reference [' . $ref . '] resolved by item name. Prefer using exact idnumber references.';
+                }
+            }
+
+            if (!$item) {
+                // Last-resort user-friendly fallback: unique partial item-name match
+                // (e.g., [final] -> "Final Exam") within this course.
+                $items_by_partial_name = $DB->get_records_select(
+                    'grade_items',
+                    'courseid = ? AND LOWER(itemname) LIKE ?',
+                    [$courseid, '%' . $key . '%'],
+                    '',
+                    'id, idnumber, itemname'
+                );
+
+                if ($items_by_partial_name && count($items_by_partial_name) === 1) {
+                    $item = reset($items_by_partial_name);
+                    $warnings[] = 'Reference [' . $ref . '] resolved by partial item name match. Prefer exact idnumber references.';
+                } else if ($items_by_partial_name && count($items_by_partial_name) > 1) {
+                    $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple grade items partially match this item name).';
                     continue;
                 }
+            }
 
-                if (count($items_by_name) > 1) {
-                    $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple grade items share this item name).';
-                    continue;
+            if (!$item) {
+                // Category-grade fallback: category grade_items may have NULL itemname,
+                // so resolve via grade_categories.fullname.
+                $category_exact = $DB->get_records_sql(
+                    "SELECT gi.id, gi.idnumber, gc.fullname AS itemname
+                       FROM {grade_items} gi
+                       JOIN {grade_categories} gc ON gc.id = gi.iteminstance
+                      WHERE gi.courseid = ?
+                        AND gi.itemtype = 'category'
+                        AND LOWER(gc.fullname) = ?",
+                    [$courseid, $key]
+                );
+
+                if ($category_exact) {
+                    if (count($category_exact) > 1) {
+                        $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple categories share this name).';
+                        continue;
+                    }
+                    $item = reset($category_exact);
+                    $warnings[] = 'Reference [' . $ref . '] resolved by category name. Prefer exact idnumber references.';
                 }
+            }
 
-                $item = reset($items_by_name);
-                $warnings[] = 'Reference [' . $ref . '] resolved by item name. Prefer using exact idnumber references.';
+            if (!$item) {
+                $category_partial = $DB->get_records_sql(
+                    "SELECT gi.id, gi.idnumber, gc.fullname AS itemname
+                       FROM {grade_items} gi
+                       JOIN {grade_categories} gc ON gc.id = gi.iteminstance
+                      WHERE gi.courseid = ?
+                        AND gi.itemtype = 'category'
+                        AND LOWER(gc.fullname) LIKE ?",
+                    [$courseid, '%' . $key . '%']
+                );
+
+                if ($category_partial) {
+                    if (count($category_partial) > 1) {
+                        $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple categories partially match this name).';
+                        continue;
+                    }
+                    $item = reset($category_partial);
+                    $warnings[] = 'Reference [' . $ref . '] resolved by partial category name match. Prefer exact idnumber references.';
+                }
+            }
+
+            if (!$item) {
+                $errors[] = 'Reference [' . $ref . '] does not match any grade item idnumber or item name.';
+                continue;
             }
 
             $idnumber = trim((string)($item->idnumber ?? ''));
@@ -2885,6 +3006,86 @@ class cria
     }
 
     /**
+     * Compact low-level formula resolution warnings into fewer user-facing lines.
+     *
+     * Example: combines
+     * - "Reference [midterm] resolved by category name..."
+     * - "Reference [midterm] had no idnumber; generated idnumber [[midterm]]..."
+     * into one concise note.
+     *
+     * @param array $warnings
+     * @return array
+     */
+    private static function compact_formula_resolution_warnings(array $warnings): array
+    {
+        $byref = [];
+        $other = [];
+
+        foreach ($warnings as $warning) {
+            $text = trim((string)$warning);
+            if ($text === '') {
+                continue;
+            }
+
+            if (!preg_match('/^Reference \[([^\]]+)\]\s+(.*)$/', $text, $m)) {
+                $other[] = $text;
+                continue;
+            }
+
+            $ref = trim((string)$m[1]);
+            $detail = trim((string)$m[2]);
+            if ($ref === '' || $detail === '') {
+                $other[] = $text;
+                continue;
+            }
+
+            $key = strtolower($ref);
+            if (!isset($byref[$key])) {
+                $byref[$key] = [
+                    'ref' => $ref,
+                    'resolved' => '',
+                    'generated' => '',
+                    'extras' => [],
+                ];
+            }
+
+            if (preg_match('/^resolved by .*?\.\s*Prefer exact idnumber references\.?$/i', $detail)) {
+                $byref[$key]['resolved'] = rtrim($detail, '.');
+                continue;
+            }
+
+            if (preg_match('/^had no idnumber; generated idnumber \[\[([A-Za-z0-9_]+)\]\] for stable formula resolution\.?$/i', $detail, $idm)) {
+                $byref[$key]['generated'] = (string)$idm[1];
+                continue;
+            }
+
+            $byref[$key]['extras'][] = rtrim($detail, '.');
+        }
+
+        $compact = [];
+        foreach ($byref as $entry) {
+            $parts = [];
+            if ($entry['resolved'] !== '') {
+                $parts[] = $entry['resolved'];
+            }
+            if ($entry['generated'] !== '') {
+                $parts[] = 'generated idnumber [[' . $entry['generated'] . ']] for stable formula resolution';
+            }
+            foreach ($entry['extras'] as $extra) {
+                if ($extra !== '') {
+                    $parts[] = $extra;
+                }
+            }
+
+            if (!empty($parts)) {
+                $compact[] = 'Reference [' . $entry['ref'] . ']: ' . implode('; ', $parts) . '.';
+            }
+        }
+
+        return array_merge($compact, $other);
+    }
+
+    /**
      * Apply calculation formulas to category total grade items.
      * Returns warning strings for any categories that could not be updated.
      */
@@ -2915,8 +3116,9 @@ class cria
                     continue;
                 }
 
-                foreach ($resolver_warnings as $w) {
-                    $warnings[] = '⚠ Formula note for category ' . $key . ': ' . $w;
+                $resolver_warnings = self::compact_formula_resolution_warnings($resolver_warnings);
+                if (!empty($resolver_warnings)) {
+                    $warnings[] = '⚠ Formula notes for category ' . $key . ': ' . implode(' ', $resolver_warnings);
                 }
 
                 if (method_exists($gi, 'set_calculation')) {
@@ -3026,7 +3228,7 @@ class cria
 
     private static function persist_gradebook_uploaded_file(int $courseid, string $filename, string $base64): void
     {
-        global $DB, $USER;
+        global $USER;
 
         if ($courseid <= 0 || trim($filename) === '' || trim($base64) === '') {
             return;
@@ -3034,17 +3236,7 @@ class cria
 
         $context = \context_course::instance($courseid);
         $fs = get_file_storage();
-
-        $is_syllabus = self::is_syllabus_like_filename($filename);
-        $filearea = $is_syllabus ? 'syllabus' : 'gradebookdocs';
-
-        // Replace existing syllabus file to keep one canonical syllabus in this area.
-        if ($is_syllabus) {
-            $existing = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $courseid, 'itemid', false);
-            foreach ($existing as $file) {
-                $file->delete();
-            }
-        }
+        $filearea = 'gradebookdocs';
 
         $file_record = [
             'contextid' => $context->id,
@@ -3061,9 +3253,29 @@ class cria
             $old->delete();
         }
         $fs->create_file_from_string($file_record, base64_decode($base64));
+    }
 
-        if ($is_syllabus) {
-            $DB->set_field('block_aia_settings', 'syllabus_document_name', $filename, ['courseid' => $courseid]);
+    private static function remove_gradebook_chat_uploaded_files(int $courseid): int
+    {
+        if ($courseid <= 0) {
+            return 0;
+        }
+
+        try {
+            $context = \context_course::instance($courseid);
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'gradebookdocs', $courseid, 'itemid', false);
+            $removed = 0;
+            foreach ($files as $file) {
+                if ($file->is_directory()) {
+                    continue;
+                }
+                $file->delete();
+                $removed += 1;
+            }
+            return $removed;
+        } catch (\Throwable $e) {
+            return 0;
         }
     }
 
