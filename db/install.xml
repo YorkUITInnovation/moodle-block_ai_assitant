@@ -159,9 +159,9 @@
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="session_id" TYPE="char" LENGTH="128" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="phase" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="chat_history_json" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON array of {role, text}"/>
-        <FIELD NAME="confirmed_mapping_json" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Latest confirmed mapping JSON"/>
-        <FIELD NAME="result_json" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Full Criabot finalize response (summary + content_mapping)"/>
+        <FIELD NAME="chat_history_json" TYPE="text" LENGTH="big" NOTNULL="false" SEQUENCE="false" COMMENT="JSON array of {role, text}"/>
+        <FIELD NAME="confirmed_mapping_json" TYPE="text" LENGTH="big" NOTNULL="false" SEQUENCE="false" COMMENT="Latest confirmed mapping JSON"/>
+        <FIELD NAME="result_json" TYPE="text" LENGTH="big" NOTNULL="false" SEQUENCE="false" COMMENT="Full Criabot finalize response (summary + content_mapping)"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>

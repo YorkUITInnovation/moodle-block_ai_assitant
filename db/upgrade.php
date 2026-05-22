@@ -234,6 +234,27 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2026042001, 'ai_assistant');
     }
 
+    if ($oldversion < 2026052102) {
+        $table = new xmldb_table('block_aia_gradebook_state');
+
+        $chatfield = new xmldb_field('chat_history_json', XMLDB_TYPE_TEXT, 'big', null, null, null, null);
+        if ($dbman->field_exists($table, $chatfield)) {
+            $dbman->change_field_type($table, $chatfield);
+        }
+
+        $mappingfield = new xmldb_field('confirmed_mapping_json', XMLDB_TYPE_TEXT, 'big', null, null, null, null);
+        if ($dbman->field_exists($table, $mappingfield)) {
+            $dbman->change_field_type($table, $mappingfield);
+        }
+
+        $resultfield = new xmldb_field('result_json', XMLDB_TYPE_TEXT, 'big', null, null, null, null);
+        if ($dbman->field_exists($table, $resultfield)) {
+            $dbman->change_field_type($table, $resultfield);
+        }
+
+        upgrade_block_savepoint(true, 2026052102, 'ai_assistant');
+    }
+
     return true;
 
 }

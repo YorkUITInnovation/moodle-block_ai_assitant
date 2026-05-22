@@ -5,6 +5,7 @@ import * as Str from 'core/str';
 const STORAGE_PREFIX = 'block_ai_assistant_gradebook';
 const NOT_GRADED = '__not_graded__';
 const DEFAULT_CATEGORIES = ['Assignments', 'Quizzes', 'Labs', 'Exams', 'Projects', 'Participation'];
+const MAX_LOCAL_CHAT_MESSAGES = 300;
 let sessionInitPromise = null;
 let requestInFlight = false;
 let proposalCategories = [];
@@ -15,6 +16,7 @@ let lastKnownStateTimemodified = 0;
 let pendingServerSave = null;
 let saveInFlight = Promise.resolve();
 let suspendAutoSave = false;
+let chatStorageTrimWarned = false;
 let notGradedLabel = '— Not graded —';
 let selectCategoryLabel = 'Select a category…';
 let missingCategoryErrorLabel = 'Please pick a category for every row (or set it to Not graded).';
@@ -140,6 +142,37 @@ const removeKey = (key) => {
     }
 };
 
+const persistChatHistoryLocal = (history) => {
+    const key = getStorageKey('chat_history');
+    if (!key) {
+        return false;
+    }
+
+    let candidate = Array.isArray(history) ? history.slice() : [];
+    if (candidate.length > MAX_LOCAL_CHAT_MESSAGES) {
+        // Keep most recent messages and drop oldest from the beginning.
+        candidate = candidate.slice(candidate.length - MAX_LOCAL_CHAT_MESSAGES);
+    }
+    while (candidate.length >= 0) {
+        try {
+            localStorage.setItem(key, JSON.stringify(candidate));
+            if (!chatStorageTrimWarned && candidate.length < (Array.isArray(history) ? history.length : 0)) {
+                chatStorageTrimWarned = true;
+                // eslint-disable-next-line no-console
+                console.warn('[gradebook] Chat history trimmed locally to avoid browser storage overflow.');
+            }
+            return true;
+        } catch (e) {
+            if (candidate.length < 2) {
+                break;
+            }
+            const drop = Math.max(1, Math.ceil(candidate.length * 0.1));
+            candidate = candidate.slice(drop);
+        }
+    }
+    return false;
+};
+
 const setText = (id, value) => {
     const node = el(id);
     if (node) {
@@ -188,6 +221,44 @@ const resolveNextActionStage = (phase) => {
     return null;
 };
 
+const isFinalizeCompletedPhase = (phase) => {
+    const phaseUpper = String(phase || '').toUpperCase();
+    return phaseUpper === 'COMPLETED' || phaseUpper === 'FINALIZED';
+};
+
+const syncButtonsFromPhase = (phase) => {
+    const phaseUpper = String(phase || '').toUpperCase();
+    const blockedByWeight = latestProposalWeightCheck.known && !latestProposalWeightCheck.valid;
+
+    const proposalBtn = el('btn-gradebook-proposal');
+    if (proposalBtn) {
+        proposalBtn.disabled = false;
+    }
+
+    const acceptPhase = phaseUpper === 'PROPOSAL' || phaseUpper === 'REFINEMENT';
+    const acceptBtn = el('btn-gradebook-accept');
+    if (acceptBtn) {
+        acceptBtn.disabled = !acceptPhase || blockedByWeight;
+    }
+
+    const finalizePhase = [
+        'ACCEPTED',
+        'MAPPING',
+        'MAPPED',
+        'READY_TO_FINALIZE',
+        'REFINEMENT',
+        'COMPLETED',
+        'FINALIZED'
+    ].includes(phaseUpper);
+
+    ['btn-gradebook-finalize', 'btn-gradebook-generate'].forEach((id) => {
+        const btn = el(id);
+        if (btn) {
+            btn.disabled = !finalizePhase || blockedByWeight;
+        }
+    });
+};
+
 const updateActionStageHighlight = (phase) => {
     const buttons = document.querySelectorAll('[data-stage]');
     const activeStage = resolveNextActionStage(phase);
@@ -226,6 +297,7 @@ const setPhase = (phase) => {
     }
 
     updateActionStageHighlight(phase);
+    syncButtonsFromPhase(phase);
 
     if (phase && phase !== '—') {
         saveJson(getStorageKey('phase'), phase);
@@ -404,7 +476,7 @@ const appendMessage = (container, text, isHuman, skipPersist) => {
     if (!skipPersist) {
         const history = loadJson(getStorageKey('chat_history'), []);
         history.push({role: isHuman ? 'human' : 'bot', text: text || ''});
-        saveJson(getStorageKey('chat_history'), history);
+        persistChatHistoryLocal(history);
         scheduleServerSave();
     }
 };
@@ -491,9 +563,64 @@ const renderHistory = (history) => {
     return true;
 };
 
+const normalizeChatHistoryEntries = (raw) => {
+    if (!Array.isArray(raw)) {
+        return [];
+    }
+    return raw
+        .filter((item) => item && typeof item === 'object')
+        .map((item) => ({
+            role: item.role === 'human' ? 'human' : (item.role === 'bot' ? 'bot' : ''),
+            text: String(item.text || ''),
+        }))
+        .filter((item) => item.role && item.text !== '');
+};
+
+const chatHistoryTailMatches = (localHistory, backendHistory) => {
+    if (!Array.isArray(localHistory) || !Array.isArray(backendHistory) || backendHistory.length < 1) {
+        return false;
+    }
+    const backendLast = backendHistory[backendHistory.length - 1];
+    const localSlice = localHistory.slice(Math.max(0, localHistory.length - 20));
+    return localSlice.some((item) => item && item.role === backendLast.role && item.text === backendLast.text);
+};
+
+const ingestBackendChatHistory = (history, renderIfFresh) => {
+    const normalizedBackend = normalizeChatHistoryEntries(history);
+    if (normalizedBackend.length < 1) {
+        return false;
+    }
+
+    saveJson(getStorageKey('chat_history_backend'), normalizedBackend);
+
+    const normalizedLocal = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history'), []));
+    const shouldReplaceLocal = normalizedLocal.length < 1
+        || normalizedBackend.length > normalizedLocal.length
+        || !chatHistoryTailMatches(normalizedLocal, normalizedBackend);
+
+    if (!shouldReplaceLocal) {
+        return false;
+    }
+
+    persistChatHistoryLocal(normalizedBackend);
+    if (renderIfFresh) {
+        renderHistory(normalizedBackend);
+    }
+    return true;
+};
+
 const restoreChatHistory = () => {
-    const history = loadJson(getStorageKey('chat_history'), []);
-    return renderHistory(history);
+    const localHistory = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history'), []));
+    const backendHistory = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history_backend'), []));
+
+    if (backendHistory.length > localHistory.length || !chatHistoryTailMatches(localHistory, backendHistory)) {
+        if (backendHistory.length > 0) {
+            persistChatHistoryLocal(backendHistory);
+            return renderHistory(backendHistory);
+        }
+    }
+
+    return renderHistory(localHistory);
 };
 
 const isNotGraded = (category) => String(category || '').trim() === NOT_GRADED;
@@ -999,6 +1126,9 @@ const hydrateFromStatusPayload = (parsed) => {
     }
 
     setPhase(statusPayload.phase || parsed.phase || parsed.state || '-');
+    const phaseUpper = String(statusPayload.phase || parsed.phase || parsed.state || '-').toUpperCase();
+
+    ingestBackendChatHistory(statusPayload.chat_history || parsed.chat_history || [], true);
 
     const statusProposal = statusPayload.proposal || null;
     const cats = extractProposalCategories(statusProposal);
@@ -1007,6 +1137,11 @@ const hydrateFromStatusPayload = (parsed) => {
     }
     if (statusProposal && Array.isArray(statusProposal.categories)) {
         applyProposalWeightGate(statusProposal);
+    }
+
+    if (!isFinalizeCompletedPhase(phaseUpper)) {
+        removeKey(getStorageKey('result'));
+        renderResultPanel(null);
     }
 
     const mapping = extractContentMapping(statusPayload);
@@ -1028,12 +1163,12 @@ const bumpLastKnown = (value) => {
 };
 
 const localHistoryLength = () => {
-    const key = getStorageKey('chat_history');
-    if (!key) {
-        return 0;
+    const localHistory = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history'), []));
+    const backendHistory = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history_backend'), []));
+    if (backendHistory.length > localHistory.length || !chatHistoryTailMatches(localHistory, backendHistory)) {
+        return backendHistory.length;
     }
-    const arr = loadJson(key, []);
-    return Array.isArray(arr) ? arr.length : 0;
+    return localHistory.length;
 };
 
 const stateHistoryLength = (state) => {
@@ -1064,10 +1199,16 @@ const collectStateSnapshot = () => {
         return JSON.stringify(rows, null, 2);
     })();
 
+    const localHistory = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history'), []));
+    const backendHistory = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history_backend'), []));
+    const preferredHistory = (backendHistory.length > localHistory.length || !chatHistoryTailMatches(localHistory, backendHistory))
+        ? backendHistory
+        : localHistory;
+
     return {
         session_id: (sid && sid !== 'starting…') ? sid : null,
         phase: (phaseText && phaseText !== '—') ? phaseText : null,
-        chat_history_json: JSON.stringify(loadJson(getStorageKey('chat_history'), [])),
+        chat_history_json: JSON.stringify(preferredHistory),
         confirmed_mapping_json: normalizedMapping,
         result_json: JSON.stringify(loadJson(getStorageKey('result'), null))
     };
@@ -1236,7 +1377,7 @@ const hydrateFromServerState = (state) => {
         const history = JSON.parse(state.chat_history_json || '[]');
         const localLen = localHistoryLength();
         if (Array.isArray(history) && history.length > 0 && history.length >= localLen) {
-            saveJson(getStorageKey('chat_history'), history);
+            persistChatHistoryLocal(history);
             renderHistory(history);
             hydrated = true;
         } else if (localLen > 0 && (!Array.isArray(history) || history.length < localLen)) {
@@ -1249,8 +1390,9 @@ const hydrateFromServerState = (state) => {
         setSessionId(state.session_id);
         hydrated = true;
     }
-    if (state.phase && state.phase !== '—') {
-        setPhase(state.phase);
+    const restoredPhase = state.phase && state.phase !== '—' ? String(state.phase) : '';
+    if (restoredPhase) {
+        setPhase(restoredPhase);
     }
 
     if (state.confirmed_mapping_json && state.confirmed_mapping_json !== '[]') {
@@ -1263,10 +1405,14 @@ const hydrateFromServerState = (state) => {
 
     try {
         const result = state.result_json ? JSON.parse(state.result_json) : null;
-        if (result) {
+        if (result && isFinalizeCompletedPhase(restoredPhase)) {
             saveJson(getStorageKey('result'), result);
             renderResultPanel(result);
             hydrated = true;
+        } else if (result) {
+            removeKey(getStorageKey('result'));
+            renderResultPanel(null);
+            scheduleServerSave();
         }
     } catch (e) {
     }
@@ -1448,6 +1594,7 @@ const doStartSession = async () => {
 const clearLocalGradebookState = async () => {
     removeKey(getStorageKey('session_id'));
     removeKey(getStorageKey('chat_history'));
+    removeKey(getStorageKey('chat_history_backend'));
     removeKey(getStorageKey('phase'));
     removeKey(getStorageKey('result'));
     removeKey(getStorageKey('proposal_categories'));
@@ -1719,6 +1866,7 @@ const uploadViaFallbackEndpoint = async ({courseid, session_id, filename, filety
 const sendPreparedPrompt = async ({typed, prepared}) => {
     const input = el('block-ai-assistant-gradebook-input');
     const normalized = prepared.prompt;
+    let shouldForcePostChatSave = false;
 
     await withRequestLock(async () => {
         appendMessage(getChatMessages(), prepared.displayText, true, false);
@@ -1770,6 +1918,7 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                 });
                 return parseResponse(raw);
             });
+            ingestBackendChatHistory(parsed.chat_history || [], false);
             await runWithinProposalPanelSync(async () => {
                 setPhase(parsed.phase || parsed.state || '-');
                 const currentPhase = String(parsed.phase || parsed.state || '-').toUpperCase();
@@ -1777,6 +1926,8 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                 const proposalChanged = parsed.proposal_changed === true;
                 const enteredEditFromFinalized =
                     (previousPhase === 'COMPLETED' || previousPhase === 'ACCEPTED') && currentPhase === 'REFINEMENT';
+
+                shouldForcePostChatSave = proposalChanged || enteredEditFromFinalized;
 
                 if (enteredEditFromFinalized) {
                     const mappingNode = el('gradebook-confirmed-mapping');
@@ -1815,7 +1966,7 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                     applyProposalWeightGate(parsed.proposal);
                 }
             });
-            await serverSaveState();
+            await serverSaveState(shouldForcePostChatSave ? {force: true} : undefined);
         } finally {
             const indicator = document.getElementById('gradebook-loading-indicator');
             if (indicator) {
@@ -2315,8 +2466,10 @@ export const init = (courseId) => {
         setFinalizeEnabled(false);
     }
 
-    if (cachedResult) {
+    if (cachedResult && isFinalizeCompletedPhase(cachedPhase)) {
         renderResultPanel(cachedResult);
+    } else {
+        renderResultPanel(null);
     }
 
     ensureSession().catch((error) => {

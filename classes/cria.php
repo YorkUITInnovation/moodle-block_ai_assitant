@@ -2206,25 +2206,7 @@ class cria
         if ($courseid > 0) {
             try {
                 $response = json_decode($response_json, true);
-                if (is_array($response)) {
-                    $phase = strtoupper(trim((string)($response['phase'] ?? '')));
-                    $iscompleted = ($phase === 'COMPLETED');
-
-                    if (!$iscompleted) {
-                        $response['message'] = trim((string)($response['message'] ?? 'Finalize blocked by validation.'))
-                            . ' No Moodle gradebook changes were applied.';
-                        $response['data'] = array_merge(
-                            is_array($response['data'] ?? null) ? $response['data'] : [],
-                            ['grade_setup_skipped' => true]
-                        );
-                        $response_json = json_encode($response);
-                        return $response_json;
-                    }
-
-                    if (!isset($response['proposal'])) {
-                        return $response_json;
-                    }
-
+                if (is_array($response) && isset($response['proposal'])) {
                     // Treat repeated finalize as override, not append: clear prior AI tree first.
                     $precleanup = self::remove_ai_gradebook_from_course($courseid);
                     if (!empty($precleanup['message']) && empty($precleanup['cleaned'])) {
@@ -2813,17 +2795,15 @@ class cria
         }
 
         $resolved = [];
-        $seenrefs = [];
         foreach ($matches as $m) {
             $ref = isset($m[1]) && $m[1] !== '' ? $m[1] : (isset($m[2]) ? $m[2] : '');
             if ($ref === '') {
                 continue;
             }
             $key = strtolower($ref);
-            if (isset($seenrefs[$key])) {
+            if (isset($resolved[$key])) {
                 continue;
             }
-            $seenrefs[$key] = true;
 
             $items_by_idnumber = $DB->get_records_select(
                 'grade_items',
@@ -2842,20 +2822,6 @@ class cria
             }
 
             if (!$item) {
-                // Accept direct numeric grade_item ids generated upstream.
-                if (ctype_digit($key)) {
-                    $item_by_id = $DB->get_record(
-                        'grade_items',
-                        ['courseid' => $courseid, 'id' => (int)$key],
-                        'id, idnumber, itemname'
-                    );
-                    if ($item_by_id) {
-                        $item = $item_by_id;
-                    }
-                }
-            }
-
-            if (!$item) {
                 $items_by_name = $DB->get_records_select(
                     'grade_items',
                     'courseid = ? AND LOWER(itemname) = ?',
@@ -2864,84 +2830,18 @@ class cria
                     'id, idnumber, itemname'
                 );
 
-                if ($items_by_name) {
-                    if (count($items_by_name) > 1) {
-                        $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple grade items share this item name).';
-                        continue;
-                    }
-
-                    $item = reset($items_by_name);
-                    $warnings[] = 'Reference [' . $ref . '] resolved by item name. Prefer using exact idnumber references.';
-                }
-            }
-
-            if (!$item) {
-                // Last-resort user-friendly fallback: unique partial item-name match
-                // (e.g., [final] -> "Final Exam") within this course.
-                $items_by_partial_name = $DB->get_records_select(
-                    'grade_items',
-                    'courseid = ? AND LOWER(itemname) LIKE ?',
-                    [$courseid, '%' . $key . '%'],
-                    '',
-                    'id, idnumber, itemname'
-                );
-
-                if ($items_by_partial_name && count($items_by_partial_name) === 1) {
-                    $item = reset($items_by_partial_name);
-                    $warnings[] = 'Reference [' . $ref . '] resolved by partial item name match. Prefer exact idnumber references.';
-                } else if ($items_by_partial_name && count($items_by_partial_name) > 1) {
-                    $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple grade items partially match this item name).';
+                if (!$items_by_name) {
+                    $errors[] = 'Reference [' . $ref . '] does not match any grade item idnumber or item name.';
                     continue;
                 }
-            }
 
-            if (!$item) {
-                // Category-grade fallback: category grade_items may have NULL itemname,
-                // so resolve via grade_categories.fullname.
-                $category_exact = $DB->get_records_sql(
-                    "SELECT gi.id, gi.idnumber, gc.fullname AS itemname
-                       FROM {grade_items} gi
-                       JOIN {grade_categories} gc ON gc.id = gi.iteminstance
-                      WHERE gi.courseid = ?
-                        AND gi.itemtype = 'category'
-                        AND LOWER(gc.fullname) = ?",
-                    [$courseid, $key]
-                );
-
-                if ($category_exact) {
-                    if (count($category_exact) > 1) {
-                        $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple categories share this name).';
-                        continue;
-                    }
-                    $item = reset($category_exact);
-                    $warnings[] = 'Reference [' . $ref . '] resolved by category name. Prefer exact idnumber references.';
+                if (count($items_by_name) > 1) {
+                    $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple grade items share this item name).';
+                    continue;
                 }
-            }
 
-            if (!$item) {
-                $category_partial = $DB->get_records_sql(
-                    "SELECT gi.id, gi.idnumber, gc.fullname AS itemname
-                       FROM {grade_items} gi
-                       JOIN {grade_categories} gc ON gc.id = gi.iteminstance
-                      WHERE gi.courseid = ?
-                        AND gi.itemtype = 'category'
-                        AND LOWER(gc.fullname) LIKE ?",
-                    [$courseid, '%' . $key . '%']
-                );
-
-                if ($category_partial) {
-                    if (count($category_partial) > 1) {
-                        $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple categories partially match this name).';
-                        continue;
-                    }
-                    $item = reset($category_partial);
-                    $warnings[] = 'Reference [' . $ref . '] resolved by partial category name match. Prefer exact idnumber references.';
-                }
-            }
-
-            if (!$item) {
-                $errors[] = 'Reference [' . $ref . '] does not match any grade item idnumber or item name.';
-                continue;
+                $item = reset($items_by_name);
+                $warnings[] = 'Reference [' . $ref . '] resolved by item name. Prefer using exact idnumber references.';
             }
 
             $idnumber = trim((string)($item->idnumber ?? ''));
@@ -3006,86 +2906,6 @@ class cria
     }
 
     /**
-     * Compact low-level formula resolution warnings into fewer user-facing lines.
-     *
-     * Example: combines
-     * - "Reference [midterm] resolved by category name..."
-     * - "Reference [midterm] had no idnumber; generated idnumber [[midterm]]..."
-     * into one concise note.
-     *
-     * @param array $warnings
-     * @return array
-     */
-    private static function compact_formula_resolution_warnings(array $warnings): array
-    {
-        $byref = [];
-        $other = [];
-
-        foreach ($warnings as $warning) {
-            $text = trim((string)$warning);
-            if ($text === '') {
-                continue;
-            }
-
-            if (!preg_match('/^Reference \[([^\]]+)\]\s+(.*)$/', $text, $m)) {
-                $other[] = $text;
-                continue;
-            }
-
-            $ref = trim((string)$m[1]);
-            $detail = trim((string)$m[2]);
-            if ($ref === '' || $detail === '') {
-                $other[] = $text;
-                continue;
-            }
-
-            $key = strtolower($ref);
-            if (!isset($byref[$key])) {
-                $byref[$key] = [
-                    'ref' => $ref,
-                    'resolved' => '',
-                    'generated' => '',
-                    'extras' => [],
-                ];
-            }
-
-            if (preg_match('/^resolved by .*?\.\s*Prefer exact idnumber references\.?$/i', $detail)) {
-                $byref[$key]['resolved'] = rtrim($detail, '.');
-                continue;
-            }
-
-            if (preg_match('/^had no idnumber; generated idnumber \[\[([A-Za-z0-9_]+)\]\] for stable formula resolution\.?$/i', $detail, $idm)) {
-                $byref[$key]['generated'] = (string)$idm[1];
-                continue;
-            }
-
-            $byref[$key]['extras'][] = rtrim($detail, '.');
-        }
-
-        $compact = [];
-        foreach ($byref as $entry) {
-            $parts = [];
-            if ($entry['resolved'] !== '') {
-                $parts[] = $entry['resolved'];
-            }
-            if ($entry['generated'] !== '') {
-                $parts[] = 'generated idnumber [[' . $entry['generated'] . ']] for stable formula resolution';
-            }
-            foreach ($entry['extras'] as $extra) {
-                if ($extra !== '') {
-                    $parts[] = $extra;
-                }
-            }
-
-            if (!empty($parts)) {
-                $compact[] = 'Reference [' . $entry['ref'] . ']: ' . implode('; ', $parts) . '.';
-            }
-        }
-
-        return array_merge($compact, $other);
-    }
-
-    /**
      * Apply calculation formulas to category total grade items.
      * Returns warning strings for any categories that could not be updated.
      */
@@ -3116,9 +2936,8 @@ class cria
                     continue;
                 }
 
-                $resolver_warnings = self::compact_formula_resolution_warnings($resolver_warnings);
-                if (!empty($resolver_warnings)) {
-                    $warnings[] = '⚠ Formula notes for category ' . $key . ': ' . implode(' ', $resolver_warnings);
+                foreach ($resolver_warnings as $w) {
+                    $warnings[] = '⚠ Formula note for category ' . $key . ': ' . $w;
                 }
 
                 if (method_exists($gi, 'set_calculation')) {
