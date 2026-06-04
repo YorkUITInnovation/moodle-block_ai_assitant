@@ -1,14 +1,19 @@
 import ajax from 'core/ajax';
 import notification from 'core/notification';
 import * as Str from 'core/str';
+import ModalFactory from 'core/modal_factory';
+import ModalEvents from 'core/modal_events';
 
 const STORAGE_PREFIX = 'block_ai_assistant_gradebook';
 const NOT_GRADED = '__not_graded__';
 const DEFAULT_CATEGORIES = ['Assignments', 'Quizzes', 'Labs', 'Exams', 'Projects', 'Participation'];
 const MAX_LOCAL_CHAT_MESSAGES = 300;
+const CONSTRAINED_MODULES = ['lti', 'tool', 'external'];
 let sessionInitPromise = null;
 let requestInFlight = false;
 let proposalCategories = [];
+let proposalCategoriesWithItems = [];
+let proposalSubcategoriesByCategory = {};
 let proposalPanelSyncPromise = null;
 let queuedSystemMessages = [];
 let latestProposalWeightCheck = {known: false, total: null, valid: true};
@@ -17,11 +22,21 @@ let pendingServerSave = null;
 let saveInFlight = Promise.resolve();
 let suspendAutoSave = false;
 let chatStorageTrimWarned = false;
+let gradebookMissingNoticeShown = false;
 let notGradedLabel = '— Not graded —';
 let selectCategoryLabel = 'Select a category…';
 let missingCategoryErrorLabel = 'Please pick a category for every row (or set it to Not graded).';
+let emptyCategoryErrorLabel = 'These categories have no activities assigned: {$a}. Pick an activity row, remove the category, or add a manual grade item to assign to it.';
+let addManualItemLabel = 'Add manual grade item';
+let manualItemLabel = 'Manual grade item';
+let addManualItemPromptLabel = 'Name for the manual grade item in {$a}';
+let addManualItemDefaultNameLabel = '{$a} Manual Item';
+let addManualItemFailedLabel = 'Could not create the manual grade item. Try again.';
+let addManualItemCreatedLabel = 'Added manual grade item "{$a}".';
+let noSubcategoryLabel = '— None (Parent Category) —';
 
 let currentCourseId = 0;
+let lastStoredFinalizeResult = null;
 let promptHistory = [];
 let promptHistoryIndex = -1;
 let promptHistoryDraft = '';
@@ -107,6 +122,275 @@ const getStorageKey = (kind) => {
     return `${STORAGE_PREFIX}_${kind}_${cid}`;
 };
 
+const isGradebookDebugEnabled = () => {
+    try {
+        const key = getStorageKey('debug');
+        const localFlag = String((key ? localStorage.getItem(key) : '') || '').trim() === '1';
+        const globalFlag = String(localStorage.getItem('block_ai_assistant_gradebook_debug') || '').trim() === '1';
+        const queryFlag = typeof window !== 'undefined'
+            && window.location
+            && String(window.location.search || '').indexOf('gradebookDebug=1') !== -1;
+        return localFlag || globalFlag || queryFlag;
+    } catch (e) {
+        return false;
+    }
+};
+
+const gradebookDebug = (...args) => {
+    if (!isGradebookDebugEnabled()) {
+        return;
+    }
+    try {
+        // eslint-disable-next-line no-console
+        console.info('[gradebook-debug]', ...args);
+    } catch (e) {
+    }
+};
+
+const normalizeImportMode = (value) => {
+    const v = String(value || '').trim().toLowerCase();
+    return (v === 'fresh' || v === 'baseline') ? v : '';
+};
+
+const getImportMode = () => normalizeImportMode(loadJson(getStorageKey('import_mode'), ''));
+
+const getBaselineAvailable = () => Boolean(loadJson(getStorageKey('baseline_available'), false));
+
+const getRevertAvailable = () => Boolean(loadJson(getStorageKey('revert_available'), false));
+
+const getBaselineModified = () => Boolean(loadJson(getStorageKey('baseline_modified'), false));
+
+const setBaselineModified = (modified) => {
+    if (Boolean(modified)) {
+        saveJson(getStorageKey('baseline_modified'), true);
+    } else {
+        removeKey(getStorageKey('baseline_modified'));
+    }
+};
+
+/** User chose "use existing gradebook as baseline" at session start (not merely course has a gradebook). */
+const isBaselineImportSession = () => {
+    if (getImportMode() === 'baseline') {
+        return true;
+    }
+    const result = getStoredFinalizeResult();
+    if (result && typeof result === 'object') {
+        if (result._baseline_applied === true) {
+            return true;
+        }
+        if (normalizeImportMode(result._import_mode) === 'baseline') {
+            return true;
+        }
+    }
+    return false;
+};
+
+const wasBaselineSession = () => isBaselineImportSession() || getBaselineAvailable();
+
+const unwrapFinalizeResult = (result) => {
+    if (!result || typeof result !== 'object') {
+        return null;
+    }
+    if (result.raw && typeof result.raw === 'object' && (result.raw.phase || result.raw.state)) {
+        return result.raw;
+    }
+    return result;
+};
+
+const collectFinalizeWarningStrings = (result) => {
+    const warnings = [];
+    const visit = (node, depth) => {
+        if (!node || typeof node !== 'object' || depth > 5) {
+            return;
+        }
+        if (Array.isArray(node.grade_setup_warnings)) {
+            warnings.push(...node.grade_setup_warnings);
+        }
+        if (Array.isArray(node.warnings)) {
+            warnings.push(...node.warnings);
+        }
+        if (typeof node.message === 'string') {
+            warnings.push(node.message);
+        }
+        ['data', 'raw'].forEach((key) => {
+            if (node[key] && typeof node[key] === 'object') {
+                visit(node[key], depth + 1);
+            }
+        });
+    };
+    visit(result, 0);
+    return warnings
+        .map((w) => String(w || '').trim())
+        .filter((w) => w.length > 0);
+};
+
+const hasBaselineSnapshotApply = (result) => {
+    if (!isBaselineImportSession() || !result || typeof result !== 'object') {
+        return false;
+    }
+    if (result._baseline_applied === true) {
+        return true;
+    }
+    // Pre-apply snapshot is captured on every finalize; only count it for baseline-import sessions.
+    return collectFinalizeWarningStrings(result)
+        .some((w) => /immutable baseline snapshot/i.test(w));
+};
+
+const isSuccessfulFinalizeResult = (result) => {
+    const payload = unwrapFinalizeResult(result) || result;
+    if (!payload || typeof payload !== 'object') {
+        return false;
+    }
+    const phase = String(payload.phase || payload.state || '').toUpperCase();
+    const data = (payload.data && typeof payload.data === 'object') ? payload.data : {};
+    const setupSkipped = Boolean(data.grade_setup_skipped || data.grade_setup_apply_rolled_back);
+    return ['COMPLETED', 'FINALIZED'].includes(phase) && !setupSkipped;
+};
+
+const getStoredFinalizeResult = () => {
+    const cached = loadJson(getStorageKey('result'), null);
+    if (cached && typeof cached === 'object') {
+        return cached;
+    }
+    return (lastStoredFinalizeResult && typeof lastStoredFinalizeResult === 'object')
+        ? lastStoredFinalizeResult
+        : null;
+};
+
+const syncBaselineModifiedFromFinalizeResult = (result) => {
+    if (!isSuccessfulFinalizeResult(result)) {
+        return false;
+    }
+    if (!isBaselineImportSession()) {
+        return false;
+    }
+    setBaselineModified(true);
+    return true;
+};
+
+/**
+ * Restore finalize result + baseline-delete flag after refresh/reopen.
+ * Prefers server result_json when it contains a successful baseline finalize.
+ */
+const rehydrateBaselineDeleteWarningState = (serverState = null) => {
+    let result = getStoredFinalizeResult();
+
+    if (serverState && serverState.result_json) {
+        try {
+            const serverResult = JSON.parse(String(serverState.result_json || 'null'));
+            if (serverResult && typeof serverResult === 'object') {
+                const serverFinalized = isSuccessfulFinalizeResult(serverResult);
+                const localFinalized = Boolean(result && isSuccessfulFinalizeResult(result));
+                const serverHasBaseline = hasBaselineSnapshotApply(serverResult);
+                if (serverFinalized && (!localFinalized || serverHasBaseline)) {
+                    result = serverResult;
+                }
+            }
+        } catch (e) {
+        }
+    }
+
+    if (!result || typeof result !== 'object') {
+        return false;
+    }
+
+    const payload = unwrapFinalizeResult(result) || result;
+    const phaseFromResult = String(payload.phase || payload.state || '').trim();
+    const phase = getPhase() || phaseFromResult;
+    const finalized = isSuccessfulFinalizeResult(result)
+        || isFinalizeCompletedPhase(phase)
+        || isFinalizeCompletedPhase(phaseFromResult);
+
+    if (!finalized) {
+        return false;
+    }
+
+    let stored = result;
+    const storedImportMode = normalizeImportMode(stored._import_mode);
+    if (storedImportMode === 'baseline' || stored._baseline_applied === true) {
+        setImportMode('baseline', {preserveExisting: true});
+    }
+    if (hasBaselineSnapshotApply(result)) {
+        if (!stored._baseline_applied) {
+            stored = {...stored, _baseline_applied: true, _import_mode: stored._import_mode || 'baseline'};
+        }
+        setBaselineModified(true);
+    } else {
+        syncBaselineModifiedFromFinalizeResult(stored);
+    }
+
+    lastStoredFinalizeResult = stored;
+    saveJson(getStorageKey('result'), stored);
+    if (phaseFromResult && phaseFromResult !== '—' && phaseFromResult !== '-') {
+        setPhase(phaseFromResult);
+    }
+    renderResultPanel(stored);
+
+    gradebookDebug('rehydrateBaselineDeleteWarningState', {
+        baselineModified: getBaselineModified(),
+        baselineSnapshot: hasBaselineSnapshotApply(stored),
+        phase: getPhase()
+    });
+
+    return hasBaselineSnapshotApply(stored) || getBaselineModified();
+};
+
+const setBaselineAvailable = (available) => {
+    const normalized = Boolean(available);
+    if (normalized) {
+        saveJson(getStorageKey('baseline_available'), true);
+    } else {
+        removeKey(getStorageKey('baseline_available'));
+    }
+    setRevertButtonVisibility(getImportMode(), normalized);
+    return normalized;
+};
+
+const setRevertAvailable = (available) => {
+    const normalized = Boolean(available);
+    if (normalized) {
+        saveJson(getStorageKey('revert_available'), true);
+    } else {
+        removeKey(getStorageKey('revert_available'));
+    }
+    setRevertButtonVisibility(getImportMode(), getBaselineAvailable(), normalized);
+    return normalized;
+};
+
+const setImportMode = (mode, options = {}) => {
+    const normalized = normalizeImportMode(mode);
+    const preserveExisting = options && options.preserveExisting === true;
+    if (normalized) {
+        saveJson(getStorageKey('import_mode'), normalized);
+    } else if (!preserveExisting) {
+        removeKey(getStorageKey('import_mode'));
+    }
+    setRevertButtonVisibility(normalized || getImportMode());
+    return normalized || getImportMode();
+};
+
+const shouldShowRevertButton = (baselineAvailable = null, revertAvailable = null) => {
+    if (!isBaselineImportSession()) {
+        return false;
+    }
+    const hasBaseline = baselineAvailable === null ? getBaselineAvailable() : Boolean(baselineAvailable);
+    const canRevert = revertAvailable === null ? getRevertAvailable() : Boolean(revertAvailable);
+    return hasBaseline && canRevert;
+};
+
+const setRevertButtonVisibility = (mode = '', baselineAvailable = null, revertAvailable = null) => {
+    const btn = el('btn-gradebook-revert');
+    if (!btn) {
+        return;
+    }
+
+    if (shouldShowRevertButton(baselineAvailable, revertAvailable)) {
+        btn.classList.remove('d-none');
+    } else {
+        btn.classList.add('d-none');
+    }
+};
+
 const loadJson = (key, fallback) => {
     if (!key) {
         return fallback;
@@ -173,6 +457,44 @@ const persistChatHistoryLocal = (history) => {
     return false;
 };
 
+const getStarterChatHistorySessionId = () => String(loadJson(getStorageKey('starter_chat_history_session_id'), '') || '').trim();
+
+const getStarterChatHistory = (expectedSessionId = '') => {
+    const normalized = normalizeChatHistoryEntries(loadJson(getStorageKey('starter_chat_history'), []));
+    if (normalized.length < 1) {
+        return [];
+    }
+
+    const expected = String(expectedSessionId || '').trim();
+    const storedSession = getStarterChatHistorySessionId();
+    if (expected && storedSession && storedSession !== expected) {
+        return [];
+    }
+
+    return normalized;
+};
+
+const persistStarterChatHistory = (history, sessionId = '') => {
+    const normalized = normalizeChatHistoryEntries(history);
+    const sid = String(sessionId || getSessionId() || '').trim();
+    if (normalized.length > 0) {
+        saveJson(getStorageKey('starter_chat_history'), normalized);
+        if (sid) {
+            saveJson(getStorageKey('starter_chat_history_session_id'), sid);
+        } else {
+            removeKey(getStorageKey('starter_chat_history_session_id'));
+        }
+    } else {
+        removeKey(getStorageKey('starter_chat_history'));
+        removeKey(getStorageKey('starter_chat_history_session_id'));
+    }
+};
+
+const clearStarterChatHistory = () => {
+    removeKey(getStorageKey('starter_chat_history'));
+    removeKey(getStorageKey('starter_chat_history_session_id'));
+};
+
 const setText = (id, value) => {
     const node = el(id);
     if (node) {
@@ -224,6 +546,25 @@ const resolveNextActionStage = (phase) => {
 const isFinalizeCompletedPhase = (phase) => {
     const phaseUpper = String(phase || '').toUpperCase();
     return phaseUpper === 'COMPLETED' || phaseUpper === 'FINALIZED';
+};
+
+/**
+ * Secondary delete warning: baseline finalize apply only (immutable snapshot captured).
+ */
+const shouldShowBaselineDeleteWarning = () => {
+    if (!isBaselineImportSession()) {
+        return false;
+    }
+
+    if (getBaselineModified()) {
+        return true;
+    }
+
+    const result = getStoredFinalizeResult();
+    const finalized = isFinalizeCompletedPhase(getPhase())
+        || (result && isSuccessfulFinalizeResult(result));
+    const baselineApplied = Boolean(result && result._baseline_applied === true);
+    return finalized && (baselineApplied || getRevertAvailable() || hasBaselineSnapshotApply(result));
 };
 
 const syncButtonsFromPhase = (phase) => {
@@ -306,6 +647,15 @@ const setPhase = (phase) => {
     }
 };
 
+const getPhase = () => {
+    const badge = el('gradebook-phase-badge');
+    const badgePhase = badge ? String(badge.textContent || '').trim() : '';
+    if (badgePhase && badgePhase !== '—' && badgePhase !== '-') {
+        return badgePhase;
+    }
+    return String(loadJson(getStorageKey('phase'), '') || '').trim();
+};
+
 const parseResponse = (raw) => {
     if (typeof raw !== 'string') {
         return raw;
@@ -343,6 +693,57 @@ const parseResponse = (raw) => {
             `Invalid non-JSON response from server: ${text.slice(0, 180)}`
         );
     }
+};
+
+const extractResponseErrorMessage = (parsed, fallback = 'Request failed.') => {
+    if (!parsed || typeof parsed !== 'object') {
+        return fallback;
+    }
+
+    const direct = String(parsed.message || parsed.error || parsed.detail || '').trim();
+    if (direct) {
+        return direct;
+    }
+
+    if (Array.isArray(parsed.detail) && parsed.detail.length > 0) {
+        const first = parsed.detail[0] || {};
+        const loc = Array.isArray(first.loc) ? first.loc.join('.') : '';
+        const msg = String(first.msg || '').trim();
+        if (loc && msg) {
+            return `${loc}: ${msg}`;
+        }
+        if (msg) {
+            return msg;
+        }
+    }
+
+    return fallback;
+};
+
+const getStringSafe = async (key, fallback) => {
+    try {
+        const value = await Str.get_string(key, 'block_ai_assistant');
+        return String(value || fallback || '').trim() || fallback;
+    } catch (e) {
+        return fallback;
+    }
+};
+
+const askBaselineModeChoice = async () => {
+    const title = await getStringSafe('gradebook_baseline_prompt_title', 'Baseline detected');
+    const message = await getStringSafe(
+        'gradebook_baseline_prompt_message',
+        'An existing gradebook layout was found. Do you want to use it as baseline?'
+    );
+    const yesLabel = await getStringSafe('gradebook_baseline_prompt_yes', 'Use baseline');
+    const noLabel = await getStringSafe('gradebook_baseline_prompt_no', 'Start fresh');
+
+    return moodleConfirm({
+        title,
+        message,
+        yesLabel,
+        noLabel
+    });
 };
 
 const getExcelFormulaInput = () => {
@@ -477,6 +878,13 @@ const appendMessage = (container, text, isHuman, skipPersist) => {
         const history = loadJson(getStorageKey('chat_history'), []);
         history.push({role: isHuman ? 'human' : 'bot', text: text || ''});
         persistChatHistoryLocal(history);
+        const normalizedHistory = normalizeChatHistoryEntries(history);
+        const currentSessionId = getSessionId();
+        if (isHuman || normalizedHistory.some((item) => item.role === 'human')) {
+            clearStarterChatHistory();
+        } else {
+            persistStarterChatHistory(normalizedHistory, currentSessionId);
+        }
         scheduleServerSave();
     }
 };
@@ -563,6 +971,78 @@ const renderHistory = (history) => {
     return true;
 };
 
+const extractChatHistoryFromStatus = (parsed) => {
+    if (!parsed || typeof parsed !== 'object') {
+        return [];
+    }
+    const fromWrapped = parsed.session && typeof parsed.session === 'object'
+        ? parsed.session.chat_history
+        : null;
+    const fromRoot = parsed.chat_history;
+    const normalized = normalizeChatHistoryEntries(fromWrapped || fromRoot || []);
+    return normalized;
+};
+
+const extractChatHistoryFromServerState = (state) => {
+    if (!state || typeof state !== 'object') {
+        return [];
+    }
+    try {
+        const parsed = JSON.parse(state.chat_history_json || '[]');
+        return normalizeChatHistoryEntries(parsed);
+    } catch (e) {
+        return [];
+    }
+};
+
+const renderedChatLength = () => {
+    const container = getChatMessages();
+    if (!container) {
+        return 0;
+    }
+    return container.querySelectorAll('.chat-message').length;
+};
+
+const ensureChatRenderedFromAnySource = (parsedStatus, serverState) => {
+    if (renderedChatLength() > 0) {
+        return false;
+    }
+
+    const fromStatus = extractChatHistoryFromStatus(parsedStatus);
+    if (fromStatus.length > 0) {
+        persistChatHistoryLocal(fromStatus);
+        renderHistory(fromStatus);
+        gradebookDebug('ensureChatRenderedFromAnySource:status', {length: fromStatus.length});
+        return true;
+    }
+
+    const fromServer = extractChatHistoryFromServerState(serverState);
+    if (fromServer.length > 0) {
+        persistChatHistoryLocal(fromServer);
+        renderHistory(fromServer);
+        gradebookDebug('ensureChatRenderedFromAnySource:serverState', {length: fromServer.length});
+        return true;
+    }
+
+    const fromLocal = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history'), []));
+    if (fromLocal.length > 0) {
+        renderHistory(fromLocal);
+        gradebookDebug('ensureChatRenderedFromAnySource:local', {length: fromLocal.length});
+        return true;
+    }
+
+    const starterHistory = getStarterChatHistory();
+    if (starterHistory.length > 0) {
+        persistChatHistoryLocal(starterHistory);
+        renderHistory(starterHistory);
+        gradebookDebug('ensureChatRenderedFromAnySource:starter', {length: starterHistory.length});
+        return true;
+    }
+
+    gradebookDebug('ensureChatRenderedFromAnySource:none');
+    return false;
+};
+
 const normalizeChatHistoryEntries = (raw) => {
     if (!Array.isArray(raw)) {
         return [];
@@ -609,21 +1089,195 @@ const ingestBackendChatHistory = (history, renderIfFresh) => {
     return true;
 };
 
+const backendHistoryContainsReply = (history, replyText) => {
+    const normalizedReply = String(replyText || '').trim();
+    if (!normalizedReply) {
+        return false;
+    }
+
+    const normalizedHistory = normalizeChatHistoryEntries(history);
+    if (normalizedHistory.length < 1) {
+        return false;
+    }
+
+    const lastEntry = normalizedHistory[normalizedHistory.length - 1];
+    return Boolean(lastEntry && lastEntry.role === 'bot' && String(lastEntry.text || '').trim() === normalizedReply);
+};
+
 const restoreChatHistory = () => {
     const localHistory = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history'), []));
     const backendHistory = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history_backend'), []));
+    const starterHistory = getStarterChatHistory(getSessionId());
+    gradebookDebug('restoreChatHistory:start', {
+        localLength: localHistory.length,
+        backendLength: backendHistory.length,
+        starterLength: starterHistory.length
+    });
 
     if (backendHistory.length > localHistory.length || !chatHistoryTailMatches(localHistory, backendHistory)) {
         if (backendHistory.length > 0) {
             persistChatHistoryLocal(backendHistory);
+            gradebookDebug('restoreChatHistory:renderBackend', {length: backendHistory.length});
             return renderHistory(backendHistory);
         }
     }
 
+    if (localHistory.length < 1 && starterHistory.length > 0) {
+        persistChatHistoryLocal(starterHistory);
+        gradebookDebug('restoreChatHistory:renderStarter', {length: starterHistory.length});
+        return renderHistory(starterHistory);
+    }
+
+    gradebookDebug('restoreChatHistory:renderLocal', {length: localHistory.length});
     return renderHistory(localHistory);
 };
 
 const isNotGraded = (category) => String(category || '').trim() === NOT_GRADED;
+
+const normalizeModuleName = (moduleName) => String(moduleName || '').trim().toLowerCase();
+
+const isConstrainedModule = (moduleName) => CONSTRAINED_MODULES.includes(normalizeModuleName(moduleName));
+
+const mappingConstraintReason = (item) => {
+    if (!item || typeof item !== 'object') {
+        return '';
+    }
+
+    const explicitReason = String(item.read_only_reason || item.constraint_reason || '').trim();
+    if (explicitReason) {
+        return explicitReason;
+    }
+
+    if (isConstrainedModule(item.itemmodule || item.module)) {
+        return 'external/LTI managed';
+    }
+
+    return '';
+};
+
+const isReadOnlyMappingRow = (item) => {
+    if (!item || typeof item !== 'object') {
+        return false;
+    }
+
+    if (item.read_only === true || item.is_constrained === true || item.readonly === true) {
+        return true;
+    }
+
+    return isConstrainedModule(item.itemmodule || item.module);
+};
+
+const extractFinalizeWarnings = (parsed) => {
+    const data = (parsed && typeof parsed === 'object' && parsed.data && typeof parsed.data === 'object')
+        ? parsed.data
+        : {};
+    const warnings = Array.isArray(data.grade_setup_warnings) ? data.grade_setup_warnings : [];
+    return warnings
+        .map((w) => String(w || '').trim())
+        .filter((w) => w.length > 0);
+};
+
+const buildFinalizePrimaryMessage = (parsed) => {
+    const fallback = 'Gradebook finalized.';
+    const raw = String((parsed && parsed.message) || '').trim();
+    if (!raw) {
+        return fallback;
+    }
+
+    const warnings = extractFinalizeWarnings(parsed);
+    if (!Array.isArray(warnings) || warnings.length === 0) {
+        return raw;
+    }
+
+    let cleaned = raw;
+    warnings.forEach((w) => {
+        const token = String(w || '').trim();
+        if (!token) {
+            return;
+        }
+        cleaned = cleaned.split(token).join(' ');
+    });
+
+    cleaned = cleaned
+        .replace(/\s{2,}/g, ' ')
+        .replace(/\s+([.,!?;:])/g, '$1')
+        .trim();
+
+    return cleaned || fallback;
+};
+
+const extractFinalizeConstraints = (parsed) => {
+    const data = (parsed && typeof parsed === 'object' && parsed.data && typeof parsed.data === 'object')
+        ? parsed.data
+        : {};
+    const constraints = Array.isArray(data.grade_setup_constraints) ? data.grade_setup_constraints : [];
+    return constraints
+        .filter((entry) => entry && typeof entry === 'object')
+        .map((entry) => {
+            const activity = String(entry.activity_name || '').trim();
+            const reason = String(entry.reason || '').trim() || 'constrained item';
+            const itemId = Number(entry.grade_item_id || 0);
+            return {
+                activity,
+                reason,
+                grade_item_id: itemId
+            };
+        });
+};
+
+const announceFinalizeDiagnostics = (parsed) => {
+    const data = (parsed && typeof parsed === 'object' && parsed.data && typeof parsed.data === 'object')
+        ? parsed.data
+        : {};
+    const correlationId = String(data.gradebook_audit_correlation_id || '').trim();
+
+    const warnings = extractFinalizeWarnings(parsed);
+
+    // Avoid leaking backend SQL/stack details in chat while keeping full diagnostics in browser console.
+    const hasTechnicalWarning = warnings.some((w) => /sql|database|trace|exception|unknown column|select\s+/i.test(String(w || '')));
+    const userWarnings = hasTechnicalWarning
+        ? ['A server-side issue occurred while applying gradebook changes. Please retry or contact support.']
+        : warnings;
+
+    userWarnings.forEach((w) => appendSystemMessageSafely(w));
+
+    const constraints = extractFinalizeConstraints(parsed);
+    constraints.forEach((entry) => {
+        const itemLabel = entry.activity || (entry.grade_item_id > 0 ? `grade item #${entry.grade_item_id}` : 'grade item');
+        appendSystemMessageSafely(`Read-only constraint: ${itemLabel} (${entry.reason}).`);
+    });
+
+    if (warnings.length > 0 || constraints.length > 0) {
+        const hasWarningLevelIssue = warnings.some((w) => /^⚠/.test(String(w || '').trim()));
+        const hasInfoOnly = !hasTechnicalWarning && !hasWarningLevelIssue && constraints.length === 0;
+        const payload = {
+            correlationId,
+            message: parsed && parsed.message ? parsed.message : '',
+            warnings,
+            constraints,
+            data,
+            raw: parsed
+        };
+
+        if (hasTechnicalWarning) {
+            // eslint-disable-next-line no-console
+            console.error('[gradebook-finalize-diagnostics]', payload);
+        } else if (hasWarningLevelIssue || constraints.length > 0) {
+            // eslint-disable-next-line no-console
+            console.warn('[gradebook-finalize-diagnostics]', payload);
+        } else if (!hasInfoOnly) {
+            // eslint-disable-next-line no-console
+            console.warn('[gradebook-finalize-diagnostics]', payload);
+        } else {
+            // eslint-disable-next-line no-console
+            console.info('[gradebook-finalize-diagnostics]', payload);
+        }
+
+        if (correlationId) {
+            appendSystemMessageSafely(`Reference ID: ${correlationId}`);
+        }
+    }
+};
 
 const isUncategorizedToken = (category) => {
     const normalized = String(category || '').trim().toLowerCase();
@@ -660,6 +1314,140 @@ const normalizeMappedCategory = (category) => {
 
 const rowHasCategory = (item) => item && String(item.category || '').trim().length > 0;
 
+const applyTemplateValue = (template, value) => {
+    const text = String(template || '');
+    return text.indexOf('{$a}') !== -1 ? text.replace('{$a}', String(value)) : text;
+};
+
+const getEmptyCategoryWarningMessage = (categories) => {
+    const names = Array.isArray(categories) ? categories.join(', ') : String(categories || '');
+    const template = String(emptyCategoryErrorLabel || '').trim();
+    if (!template) {
+        return `These categories have no activities assigned: ${names}. Pick an activity row, remove the category, or add a manual grade item to assign to it.`;
+    }
+    return applyTemplateValue(template, names);
+};
+
+const getDefaultManualItemName = (categoryName) => {
+    const rendered = applyTemplateValue(addManualItemDefaultNameLabel, categoryName);
+    return String(rendered || `${categoryName} Manual Item`).trim();
+};
+
+const createManualMappingRow = async (categoryName) => {
+    const promptLabel = applyTemplateValue(addManualItemPromptLabel, categoryName);
+    const suggestedName = getDefaultManualItemName(categoryName);
+
+    const modal = await ModalFactory.create({
+        type: ModalFactory.types.SAVE_CANCEL,
+        title: promptLabel,
+        body: `<div class="form-group">
+                <label for="manual-item-name">${promptLabel}</label>
+                <input type="text" id="manual-item-name" class="form-control" value="${suggestedName}">
+               </div>`,
+        buttons: {
+            save: await Str.get_string('add', 'block_ai_assistant'),
+        }
+    });
+
+    modal.show();
+
+    modal.getRoot().on(ModalEvents.save, async (e) => {
+        e.preventDefault();
+        const itemName = modal.getRoot().find('#manual-item-name').val().trim();
+        if (itemName) {
+            modal.hide();
+            modal.destroy();
+
+            await withRequestLock(async () => {
+                await ensureSession();
+
+                const response = await callWs('block_ai_assistant_gradebook_create_manual_item', {
+                    courseid: getCourseId(),
+                    item_name: itemName
+                });
+
+                if (!response || response.success !== true || !response.grade_item_id) {
+                    const msg = String((response && response.message) || addManualItemFailedLabel || '').trim() ||
+                        'Could not create the manual grade item. Try again.';
+                    appendSystemMessage(msg);
+                    showMappingError(msg);
+                    return;
+                }
+
+                const confirmed = getConfirmedMapping();
+                confirmed.push({
+                    moodle_cmid: null,
+                    activity_name: String(response.activity_name || itemName).trim(),
+                    module: '',
+                    itemmodule: '',
+                    iteminstance: null,
+                    grade_item_id: Number(response.grade_item_id),
+                    grade_item_type: String(response.itemtype || 'manual').trim(),
+                    grade_item_name: String(response.activity_name || itemName).trim(),
+                    grade_item_idnumber: '',
+                    itemtype: 'manual',
+                    item_source: 'manual',
+                    category: categoryName,
+                    suggested_category: categoryName,
+                    read_only: false,
+                    read_only_reason: '',
+                    is_constrained: false
+                });
+                persistMappingInputs(confirmed);
+                syncMappingUIFromJson();
+                clearMappingError();
+                appendSystemMessage(applyTemplateValue(addManualItemCreatedLabel, String(response.activity_name || itemName).trim()));
+            });
+        }
+    });
+
+    modal.getRoot().on(ModalEvents.hidden, () => {
+        modal.destroy();
+    });
+};
+
+const renderEmptyCategoryHelper = (confirmed) => {
+    const body = el('gradebook-mapping-body');
+    if (!body) {
+        return;
+    }
+
+    const existing = el('gradebook-mapping-empty-category-helper');
+    if (existing) {
+        existing.remove();
+    }
+
+    const emptyCats = findEmptyCategories(confirmed);
+    if (emptyCats.length < 1) {
+        return;
+    }
+
+    const helper = document.createElement('div');
+    helper.id = 'gradebook-mapping-empty-category-helper';
+    helper.className = 'alert alert-warning mt-2 mb-0';
+
+    const text = document.createElement('div');
+    text.className = 'small';
+    text.textContent = getEmptyCategoryWarningMessage(emptyCats);
+    helper.appendChild(text);
+
+    const actions = document.createElement('div');
+    actions.className = 'd-flex flex-wrap gap-2 mt-2';
+    emptyCats.forEach((categoryName) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-outline-warning btn-sm';
+        button.textContent = `${addManualItemLabel}: ${categoryName}`;
+        button.addEventListener('click', () => {
+            createManualMappingRow(categoryName);
+        });
+        actions.appendChild(button);
+    });
+    helper.appendChild(actions);
+
+    body.appendChild(helper);
+};
+
 const getConfirmedMapping = () => {
     const node = el('gradebook-confirmed-mapping');
     try {
@@ -671,14 +1459,168 @@ const getConfirmedMapping = () => {
             if (!item || typeof item !== 'object') {
                 return item;
             }
+            const normalizedCategory = normalizeMappedCategory(item.category);
+            const normalizedSubcategory = String(item.subcategory || '').trim();
             return {
                 ...item,
-                category: normalizeMappedCategory(item.category)
+                category: normalizedCategory,
+                subcategory: isNotGraded(normalizedCategory) ? '' : normalizedSubcategory
             };
         });
     } catch (e) {
         return [];
     }
+};
+
+const getMappingRowActivityName = (item) => String(item.activity_name || item.grade_item_name || item.name || '').trim().toLowerCase();
+
+const isProposalOnlyMappingRow = (item) => {
+    const source = String(item.item_source || '').trim().toLowerCase();
+    return source === 'proposal_manual' || source === 'proposal';
+};
+
+const mappingRowPriority = (item) => {
+    const cmid = Number(item.moodle_cmid != null ? item.moodle_cmid : (item.cmid != null ? item.cmid : 0));
+    if (Number.isFinite(cmid) && cmid > 0) {
+        return 4;
+    }
+    const gradeItemId = Number(item.grade_item_id != null ? item.grade_item_id : (item.gradeitemid != null ? item.gradeitemid : 0));
+    if (Number.isFinite(gradeItemId) && gradeItemId > 0) {
+        return 3;
+    }
+    const module = String(item.itemmodule || item.module || item.modname || '').trim();
+    if (module) {
+        return 2;
+    }
+    if (!isProposalOnlyMappingRow(item)) {
+        return 1;
+    }
+    return 0;
+};
+
+const dedupeMappingRowsByActivityName = (rows) => {
+    if (!Array.isArray(rows) || rows.length < 1) {
+        return [];
+    }
+
+    const bestByName = new Map();
+    const nameOrder = [];
+    const unnamed = [];
+
+    rows.forEach((row) => {
+        const nameKey = getMappingRowActivityName(row);
+        if (!nameKey) {
+            unnamed.push(row);
+            return;
+        }
+        if (!bestByName.has(nameKey)) {
+            nameOrder.push(nameKey);
+        }
+        const current = bestByName.get(nameKey);
+        if (!current || mappingRowPriority(row) > mappingRowPriority(current)) {
+            bestByName.set(nameKey, row);
+        }
+    });
+
+    const deduped = nameOrder.map((nameKey) => bestByName.get(nameKey)).filter(Boolean);
+    return [...deduped, ...unnamed];
+};
+
+const buildConfirmedRowIdentity = (item) => {
+    if (!item || typeof item !== 'object') {
+        return '';
+    }
+
+    const gradeItemId = Number(item.grade_item_id != null ? item.grade_item_id : (item.gradeitemid != null ? item.gradeitemid : 0));
+    if (Number.isFinite(gradeItemId) && gradeItemId > 0) {
+        return `gi:${gradeItemId}`;
+    }
+
+    const moodleCmid = Number(item.moodle_cmid != null ? item.moodle_cmid : (item.cmid != null ? item.cmid : 0));
+    if (Number.isFinite(moodleCmid) && moodleCmid > 0) {
+        return `cm:${moodleCmid}`;
+    }
+
+    const activityName = String(item.activity_name || item.grade_item_name || item.name || '').trim().toLowerCase();
+    if (!activityName) {
+        return '';
+    }
+    const moduleName = String(item.itemmodule || item.module || item.modname || '').trim().toLowerCase();
+    return `name:${activityName}|module:${moduleName}`;
+};
+
+const mergeConfirmedRowsWithExisting = (incomingRows, existingRows) => {
+    if (!Array.isArray(incomingRows) || incomingRows.length < 1) {
+        return [];
+    }
+
+    const existingByIdentity = new Map();
+    if (Array.isArray(existingRows)) {
+        existingRows.forEach((row) => {
+            const key = buildConfirmedRowIdentity(row);
+            if (key) {
+                existingByIdentity.set(key, row);
+            }
+        });
+    }
+
+    const mergedIncoming = incomingRows.map((row) => {
+        const key = buildConfirmedRowIdentity(row);
+        const existing = key ? existingByIdentity.get(key) : null;
+        if (!existing || isReadOnlyMappingRow(row)) {
+            return row;
+        }
+
+        const merged = {...row};
+        const existingCategory = normalizeMappedCategory(existing.category);
+        if (existingCategory) {
+            merged.category = existingCategory;
+        }
+
+        const mergedCategory = normalizeMappedCategory(merged.category);
+        if (isNotGraded(mergedCategory)) {
+            merged.subcategory = '';
+            return merged;
+        }
+
+        const existingSubcategory = String(existing.subcategory || '').trim();
+        if (!existingSubcategory) {
+            return merged;
+        }
+
+        const options = getSubcategoryOptionsForCategory(mergedCategory);
+        if (!Array.isArray(options) || options.length < 1 || options.includes(existingSubcategory)) {
+            merged.subcategory = existingSubcategory;
+        }
+
+        return merged;
+    });
+
+    const mergedKeys = new Set(
+        mergedIncoming.map((row) => buildConfirmedRowIdentity(row)).filter((key) => Boolean(key))
+    );
+    if (!Array.isArray(existingRows)) {
+        return mergedIncoming;
+    }
+    const coveredNames = new Set(
+        mergedIncoming.map((row) => getMappingRowActivityName(row)).filter((name) => name.length > 0)
+    );
+    existingRows.forEach((row) => {
+        const key = buildConfirmedRowIdentity(row);
+        const nameKey = getMappingRowActivityName(row);
+        if (nameKey && coveredNames.has(nameKey)) {
+            return;
+        }
+        if (key && !mergedKeys.has(key)) {
+            mergedIncoming.push(row);
+            mergedKeys.add(key);
+            if (nameKey) {
+                coveredNames.add(nameKey);
+            }
+        }
+    });
+
+    return dedupeMappingRowsByActivityName(mergedIncoming);
 };
 
 const findMissingCategoryIndexes = (confirmed) => {
@@ -698,7 +1640,7 @@ const findEmptyCategories = (confirmed) => {
     if (!Array.isArray(proposalCategories) || proposalCategories.length < 1) {
         return [];
     }
-    const used = new Set();
+    const used = new Set(Array.isArray(proposalCategoriesWithItems) ? proposalCategoriesWithItems : []);
     if (Array.isArray(confirmed)) {
         confirmed.forEach((item) => {
             const cat = String(item.category || '').trim();
@@ -809,7 +1751,8 @@ const setUiBusy = (isBusy) => {
         'btn-gradebook-accept',
         'btn-gradebook-finalize',
         'btn-gradebook-generate',
-        'btn-gradebook-reset'
+        'btn-gradebook-reset',
+        'btn-gradebook-revert'
     ].forEach((id) => {
         const node = el(id);
         if (node) {
@@ -872,6 +1815,15 @@ const buildCategoryOptions = (currentCat) => {
     return base;
 };
 
+const getSubcategoryOptionsForCategory = (categoryName) => {
+    const key = String(categoryName || '').trim().toLowerCase();
+    if (!key || typeof proposalSubcategoriesByCategory !== 'object' || proposalSubcategoriesByCategory === null) {
+        return [];
+    }
+    const options = proposalSubcategoriesByCategory[key];
+    return Array.isArray(options) ? options : [];
+};
+
 const applyNotGradedRowStyle = (tr, isNG) => {
     if (isNG) {
         tr.classList.add('gradebook-row-not-graded');
@@ -886,6 +1838,7 @@ const persistMappingInputs = (confirmed) => {
         jsonNode.value = JSON.stringify(confirmed, null, 2);
     }
     updateMappingSummary(confirmed);
+    renderEmptyCategoryHelper(confirmed);
     setFinalizeEnabled(true);
     scheduleServerSave();
 };
@@ -918,6 +1871,7 @@ const syncMappingUIFromJson = () => {
         empty.classList.remove('d-none');
         wrapper.classList.add('d-none');
         updateMappingSummary([]);
+        renderEmptyCategoryHelper([]);
         return;
     }
 
@@ -933,8 +1887,21 @@ const syncMappingUIFromJson = () => {
         tr.appendChild(cmid);
 
         const activity = document.createElement('td');
-        activity.textContent = item.activity_name || item.name || '';
+        const activityName = item.activity_name || item.name || '';
+        activity.textContent = activityName;
         activity.className = 'gradebook-activity-name';
+        if (String(item.item_source || item.itemtype || '').trim().toLowerCase() === 'manual') {
+            const marker = document.createElement('div');
+            marker.className = 'text-muted small mt-1';
+            marker.textContent = manualItemLabel;
+            activity.appendChild(marker);
+        }
+        if (isReadOnlyMappingRow(item)) {
+            const marker = document.createElement('div');
+            marker.className = 'text-warning small mt-1';
+            marker.textContent = `Read-only: ${mappingConstraintReason(item) || 'constrained item'}`;
+            activity.appendChild(marker);
+        }
         tr.appendChild(activity);
 
         const category = document.createElement('td');
@@ -983,9 +1950,74 @@ const syncMappingUIFromJson = () => {
             sel.classList.add('gradebook-select-empty');
         }
 
+        if (isReadOnlyMappingRow(item)) {
+            sel.value = NOT_GRADED;
+            item.category = NOT_GRADED;
+            sel.disabled = true;
+            sel.setAttribute('title', `Read-only: ${mappingConstraintReason(item) || 'constrained item'}`);
+            applyNotGradedRowStyle(tr, true);
+            sel.classList.remove('gradebook-select-empty');
+        }
+
+        const subcategory = document.createElement('td');
+        const subSel = document.createElement('select');
+        subSel.className = 'form-select form-select-sm gradebook-subcategory-select';
+        subSel.setAttribute('aria-label', `Subcategory for ${item.activity_name || ''}`);
+        subSel.setAttribute('title', 'Optional: choose a subcategory, or keep None to stay in the parent category.');
+
+        const refreshSubcategorySelect = (categoryValue) => {
+            const normalizedCategoryValue = String(categoryValue || '').trim();
+            const nextSubcategory = String(item.subcategory || '').trim();
+            const subcategoryOptions = getSubcategoryOptionsForCategory(normalizedCategoryValue).slice();
+
+            subSel.replaceChildren();
+
+            const noneOpt = document.createElement('option');
+            noneOpt.value = '';
+            noneOpt.textContent = noSubcategoryLabel;
+            subSel.appendChild(noneOpt);
+
+            if (nextSubcategory && !subcategoryOptions.includes(nextSubcategory)) {
+                subcategoryOptions.push(nextSubcategory);
+            }
+
+            subcategoryOptions.forEach((subName) => {
+                const opt = document.createElement('option');
+                opt.value = subName;
+                opt.textContent = subName;
+                subSel.appendChild(opt);
+            });
+
+            const shouldDisableSubcategory = isReadOnlyMappingRow(item)
+                || isNotGraded(normalizedCategoryValue)
+                || !normalizedCategoryValue
+                || subcategoryOptions.length < 1;
+
+            if (subcategoryOptions.length < 1 || isNotGraded(normalizedCategoryValue)) {
+                item.subcategory = '';
+            } else if (!subcategoryOptions.includes(nextSubcategory)) {
+                item.subcategory = '';
+            }
+
+            subSel.value = String(item.subcategory || '').trim();
+            if (!subSel.value) {
+                subSel.value = '';
+            }
+            subSel.disabled = shouldDisableSubcategory;
+        };
+
+        refreshSubcategorySelect(currentValue);
+
         sel.addEventListener('change', () => {
             const val = sel.value;
             item.category = val;
+            const validSubcategories = getSubcategoryOptionsForCategory(val);
+            if (!Array.isArray(validSubcategories) || validSubcategories.length < 1) {
+                item.subcategory = '';
+            } else if (!validSubcategories.includes(String(item.subcategory || '').trim())) {
+                item.subcategory = '';
+            }
+            refreshSubcategorySelect(val);
             applyNotGradedRowStyle(tr, isNotGraded(val));
             tr.classList.remove('gradebook-row-missing');
             if (val) {
@@ -1000,10 +2032,20 @@ const syncMappingUIFromJson = () => {
         category.appendChild(sel);
         tr.appendChild(category);
 
+        subSel.addEventListener('change', () => {
+            item.subcategory = String(subSel.value || '').trim();
+            persistMappingInputs(confirmed);
+            clearMappingError();
+        });
+
+        subcategory.appendChild(subSel);
+        tr.appendChild(subcategory);
+
         rows.appendChild(tr);
     });
 
     updateMappingSummary(confirmed);
+    renderEmptyCategoryHelper(confirmed);
     setFinalizeEnabled(true);
 };
 
@@ -1017,6 +2059,61 @@ const extractContentMapping = (payload) => {
         payload.mapping ||
         (payload.session && (payload.session.content_mapping || payload.session.contentMapping)) ||
         null;
+};
+
+const applyProposalFromPayload = (parsed) => {
+    if (!parsed || typeof parsed !== 'object' || !parsed.proposal || !Array.isArray(parsed.proposal.categories)) {
+        return;
+    }
+    const cats = extractProposalCategories(parsed.proposal);
+    const catsWithItems = extractProposalCategoriesWithItems(parsed.proposal);
+    const subcategoriesByCategory = extractProposalSubcategoriesMap(parsed.proposal);
+    if (cats.length) {
+        setProposalCategories(cats, catsWithItems, subcategoriesByCategory);
+    }
+    applyProposalWeightGate(parsed.proposal);
+};
+
+const applyMappingPayload = (parsed) => {
+    if (!parsed || typeof parsed !== 'object') {
+        return 0;
+    }
+
+    let incoming = mappingToConfirmedRows(extractContentMapping(parsed));
+    if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
+        incoming = appendProposalManualRowsToMapping(parsed.proposal, incoming);
+    }
+    if (!incoming.length) {
+        return 0;
+    }
+
+    const existing = getConfirmedMapping();
+    const merged = mergeConfirmedRowsWithExisting(incoming, existing);
+    persistMappingInputs(merged);
+    syncMappingUIFromJson();
+    applyProposalFromPayload(parsed);
+    return merged.length;
+};
+
+const refreshMappingBeforeFinalize = async () => {
+    try {
+        const parsed = await callWithSessionRetry(async (sid) => {
+            const raw = await callWs('block_ai_assistant_gradebook_accept', {
+                courseid: getCourseId(),
+                session_id: sid
+            });
+            return parseResponse(raw);
+        });
+        if (parsed.phase || parsed.state) {
+            setPhase(parsed.phase || parsed.state);
+        }
+        return applyMappingPayload(parsed);
+    } catch (e) {
+        gradebookDebug('refreshMappingBeforeFinalize:error', {
+            message: String((e && e.message) || e || '')
+        });
+        return getConfirmedMapping().length;
+    }
 };
 
 const mappingToConfirmedRows = (mapping) => {
@@ -1045,10 +2142,19 @@ const mappingToConfirmedRows = (mapping) => {
         const suggested = !confirmed && item.suggested_category && String(item.suggested_category).trim().length > 0
             ? String(item.suggested_category).trim()
             : '';
+        const confirmedSubcategory = item.confirmed_subcategory && String(item.confirmed_subcategory).trim().length > 0
+            ? String(item.confirmed_subcategory).trim()
+            : '';
+        const suggestedSubcategory = !confirmedSubcategory && item.suggested_subcategory && String(item.suggested_subcategory).trim().length > 0
+            ? String(item.suggested_subcategory).trim()
+            : '';
         const normalizedCategory = normalizeMappedCategory(confirmed || suggested);
+        const readOnly = isReadOnlyMappingRow(item);
+        const readOnlyReason = mappingConstraintReason(item);
         const moodleCmid = item.moodle_cmid != null
             ? item.moodle_cmid
             : (item.cmid != null ? item.cmid : null);
+        const itemSource = String(item.item_source || '').trim() || (moodleCmid == null ? 'manual' : 'activity');
         return {
             moodle_cmid: moodleCmid,
             activity_name: name,
@@ -1059,10 +2165,79 @@ const mappingToConfirmedRows = (mapping) => {
             grade_item_type: gradeItemType,
             grade_item_name: gradeItemName,
             grade_item_idnumber: gradeItemIdnumber,
-            category: normalizedCategory,
-            suggested_category: suggested
+            itemtype: gradeItemType,
+            item_source: itemSource,
+            category: readOnly ? NOT_GRADED : normalizedCategory,
+            subcategory: readOnly ? '' : (confirmedSubcategory || suggestedSubcategory || ''),
+            suggested_category: suggested,
+            suggested_subcategory: suggestedSubcategory,
+            read_only: readOnly,
+            read_only_reason: readOnlyReason,
+            is_constrained: readOnly
         };
-    }).filter((item) => item.grade_item_id != null);
+    }).filter((item) => {
+        if (item.grade_item_id != null || item.moodle_cmid != null) {
+            return true;
+        }
+        const itemSource = String(item.item_source || '').trim().toLowerCase();
+        const activityName = String(item.activity_name || item.name || '').trim();
+        return activityName.length > 0
+            && (itemSource === 'manual' || itemSource === 'proposal_manual' || itemSource === 'proposal');
+    });
+};
+
+const appendProposalManualRowsToMapping = (proposal, existingRows = []) => {
+    if (!proposal || !Array.isArray(proposal.categories)) {
+        return Array.isArray(existingRows) ? existingRows : [];
+    }
+
+    const rows = Array.isArray(existingRows) ? [...existingRows] : [];
+    const identityKeys = new Set(rows.map((row) => buildConfirmedRowIdentity(row)).filter((key) => Boolean(key)));
+    const existingNames = new Set(
+        rows
+            .map((row) => String(row.activity_name || row.grade_item_name || row.name || '').trim().toLowerCase())
+            .filter((name) => name.length > 0)
+    );
+
+    proposal.categories.forEach((category) => {
+        const categoryName = String((category && category.name) || '').trim();
+        if (!categoryName || !Array.isArray(category.items)) {
+            return;
+        }
+
+        category.items.forEach((rawItem) => {
+            const itemName = String(rawItem || '').trim();
+            if (!itemName) {
+                return;
+            }
+
+            const itemKey = itemName.toLowerCase();
+            if (existingNames.has(itemKey)) {
+                return;
+            }
+
+            const candidate = {
+                moodle_cmid: null,
+                activity_name: itemName,
+                grade_item_id: null,
+                grade_item_type: 'manual',
+                itemtype: 'manual',
+                item_source: 'proposal_manual',
+                category: categoryName,
+                subcategory: '',
+                mapping_method: 'proposal_manual'
+            };
+            const key = buildConfirmedRowIdentity(candidate);
+            if (!key || identityKeys.has(key)) {
+                return;
+            }
+            rows.push(candidate);
+            identityKeys.add(key);
+            existingNames.add(itemKey);
+        });
+    });
+
+    return dedupeMappingRowsByActivityName(rows);
 };
 
 const normalizePrompt = (prompt) => {
@@ -1076,6 +2251,34 @@ const extractProposalCategories = (proposal) => {
         return proposal.categories.map((c) => c.name).filter(Boolean);
     }
     return [];
+};
+
+const extractProposalCategoriesWithItems = (proposal) => {
+    if (!proposal || !Array.isArray(proposal.categories)) {
+        return [];
+    }
+    return proposal.categories
+        .filter((c) => c && Array.isArray(c.items) && c.items.length > 0)
+        .map((c) => c.name)
+        .filter(Boolean);
+};
+
+const extractProposalSubcategoriesMap = (proposal) => {
+    const map = {};
+    if (!proposal || !Array.isArray(proposal.categories)) {
+        return map;
+    }
+    proposal.categories.forEach((category) => {
+        const categoryName = String((category && category.name) || '').trim();
+        if (!categoryName) {
+            return;
+        }
+        const subcategories = Array.isArray(category.subcategories) ? category.subcategories : [];
+        map[categoryName.toLowerCase()] = subcategories
+            .map((sub) => String((sub && sub.name) || '').trim())
+            .filter(Boolean);
+    });
+    return map;
 };
 
 const summarizeProposalCategories = (proposal) => {
@@ -1109,8 +2312,12 @@ const extractProposalChecks = (proposal) => {
     return notes.filter((n) => typeof n === 'string' && !n.startsWith('Effect:'));
 };
 
-const setProposalCategories = (cats) => {
+const setProposalCategories = (cats, categoriesWithItems = [], subcategoriesByCategory = {}) => {
     proposalCategories = Array.isArray(cats) ? cats : [];
+    proposalCategoriesWithItems = Array.isArray(categoriesWithItems) ? categoriesWithItems : [];
+    proposalSubcategoriesByCategory = subcategoriesByCategory && typeof subcategoriesByCategory === 'object'
+        ? subcategoriesByCategory
+        : {};
     if (proposalCategories.length > 0) {
         saveJson(getStorageKey('proposal_categories'), proposalCategories);
     } else {
@@ -1119,29 +2326,106 @@ const setProposalCategories = (cats) => {
     syncMappingUIFromJson();
 };
 
-const hydrateFromStatusPayload = (parsed) => {
-    const statusPayload = parsed && parsed.session ? parsed.session : null;
+const hydrateFromStatusPayload = (parsed, serverState = null) => {
+    const statusPayload = (parsed && typeof parsed === 'object')
+        ? (parsed.session && typeof parsed.session === 'object' ? parsed.session : parsed)
+        : null;
     if (!statusPayload || typeof statusPayload !== 'object') {
+        gradebookDebug('hydrateFromStatusPayload:skip-invalid', {
+            parsedType: typeof parsed
+        });
         return;
     }
 
-    setPhase(statusPayload.phase || parsed.phase || parsed.state || '-');
-    const phaseUpper = String(statusPayload.phase || parsed.phase || parsed.state || '-').toUpperCase();
+    gradebookDebug('hydrateFromStatusPayload:start', {
+        hasSessionWrapper: Boolean(parsed && parsed.session),
+        phase: statusPayload.phase || parsed.phase || parsed.state || '-',
+        importMode: statusPayload.import_mode || (statusPayload.extraction && statusPayload.extraction.import_mode) || parsed.import_mode || '',
+        chatLength: Array.isArray(statusPayload.chat_history || parsed.chat_history || [])
+            ? (statusPayload.chat_history || parsed.chat_history || []).length
+            : 0
+    });
+
+    const statusImportMode = String(
+        statusPayload.import_mode ||
+        (statusPayload.extraction && statusPayload.extraction.import_mode) ||
+        parsed.import_mode ||
+        ''
+    );
+    const statusNormalized = normalizeImportMode(statusImportMode);
+    const normalizedImportMode = statusNormalized
+        ? setImportMode(statusNormalized)
+        : getImportMode();
+    const baselineAvailable = statusPayload.baseline_available !== undefined
+        ? Boolean(statusPayload.baseline_available)
+        : Boolean((statusPayload.extraction && statusPayload.extraction.baseline_available)
+            || parsed.baseline_available
+            || (parsed.data && parsed.data.baseline_available));
+    const statusRevertAvailable = statusPayload.revert_available !== undefined
+        ? Boolean(statusPayload.revert_available)
+        : (parsed.revert_available !== undefined
+            ? Boolean(parsed.revert_available)
+            : (parsed.data && parsed.data.revert_available !== undefined
+                ? Boolean(parsed.data.revert_available)
+                : getRevertAvailable()));
+    setBaselineAvailable(baselineAvailable || getBaselineAvailable());
+    const effectiveRevertAvailable = statusRevertAvailable
+        && (baselineAvailable || getBaselineAvailable())
+        && (normalizedImportMode === 'baseline' || isBaselineImportSession());
+    setRevertAvailable(effectiveRevertAvailable);
+    setRevertButtonVisibility(
+        normalizedImportMode,
+        baselineAvailable || getBaselineAvailable(),
+        effectiveRevertAvailable
+    );
+
+    const statusPhase = String(statusPayload.phase || parsed.phase || parsed.state || '-');
+    let effectivePhase = statusPhase;
+
+    const statePhase = String((serverState && serverState.phase) || '').trim().toUpperCase();
+    if (statePhase === 'REFINEMENT' && isFinalizeCompletedPhase(statusPhase)) {
+        let stateResultData = {};
+        try {
+            const stateResult = JSON.parse(String((serverState && serverState.result_json) || 'null'));
+            stateResultData = (stateResult && typeof stateResult === 'object' && stateResult.data && typeof stateResult.data === 'object')
+                ? stateResult.data
+                : {};
+        } catch (e) {
+        }
+
+        if (Boolean(stateResultData.grade_setup_skipped || stateResultData.grade_setup_apply_rolled_back)) {
+            effectivePhase = 'REFINEMENT';
+        }
+    }
+
+    setPhase(effectivePhase || '-');
+    const phaseUpper = String(effectivePhase || '-').toUpperCase();
 
     ingestBackendChatHistory(statusPayload.chat_history || parsed.chat_history || [], true);
 
     const statusProposal = statusPayload.proposal || null;
     const cats = extractProposalCategories(statusProposal);
+    const catsWithItems = extractProposalCategoriesWithItems(statusProposal);
+    const subcategoriesByCategory = extractProposalSubcategoriesMap(statusProposal);
     if (cats.length > 0) {
-        setProposalCategories(cats);
+        setProposalCategories(cats, catsWithItems, subcategoriesByCategory);
     }
     if (statusProposal && Array.isArray(statusProposal.categories)) {
         applyProposalWeightGate(statusProposal);
     }
 
-    if (!isFinalizeCompletedPhase(phaseUpper)) {
-        removeKey(getStorageKey('result'));
-        renderResultPanel(null);
+    if (isFinalizeCompletedPhase(phaseUpper)) {
+        rehydrateBaselineDeleteWarningState(serverState);
+    } else {
+        const kept = getStoredFinalizeResult();
+        const keepFinalized = Boolean(kept && isSuccessfulFinalizeResult(kept));
+        if (!keepFinalized) {
+            removeKey(getStorageKey('result'));
+            lastStoredFinalizeResult = null;
+            renderResultPanel(null);
+        } else {
+            rehydrateBaselineDeleteWarningState(serverState);
+        }
     }
 
     const mapping = extractContentMapping(statusPayload);
@@ -1149,9 +2433,28 @@ const hydrateFromStatusPayload = (parsed) => {
     if (confirmed.length > 0) {
         const node = el('gradebook-confirmed-mapping');
         if (node) {
-            node.value = JSON.stringify(confirmed, null, 2);
+            const existing = getConfirmedMapping();
+            const merged = mergeConfirmedRowsWithExisting(confirmed, existing);
+            node.value = JSON.stringify(merged, null, 2);
         }
         syncMappingUIFromJson();
+    }
+
+    const statusData = (parsed && typeof parsed.data === 'object') ? parsed.data : {};
+    const missingAfterFinalize = Boolean(statusData.grade_setup_missing_after_finalize);
+    const deletedEventDetected = Boolean(statusData.grade_setup_deleted_event_detected);
+    if (missingAfterFinalize || deletedEventDetected) {
+        const mappingNode = el('gradebook-confirmed-mapping');
+        if (mappingNode) {
+            mappingNode.value = '[]';
+        }
+        syncMappingUIFromJson();
+        setRevertAvailable(false);
+        setPhase('REFINEMENT');
+        if (!gradebookMissingNoticeShown) {
+            appendSystemMessage('Gradebook structure was deleted outside this session. Mapping was reset. Regenerate mapping and finalize again.');
+            gradebookMissingNoticeShown = true;
+        }
     }
 };
 
@@ -1201,14 +2504,16 @@ const collectStateSnapshot = () => {
 
     const localHistory = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history'), []));
     const backendHistory = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history_backend'), []));
+    const starterHistory = getStarterChatHistory(String(sid || '').trim());
     const preferredHistory = (backendHistory.length > localHistory.length || !chatHistoryTailMatches(localHistory, backendHistory))
         ? backendHistory
         : localHistory;
+    const snapshotHistory = preferredHistory.length > 0 ? preferredHistory : starterHistory;
 
     return {
         session_id: (sid && sid !== 'starting…') ? sid : null,
         phase: (phaseText && phaseText !== '—') ? phaseText : null,
-        chat_history_json: JSON.stringify(preferredHistory),
+        chat_history_json: JSON.stringify(snapshotHistory),
         confirmed_mapping_json: normalizedMapping,
         result_json: JSON.stringify(loadJson(getStorageKey('result'), null))
     };
@@ -1357,17 +2662,25 @@ const serverGetState = async () => {
         const response = await callWs('block_ai_assistant_gradebook_get_state', {
             courseid: cid
         });
+        gradebookDebug('serverGetState:response', {
+            found: Boolean(response && response.found),
+            sessionId: response && response.session_id ? String(response.session_id) : '',
+            hasChat: Boolean(response && response.chat_history_json && String(response.chat_history_json).trim() !== ''),
+            timemodified: Number(response && response.timemodified || 0)
+        });
         if (response && response.timemodified) {
             bumpLastKnown(response.timemodified);
         }
         return response && response.found ? response : null;
     } catch (e) {
+        gradebookDebug('serverGetState:error', {message: String((e && e.message) || e || '')});
         return null;
     }
 };
 
 const hydrateFromServerState = (state) => {
     if (!state) {
+        gradebookDebug('hydrateFromServerState:skip-null');
         return false;
     }
 
@@ -1376,9 +2689,19 @@ const hydrateFromServerState = (state) => {
     try {
         const history = JSON.parse(state.chat_history_json || '[]');
         const localLen = localHistoryLength();
+        const starterHistory = getStarterChatHistory();
+        gradebookDebug('hydrateFromServerState:history-compare', {
+            serverLength: Array.isArray(history) ? history.length : 0,
+            localLength: localLen,
+            sessionId: state.session_id || ''
+        });
         if (Array.isArray(history) && history.length > 0 && history.length >= localLen) {
             persistChatHistoryLocal(history);
             renderHistory(history);
+            hydrated = true;
+        } else if ((!Array.isArray(history) || history.length < 1) && localLen < 1 && starterHistory.length > 0) {
+            persistChatHistoryLocal(starterHistory);
+            renderHistory(starterHistory);
             hydrated = true;
         } else if (localLen > 0 && (!Array.isArray(history) || history.length < localLen)) {
             scheduleServerSave();
@@ -1404,18 +2727,23 @@ const hydrateFromServerState = (state) => {
     }
 
     try {
-        const result = state.result_json ? JSON.parse(state.result_json) : null;
-        if (result && isFinalizeCompletedPhase(restoredPhase)) {
-            saveJson(getStorageKey('result'), result);
-            renderResultPanel(result);
-            hydrated = true;
-        } else if (result) {
-            removeKey(getStorageKey('result'));
-            renderResultPanel(null);
-            scheduleServerSave();
+        if (state.result_json) {
+            if (rehydrateBaselineDeleteWarningState(state)) {
+                hydrated = true;
+            } else {
+                const result = JSON.parse(String(state.result_json || 'null'));
+                if (result) {
+                    removeKey(getStorageKey('result'));
+                    lastStoredFinalizeResult = null;
+                    renderResultPanel(null);
+                    scheduleServerSave();
+                }
+            }
         }
     } catch (e) {
     }
+
+    setRevertButtonVisibility(getImportMode());
 
     return hydrated;
 };
@@ -1576,12 +2904,63 @@ const downloadExport = async (format) => {
 const downloadFinalizeResultAsWord = () => downloadExport('docx');
 const downloadFinalizeResultAsPdf = () => downloadExport('pdf');
 
-const doStartSession = async () => {
-    const raw = await callWs('block_ai_assistant_gradebook_start', {courseid: getCourseId()});
+const doStartSession = async (importMode = '') => {
+    gradebookMissingNoticeShown = false;
+    const payload = {courseid: getCourseId()};
+    const normalizedImportMode = normalizeImportMode(importMode);
+    if (normalizedImportMode) {
+        payload.import_mode = normalizedImportMode;
+    }
+    const raw = await callWs('block_ai_assistant_gradebook_start', payload);
     const parsed = parseResponse(raw);
+
+    const status = Number(parsed && (parsed.status || parsed.code_status || parsed.http_status) || 0);
+    if (status >= 400) {
+        throw new Error(extractResponseErrorMessage(parsed, 'Could not start gradebook session.'));
+    }
+
     const sessionId = parsed.session_id || parsed.sessionId || parsed.session || '';
+    if (!String(sessionId || '').trim()) {
+        throw new Error(extractResponseErrorMessage(parsed, 'Could not start gradebook session (missing session id).'));
+    }
+
     setSessionId(sessionId);
     setPhase(parsed.phase || parsed.state || '-');
+    clearStarterChatHistory();
+    const activeImportMode = setImportMode(parsed.import_mode || normalizedImportMode);
+    const baselineAvailable = parsed.baseline_available !== undefined
+        ? Boolean(parsed.baseline_available)
+        : Boolean((parsed.start_metadata && parsed.start_metadata.baseline_available));
+    setBaselineAvailable(baselineAvailable);
+    setRevertAvailable(false);
+    setRevertButtonVisibility(activeImportMode, baselineAvailable, false);
+
+    const autoMode = normalizeImportMode(importMode) === '';
+    if (autoMode) {
+        if (baselineAvailable) {
+            const useBaseline = await askBaselineModeChoice();
+            if (!useBaseline) {
+                try {
+                    await remoteDeleteSession(String(sessionId));
+                } catch (e) {
+                }
+                setSessionId('');
+                setPhase('—');
+                setImportMode('fresh');
+                return doStartSession('fresh');
+            }
+            setImportMode('baseline');
+            appendSystemMessage(await getStringSafe(
+                'gradebook_baseline_detected',
+                'Using your existing gradebook as baseline.'
+            ));
+        } else {
+            appendSystemMessage(await getStringSafe(
+                'gradebook_baseline_not_found',
+                'No existing gradebook baseline found. Starting from syllabus/context analysis.'
+            ));
+        }
+    }
 
     const initial = parsed.initial_message || parsed.message || 'Gradebook session started.';
     appendSystemMessage(initial);
@@ -1592,13 +2971,23 @@ const doStartSession = async () => {
 };
 
 const clearLocalGradebookState = async () => {
+    gradebookMissingNoticeShown = false;
     removeKey(getStorageKey('session_id'));
     removeKey(getStorageKey('chat_history'));
     removeKey(getStorageKey('chat_history_backend'));
+    clearStarterChatHistory();
     removeKey(getStorageKey('phase'));
     removeKey(getStorageKey('result'));
+    lastStoredFinalizeResult = null;
     removeKey(getStorageKey('proposal_categories'));
+    removeKey(getStorageKey('import_mode'));
+    removeKey(getStorageKey('baseline_available'));
+    removeKey(getStorageKey('revert_available'));
+    removeKey(getStorageKey('baseline_modified'));
     proposalCategories = [];
+    proposalCategoriesWithItems = [];
+    proposalSubcategoriesByCategory = {};
+    setRevertButtonVisibility('');
     setSessionId('');
     setPhase('—');
     const node = el('gradebook-confirmed-mapping');
@@ -1630,6 +3019,18 @@ const remoteDeleteSession = async (sessionId) => {
     const raw = await callWs('block_ai_assistant_gradebook_delete', {
         courseid: getCourseId(),
         session_id: sessionId
+    });
+    return parseResponse(raw);
+};
+
+const remoteRevertSession = async (sessionId, revision = 0) => {
+    if (!sessionId || sessionId === 'starting…') {
+        return null;
+    }
+    const raw = await callWs('block_ai_assistant_gradebook_revert', {
+        courseid: getCourseId(),
+        session_id: sessionId,
+        revision: Number(revision) || 0
     });
     return parseResponse(raw);
 };
@@ -1727,6 +3128,45 @@ const deleteSessionAndRestart = async () => {
     return doStartSession();
 };
 
+const revertSessionAndRestart = async () => {
+    const currentSessionId = getSessionId();
+    const revertResponse = await remoteRevertSession(currentSessionId, 0);
+    const status = Number((revertResponse && revertResponse.status) || 0);
+
+    if (!revertResponse || (status >= 400 && status !== 0)) {
+        const fallbackMessage = (revertResponse && revertResponse.message)
+            ? String(revertResponse.message)
+            : 'Revert failed. Please check snapshot availability and try again.';
+        appendSystemMessage(fallbackMessage);
+        return null;
+    }
+
+    suspendAutoSave = true;
+    if (pendingServerSave) {
+        clearTimeout(pendingServerSave);
+        pendingServerSave = null;
+    }
+    try { await saveInFlight; } catch (_) { }
+
+    await clearLocalGradebookState();
+    suspendAutoSave = false;
+
+    const messages = [];
+    if (revertResponse && revertResponse.message) {
+        messages.push(String(revertResponse.message));
+    }
+    const restoredRevision = revertResponse && revertResponse.data
+        ? Number(revertResponse.data.restored_revision || 0)
+        : 0;
+    if (restoredRevision > 0) {
+        messages.push(`Restored snapshot revision #${restoredRevision}.`);
+    }
+    const finalMessage = messages.length > 0 ? messages.join(' ') : 'Gradebook reverted to the original baseline setup.';
+    appendSystemMessage(finalMessage);
+
+    return doStartSession('baseline');
+};
+
 const moodleConfirm = async ({title, message, yesLabel, noLabel}) => {
     return new Promise((resolve) => {
         notification.confirm(
@@ -1749,10 +3189,11 @@ const softRestartSession = async (systemMessageKey) => {
         } catch (e) {
         }
     }
-    return doStartSession();
+    return doStartSession('');
 };
 
 const restoreOrStartSession = async () => {
+    gradebookDebug('restoreOrStartSession:start');
     const serverState = await serverGetState();
     if (serverState) {
         hydrateFromServerState(serverState);
@@ -1762,28 +3203,44 @@ const restoreOrStartSession = async () => {
         String(loadJson(getStorageKey('session_id'), '') || '').trim();
 
     if (candidateSession && candidateSession !== 'starting…') {
+        gradebookDebug('restoreOrStartSession:candidate', {sessionId: candidateSession});
         try {
             const raw = await callWs('block_ai_assistant_gradebook_status', {
                 courseid: getCourseId(),
                 session_id: candidateSession
             });
             const parsed = parseResponse(raw);
+            gradebookDebug('restoreOrStartSession:status-ok', {
+                phase: parsed && (parsed.phase || parsed.state || (parsed.session && parsed.session.phase) || ''),
+                chatLength: Array.isArray((parsed && parsed.chat_history) || (parsed && parsed.session && parsed.session.chat_history) || [])
+                    ? (((parsed && parsed.chat_history) || (parsed && parsed.session && parsed.session.chat_history) || []).length)
+                    : 0
+            });
             if (isSessionNotFound(parsed)) {
+                gradebookDebug('restoreOrStartSession:status-session-not-found');
                 return softRestartSession('gradebook_session_expired');
             }
             setSessionId(candidateSession);
-            hydrateFromStatusPayload(parsed);
+            hydrateFromStatusPayload(parsed, serverState);
+            ensureChatRenderedFromAnySource(parsed, serverState);
+            rehydrateBaselineDeleteWarningState(serverState);
             if (!serverState) {
                 serverSaveState();
             }
             return candidateSession;
         } catch (e) {
+            gradebookDebug('restoreOrStartSession:status-error', {
+                sessionId: candidateSession,
+                message: String((e && e.message) || e || '')
+            });
             setSessionId(candidateSession);
+            ensureChatRenderedFromAnySource(null, serverState);
             return candidateSession;
         }
     }
 
-    return doStartSession();
+    gradebookDebug('restoreOrStartSession:no-candidate-starting-new');
+    return doStartSession('');
 };
 
 let authoritativeCheckDone = false;
@@ -1918,6 +3375,8 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                 });
                 return parseResponse(raw);
             });
+            const replyText = String(parsed.reply || parsed.message || 'Updated.');
+            const backendAlreadyHasReply = backendHistoryContainsReply(parsed.chat_history || [], replyText);
             ingestBackendChatHistory(parsed.chat_history || [], false);
             await runWithinProposalPanelSync(async () => {
                 setPhase(parsed.phase || parsed.state || '-');
@@ -1930,14 +3389,13 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                 shouldForcePostChatSave = proposalChanged || enteredEditFromFinalized;
 
                 if (enteredEditFromFinalized) {
-                    const mappingNode = el('gradebook-confirmed-mapping');
-                    if (mappingNode) {
-                        mappingNode.value = '';
-                    }
-                    syncMappingUIFromJson();
                     removeKey(getStorageKey('result'));
                     renderResultPanel(null);
                     appendSystemMessageSafely('Edit mode enabled. Your previous finalization remains as baseline; regenerate mapping and click Finalize again to apply your updated override.');
+                }
+
+                if (extractContentMapping(parsed)) {
+                    applyMappingPayload(parsed);
                 }
 
                 if (movedBackToProposalFlow) {
@@ -1945,11 +3403,13 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                     renderResultPanel(null);
                 }
 
-                appendSystemMessageSafely(parsed.reply || parsed.message || 'Updated.');
+                appendMessage(getChatMessages(), replyText, false, backendAlreadyHasReply);
                 if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
                     const cats = extractProposalCategories(parsed.proposal);
+                    const catsWithItems = extractProposalCategoriesWithItems(parsed.proposal);
+                    const subcategoriesByCategory = extractProposalSubcategoriesMap(parsed.proposal);
                     if (cats.length) {
-                        setProposalCategories(cats);
+                        setProposalCategories(cats, catsWithItems, subcategoriesByCategory);
                     }
 
                     const shouldRenderProposalSummary = movedBackToProposalFlow && (proposalChanged || enteredEditFromFinalized);
@@ -2014,8 +3474,10 @@ const loadProposalPanel = async (announceLoaded = false) => {
 
     if (proposal && Array.isArray(proposal.categories)) {
         const cats = extractProposalCategories(proposal);
+        const catsWithItems = extractProposalCategoriesWithItems(proposal);
+        const subcategoriesByCategory = extractProposalSubcategoriesMap(proposal);
         if (cats.length) {
-            setProposalCategories(cats);
+            setProposalCategories(cats, catsWithItems, subcategoriesByCategory);
         }
 
         const lines = summarizeProposalCategories(proposal);
@@ -2076,17 +3538,15 @@ const acceptProposal = async () => {
         }
 
         const cats = extractProposalCategories(parsed.proposal || null);
+        const catsWithItems = extractProposalCategoriesWithItems(parsed.proposal || null);
+        const subcategoriesByCategory = extractProposalSubcategoriesMap(parsed.proposal || null);
         if (cats.length) {
-            setProposalCategories(cats);
+            setProposalCategories(cats, catsWithItems, subcategoriesByCategory);
         }
 
-        const confirmed = mappingToConfirmedRows(extractContentMapping(parsed));
-        if (confirmed.length > 0) {
-            const node = el('gradebook-confirmed-mapping');
-            if (node) {
-                node.value = JSON.stringify(confirmed, null, 2);
-            }
-            syncMappingUIFromJson();
+        const mappedCount = applyMappingPayload(parsed);
+        if (mappedCount > 0) {
+            const confirmed = getConfirmedMapping();
             const drawer = el('gradebook-mapping-drawer');
             if (drawer && drawer.classList.contains('is-collapsed')) {
                 drawer.classList.remove('is-collapsed');
@@ -2096,15 +3556,24 @@ const acceptProposal = async () => {
                 }
             }
             const catHint = proposalCategories.length
-                ? ` Each of your ${proposalCategories.length} categories (${proposalCategories.join(', ')}) needs at least one activity.`
+                ? ` Each of your ${proposalCategories.length} categories (${proposalCategories.join(', ')}) needs at least one mapped row or manual grade item.`
                 : '';
+            const constrainedCount = confirmed.filter((row) => isReadOnlyMappingRow(row)).length;
             appendSystemMessage(
-                `Mapping ready: ${confirmed.length} activities. ` +
+                `Mapping ready: ${mappedCount} activities. ` +
                 `Pick a category for each row (or "Not graded"), then click "Generate gradebook".${catHint}`
             );
+            if (constrainedCount > 0) {
+                appendSystemMessage(
+                    `Read-only constraints detected on ${constrainedCount} row${constrainedCount === 1 ? '' : 's'}; ` +
+                    'these are auto-marked as Not graded and cannot be reassigned.'
+                );
+            }
         } else {
             syncMappingUIFromJson();
-            appendSystemMessage('Accepted, but mapping is empty. Check course activities and try Proposal then Generate mapping again.');
+            appendSystemMessage(
+                'Accepted, but mapping is empty. Add a manual grade item, remove empty categories, or review course activities before finalizing.'
+            );
         }
 
         await serverSaveState();
@@ -2140,6 +3609,7 @@ const highlightMissingRows = (missingIdx) => {
 const finalizeGradebook = async () => {
     await withRequestLock(async () => {
         await ensureSession();
+        await refreshMappingBeforeFinalize();
 
         if (isWeightGateBlocked()) {
             const msg = getWeightGateMessage();
@@ -2171,9 +3641,7 @@ const finalizeGradebook = async () => {
 
         const emptyCats = findEmptyCategories(confirmed);
         if (emptyCats.length > 0) {
-            const names = emptyCats.join(', ');
-            const msg = `These categories have no activities assigned: ${names}. ` +
-                `Pick at least one row for each, or remove the category from the proposal.`;
+            const msg = getEmptyCategoryWarningMessage(emptyCats);
             appendSystemMessage(msg);
             showMappingError(msg);
 
@@ -2192,11 +3660,26 @@ const finalizeGradebook = async () => {
             .filter((item) => !isNotGraded(item.category))
             .map((item) => ({
                 grade_item_id: item.grade_item_id,
+                grade_item_type: item.grade_item_type || item.itemtype || '',
+                grade_item_name: item.grade_item_name || item.activity_name || '',
                 category: item.category,
+                subcategory: String(item.subcategory || '').trim(),
                 activity_name: item.activity_name || '',
                 moodle_cmid: item.moodle_cmid != null ? item.moodle_cmid : null,
+                itemmodule: item.itemmodule || item.module || '',
+                iteminstance: item.iteminstance != null ? item.iteminstance : null,
+                itemtype: item.itemtype || item.grade_item_type || '',
+                item_source: item.item_source || '',
             }))
-            .filter((item) => item.grade_item_id != null);
+            .filter((item) => {
+                if (item.grade_item_id != null || item.moodle_cmid != null) {
+                    return true;
+                }
+                const itemSource = String(item.item_source || '').trim().toLowerCase();
+                const activityName = String(item.activity_name || item.grade_item_name || '').trim();
+                return activityName.length > 0
+                    && (itemSource === 'manual' || itemSource === 'proposal_manual' || itemSource === 'proposal');
+            });
         if (gradedRows.length < 1) {
             const msg = 'Every row is set to "Not graded" — nothing would be added to the gradebook. ' +
                 'Pick a real category for at least one activity.';
@@ -2217,13 +3700,26 @@ const finalizeGradebook = async () => {
         });
 
         const finalizePhase = String(parsed.phase || parsed.state || '').toUpperCase();
-        const finalizeCompleted = ['COMPLETED', 'FINALIZED'].includes(finalizePhase);
+        const finalizeData = (parsed && typeof parsed === 'object' && parsed.data && typeof parsed.data === 'object')
+            ? parsed.data
+            : {};
+        const setupSkipped = Boolean(finalizeData.grade_setup_skipped || finalizeData.grade_setup_apply_rolled_back);
+        const finalizeCompleted = ['COMPLETED', 'FINALIZED'].includes(finalizePhase) && !setupSkipped;
 
         await runWithinProposalPanelSync(async () => {
-            setPhase(parsed.phase || parsed.state || 'COMPLETED');
+            setPhase(setupSkipped ? 'REFINEMENT' : (parsed.phase || parsed.state || 'COMPLETED'));
             if (finalizeCompleted) {
-                saveJson(getStorageKey('result'), parsed);
-                renderResultPanel(parsed);
+                const resultToStore = (parsed && typeof parsed === 'object') ? {...parsed} : parsed;
+                if (isBaselineImportSession()) {
+                    resultToStore._baseline_applied = true;
+                    resultToStore._import_mode = 'baseline';
+                    setBaselineModified(true);
+                } else if (getImportMode() === 'fresh') {
+                    resultToStore._import_mode = 'fresh';
+                }
+                lastStoredFinalizeResult = resultToStore;
+                saveJson(getStorageKey('result'), resultToStore);
+                renderResultPanel(resultToStore);
             } else {
                 removeKey(getStorageKey('result'));
                 renderResultPanel(null);
@@ -2234,16 +3730,27 @@ const finalizeGradebook = async () => {
             } catch (e) {
                 if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
                     const cats = extractProposalCategories(parsed.proposal);
+                    const catsWithItems = extractProposalCategoriesWithItems(parsed.proposal);
+                    const subcategoriesByCategory = extractProposalSubcategoriesMap(parsed.proposal);
                     if (cats.length) {
-                        setProposalCategories(cats);
+                        setProposalCategories(cats, catsWithItems, subcategoriesByCategory);
                     }
                     applyProposalWeightGate(parsed.proposal);
                 }
             }
         });
 
-        appendSystemMessageSafely(parsed.message || 'Gradebook finalized.');
+        appendSystemMessageSafely(buildFinalizePrimaryMessage(parsed));
+        announceFinalizeDiagnostics(parsed);
         if (finalizeCompleted) {
+            const canRevertAfterFinalize = isBaselineImportSession()
+                && (hasBaselineSnapshotApply(parsed) || getBaselineModified() || getBaselineAvailable());
+            if (canRevertAfterFinalize) {
+                setRevertAvailable(true);
+            } else {
+                setRevertAvailable(false);
+            }
+            syncBaselineModifiedFromFinalizeResult(parsed);
             appendSystemMessageSafely('You can continue editing. If you change anything, regenerate mapping and finalize again to override the current setup.');
             await serverSaveState({result_json: JSON.stringify(parsed)});
         } else {
@@ -2286,8 +3793,45 @@ const deleteSessionHandler = async () => {
     if (!confirmed) {
         return;
     }
+
+    // Baseline + finalized apply only: warn that delete destroys backup + changes.
+    if (shouldShowBaselineDeleteWarning()) {
+        const secondaryTitle = await Str.get_string('gradebook_delete_session', 'block_ai_assistant');
+        const secondaryMsg = await Str.get_string('gradebook_delete_baseline_warning', 'block_ai_assistant');
+        const secondaryYes = await Str.get_string('gradebook_delete_baseline_confirm', 'block_ai_assistant');
+        const secondaryConfirmed = await moodleConfirm({
+            title: secondaryTitle,
+            message: secondaryMsg,
+            yesLabel: secondaryYes,
+            noLabel: noLabel
+        });
+        if (!secondaryConfirmed) {
+            return;
+        }
+    }
+
     await withRequestLock(async () => {
         await deleteSessionAndRestart();
+    });
+};
+
+const revertSessionHandler = async () => {
+    const title = await Str.get_string('gradebook_revert_session', 'block_ai_assistant');
+    const confirmMsg = await Str.get_string('gradebook_revert_session_confirm', 'block_ai_assistant');
+    const yesLabel = await Str.get_string('gradebook_revert_session', 'block_ai_assistant');
+    const noLabel = await Str.get_string('cancel', 'moodle');
+    const confirmed = await moodleConfirm({
+        title,
+        message: confirmMsg,
+        yesLabel,
+        noLabel
+    });
+    if (!confirmed) {
+        return;
+    }
+
+    await withRequestLock(async () => {
+        await revertSessionAndRestart();
     });
 };
 
@@ -2467,14 +4011,18 @@ export const init = (courseId) => {
     }
 
     if (cachedResult && isFinalizeCompletedPhase(cachedPhase)) {
-        renderResultPanel(cachedResult);
+        rehydrateBaselineDeleteWarningState();
+    } else if (cachedResult && isSuccessfulFinalizeResult(cachedResult)) {
+        rehydrateBaselineDeleteWarningState();
     } else {
         renderResultPanel(null);
     }
 
-    ensureSession().catch((error) => {
-        notification.exception(error);
-    });
+    ensureSession()
+        .then(() => rehydrateBaselineDeleteWarningState())
+        .catch((error) => {
+            notification.exception(error);
+        });
 
     attachListener('block-ai-assistant-gradebook-send-btn', 'click', guardedAction(sendPrompt));
     attachListener('gradebook-chat-form', 'submit', (e) => {
@@ -2515,6 +4063,7 @@ export const init = (courseId) => {
     attachListener('btn-gradebook-generate', 'click', guardedAction(finalizeGradebook));
     attachListener('btn-gradebook-reset', 'click', guardedAction(resetSessionHandler));
     attachListener('btn-gradebook-delete', 'click', guardedAction(deleteSessionHandler));
+    attachListener('btn-gradebook-revert', 'click', guardedAction(revertSessionHandler));
     attachListener('btn-gradebook-download-word', 'click', () => downloadFinalizeResultAsWord());
     attachListener('btn-gradebook-download-pdf', 'click', () => downloadFinalizeResultAsPdf());
     attachListener('btn-gradebook-open-setup', 'click', (e) => {
@@ -2562,6 +4111,8 @@ export const init = (courseId) => {
         }
     }
 
+    setRevertButtonVisibility(getImportMode());
+
     Str.get_string('gradebook_not_graded', 'block_ai_assistant').then((label) => {
         if (label) {
             notGradedLabel = label;
@@ -2579,6 +4130,51 @@ export const init = (courseId) => {
     Str.get_string('gradebook_mapping_missing', 'block_ai_assistant').then((label) => {
         if (label) {
             missingCategoryErrorLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_mapping_empty_category', 'block_ai_assistant').then((label) => {
+        if (label) {
+            emptyCategoryErrorLabel = label;
+            syncMappingUIFromJson();
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_add_manual_item', 'block_ai_assistant').then((label) => {
+        if (label) {
+            addManualItemLabel = label;
+            syncMappingUIFromJson();
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_manual_item_label', 'block_ai_assistant').then((label) => {
+        if (label) {
+            manualItemLabel = label;
+            syncMappingUIFromJson();
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_add_manual_item_prompt', 'block_ai_assistant').then((label) => {
+        if (label) {
+            addManualItemPromptLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_add_manual_item_default_name', 'block_ai_assistant').then((label) => {
+        if (label) {
+            addManualItemDefaultNameLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_add_manual_item_failed', 'block_ai_assistant').then((label) => {
+        if (label) {
+            addManualItemFailedLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_add_manual_item_created', 'block_ai_assistant').then((label) => {
+        if (label) {
+            addManualItemCreatedLabel = label;
         }
     }).catch(() => {
     });

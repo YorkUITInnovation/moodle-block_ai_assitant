@@ -11,6 +11,265 @@ class cria
 {
 
     /**
+     * Recursively serialize a gradebook tree node and collect summary stats.
+     *
+     * @param array $node Tree node from grade_category::fetch_course_tree().
+     * @param array $stats Mutable summary counters.
+     * @return array
+     */
+    private static function serialize_gradebook_tree_node(array $node, array &$stats): array
+    {
+        $object = $node['object'] ?? null;
+        $type = (string)($node['type'] ?? 'unknown');
+        $depth = (int)($node['depth'] ?? 0);
+
+        if ($type === 'category') {
+            $stats['category_count'] = (int)($stats['category_count'] ?? 0) + 1;
+        } else {
+            $stats['item_count'] = (int)($stats['item_count'] ?? 0) + 1;
+        }
+        $stats['max_depth'] = max((int)($stats['max_depth'] ?? 0), $depth);
+
+        $serialized = [
+            'type' => $type,
+            'depth' => $depth,
+            'children' => new \stdClass(),
+        ];
+
+        if (is_object($object)) {
+            if (method_exists($object, 'get_name')) {
+                $serialized['name'] = (string)$object->get_name();
+            } else if (property_exists($object, 'fullname')) {
+                $serialized['name'] = (string)$object->fullname;
+            } else if (property_exists($object, 'itemname')) {
+                $serialized['name'] = (string)$object->itemname;
+            }
+
+            if (property_exists($object, 'id')) {
+                $serialized['id'] = (int)$object->id;
+            }
+            if (property_exists($object, 'itemtype')) {
+                $serialized['itemtype'] = (string)$object->itemtype;
+                $stats['item_types'] = $stats['item_types'] ?? [];
+                $stats['item_types'][$serialized['itemtype']] = (int)($stats['item_types'][$serialized['itemtype']] ?? 0) + 1;
+            }
+            if (property_exists($object, 'itemmodule')) {
+                $serialized['itemmodule'] = (string)$object->itemmodule;
+            }
+            if (property_exists($object, 'iteminstance')) {
+                $serialized['iteminstance'] = (int)$object->iteminstance;
+            }
+            if (property_exists($object, 'itemnumber')) {
+                $serialized['itemnumber'] = (int)$object->itemnumber;
+            }
+            if (property_exists($object, 'aggregation')) {
+                $serialized['aggregation'] = (int)$object->aggregation;
+            }
+            if (property_exists($object, 'keephigh')) {
+                $serialized['keephigh'] = (int)$object->keephigh;
+            }
+            if (property_exists($object, 'droplow')) {
+                $serialized['droplow'] = (int)$object->droplow;
+            }
+            if (property_exists($object, 'aggregateonlygraded')) {
+                $serialized['aggregateonlygraded'] = (bool)$object->aggregateonlygraded;
+            }
+            if (property_exists($object, 'aggregateoutcomes')) {
+                $serialized['aggregateoutcomes'] = (bool)$object->aggregateoutcomes;
+            }
+            if (property_exists($object, 'aggregationcoef')) {
+                $serialized['aggregationcoef'] = (float)$object->aggregationcoef;
+            }
+            if (property_exists($object, 'aggregationcoef2')) {
+                $serialized['aggregationcoef2'] = (float)$object->aggregationcoef2;
+            }
+            if (property_exists($object, 'weightoverride')) {
+                $serialized['weightoverride'] = (bool)$object->weightoverride;
+            }
+            if (property_exists($object, 'hidden')) {
+                $serialized['hidden'] = (int)$object->hidden;
+                if ((int)$object->hidden !== 0) {
+                    $stats['has_hidden_items'] = true;
+                }
+            }
+            if (property_exists($object, 'hiddenuntil')) {
+                $serialized['hiddenuntil'] = (int)$object->hiddenuntil;
+                if ((int)$object->hiddenuntil > 0) {
+                    $stats['has_hidden_items'] = true;
+                }
+            }
+            if (method_exists($object, 'is_locked')) {
+                $serialized['locked'] = (bool)$object->is_locked();
+                if ($serialized['locked']) {
+                    $stats['has_locked_items'] = true;
+                }
+            }
+            if (property_exists($object, 'locktime')) {
+                $serialized['locktime'] = (int)$object->locktime;
+                if ((int)$object->locktime > 0) {
+                    $stats['has_locked_items'] = true;
+                }
+            }
+            if (property_exists($object, 'calculation') && trim((string)$object->calculation) !== '') {
+                $serialized['calculation'] = (string)$object->calculation;
+                $stats['has_formula'] = true;
+            }
+            if (property_exists($object, 'display')) {
+                $serialized['display'] = (int)$object->display;
+            }
+            if (property_exists($object, 'decimals')) {
+                $serialized['decimals'] = (int)$object->decimals;
+            }
+            if (property_exists($object, 'grademin')) {
+                $serialized['grademin'] = (float)$object->grademin;
+            }
+            if (property_exists($object, 'grademax')) {
+                $serialized['grademax'] = (float)$object->grademax;
+            }
+            if (property_exists($object, 'gradepass')) {
+                $serialized['gradepass'] = (float)$object->gradepass;
+            }
+        }
+
+        if (!empty($node['children']) && is_array($node['children'])) {
+            $serialized['children'] = [];
+            foreach ($node['children'] as $sortorder => $child) {
+                $serialized['children'][(int)$sortorder] = self::serialize_gradebook_tree_node($child, $stats);
+            }
+        }
+
+        return $serialized;
+    }
+
+    /**
+     * Detect if a category name is the AI wrapper root (e.g. "<course> - AI Assistant - Gradebook").
+     *
+     * @param string $name
+     * @return bool
+     */
+    private static function is_ai_gradebook_wrapper_name(string $name): bool
+    {
+        $normalized = strtolower(trim($name));
+        return $normalized !== '' && strpos($normalized, 'ai assistant - gradebook') !== false;
+    }
+
+    /**
+     * For baseline import, unwrap a single AI wrapper category so backend sees
+     * the real top-level grading categories directly.
+     *
+     * @param array $tree
+     * @return array
+     */
+    private static function normalize_baseline_tree_for_import(array $tree): array
+    {
+        $children = is_array($tree['children'] ?? null) ? $tree['children'] : [];
+        if (empty($children)) {
+            return $tree;
+        }
+
+        $category_children = [];
+        $non_category_children = [];
+        foreach ($children as $child) {
+            if (is_array($child) && (string)($child['type'] ?? '') === 'category') {
+                $category_children[] = $child;
+            } else {
+                $non_category_children[] = $child;
+            }
+        }
+        if (count($category_children) !== 1) {
+            return $tree;
+        }
+
+        $only_child = $category_children[0];
+
+        $only_child_name = (string)($only_child['name'] ?? '');
+        if (!self::is_ai_gradebook_wrapper_name($only_child_name)) {
+            return $tree;
+        }
+
+        $grandchildren = is_array($only_child['children'] ?? null) ? $only_child['children'] : [];
+        if (empty($grandchildren)) {
+            return $tree;
+        }
+
+        // Preserve root metadata, expose wrapper children directly, and retain
+        // non-category children (for example course total items) at root level.
+        // Keep dictionary-like shape (map keyed by sortorder) expected by backend schema.
+        $merged_children = [];
+        $sortorder = 1;
+        foreach ($grandchildren as $child) {
+            $merged_children[$sortorder++] = $child;
+        }
+        foreach ($non_category_children as $child) {
+            $merged_children[$sortorder++] = $child;
+        }
+        $tree['children'] = $merged_children;
+        return $tree;
+    }
+
+    /**
+     * Build a versioned baseline snapshot for an existing Moodle gradebook.
+     *
+     * @param int $courseid
+     * @return array
+     */
+    private static function build_gradebook_baseline_snapshot(int $courseid): array
+    {
+        global $CFG;
+
+        try {
+            require_once($CFG->libdir . '/gradelib.php');
+            require_once($CFG->libdir . '/grade/grade_category.php');
+            require_once($CFG->libdir . '/grade/grade_item.php');
+
+            $course_category = \grade_category::fetch_course_category($courseid);
+            $tree = \grade_category::fetch_course_tree($courseid, true);
+
+            $stats = [
+                'category_count' => 0,
+                'item_count' => 0,
+                'max_depth' => 0,
+                'has_formula' => false,
+                'has_locked_items' => false,
+                'has_hidden_items' => false,
+                'item_types' => [],
+            ];
+
+            $serialized_tree = self::serialize_gradebook_tree_node($tree, $stats);
+            $serialized_tree = self::normalize_baseline_tree_for_import($serialized_tree);
+            // Treat baseline as available only when there is at least one real
+            // non-root category. Root-only item/activity setups should start fresh.
+            $available = !empty($serialized_tree['children']) && (int)($stats['category_count'] ?? 0) > 1;
+
+            return [
+                'contract_name' => 'baseline_gradebook_v1',
+                'schema_version' => 1,
+                'available' => $available,
+                'courseid' => (string)$courseid,
+                'root_category' => [
+                    'id' => (int)$course_category->id,
+                    'name' => (string)$course_category->get_name(),
+                    'aggregation' => (int)$course_category->aggregation,
+                    'keephigh' => (int)$course_category->keephigh,
+                    'droplow' => (int)$course_category->droplow,
+                    'aggregateonlygraded' => (bool)$course_category->aggregateonlygraded,
+                    'aggregateoutcomes' => (bool)$course_category->aggregateoutcomes,
+                ],
+                'tree' => $serialized_tree,
+                'stats' => $stats,
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'contract_name' => 'baseline_gradebook_v1',
+                'schema_version' => 1,
+                'available' => false,
+                'courseid' => (string)$courseid,
+                'error' => 'baseline_snapshot_unavailable',
+            ];
+        }
+    }
+
+    /**
      * Create bot instance and returns bot metadata.
      * @param int $course_id
      * @return string bot_name or JSON payload with name/bot_id/bot_api_key for Criabot
@@ -420,6 +679,34 @@ class cria
                 return '';
             }
 
+            // Serialize same course/file training uploads to avoid burst re-ingestion
+            // that can OOM-kill backend index services.
+            $lock_dir = make_temp_directory('block_ai_assistant/training_locks');
+            $lock_key = sha1((string)$course_id . '|' . (string)$file_name);
+            $lock_path = $lock_dir . '/upload_' . $lock_key . '.lock';
+            $lock_handle = @fopen($lock_path, 'c');
+            if (!$lock_handle) {
+                error_log('block_ai_assistant: upload_content_to_bot failed opening lock file for course ' . (int)$course_id . ' file=' . $file_name);
+                return '';
+            }
+
+            $lock_wait_ms = (int)($get($local, 'training_upload_lock_wait_ms') ?: $get($block, 'training_upload_lock_wait_ms') ?: 20000);
+            $lock_wait_ms = max(5000, min($lock_wait_ms, 120000));
+            $lock_started_at = microtime(true);
+            $lock_acquired = false;
+            while (((microtime(true) - $lock_started_at) * 1000) < $lock_wait_ms) {
+                if (@flock($lock_handle, LOCK_EX | LOCK_NB)) {
+                    $lock_acquired = true;
+                    break;
+                }
+                usleep(250000);
+            }
+            if (!$lock_acquired) {
+                @fclose($lock_handle);
+                error_log('block_ai_assistant: upload_content_to_bot lock timeout for course ' . (int)$course_id . ' file=' . $file_name . ' wait_ms=' . $lock_wait_ms);
+                return '';
+            }
+
             $tmp_dir = make_temp_directory('block_ai_assistant/' . $course_id);
             $tmp_path = $tmp_dir . '/' . $file_name;
             file_put_contents($tmp_path, base64_decode($file_content));
@@ -509,9 +796,19 @@ class cria
                 'file' => new \CURLFile($tmp_path)
             ];
 
-            $queue_raw = (string)$curl->post($queue_url, $queue_params, $queue_opts);
-            $queued = json_decode($queue_raw, true);
-            $job_id = is_array($queued) ? (string)($queued['job']['job_id'] ?? '') : '';
+            $queue_raw = '';
+            $job_id = '';
+            for ($queue_attempt = 1; $queue_attempt <= 3; $queue_attempt++) {
+                $queue_raw = (string)$curl->post($queue_url, $queue_params, $queue_opts);
+                $queued = json_decode($queue_raw, true);
+                $job_id = is_array($queued) ? (string)($queued['job']['job_id'] ?? '') : '';
+                if ($job_id !== '') {
+                    break;
+                }
+                if ($queue_attempt < 3) {
+                    sleep($queue_attempt);
+                }
+            }
             if ($job_id === '') {
                 error_log('block_ai_assistant: upload_content_to_bot failed queueing parser job for course ' . (int)$course_id . ' response=' . substr($queue_raw, 0, 500));
                 return '';
@@ -615,6 +912,7 @@ class cria
             ];
 
             $upload_url = $criabot_url . '/bots/' . rawurlencode($bot_name) . '/documents/upload';
+            $update_url = $criabot_url . '/bots/' . rawurlencode($bot_name) . '/documents/update';
             $upload_opts = [
                 'CURLOPT_TIMEOUT' => 120,
                 'CURLOPT_HTTPHEADER' => [
@@ -624,8 +922,10 @@ class cria
                 ]
             ];
 
-            // Ensure retraining is idempotent when the same document name already exists.
-            self::delete_content_document_name_from_bot((int)$course_id, (string)$file_name, 'documents');
+            $upload_throttle_ms = (int)($get($local, 'training_upload_throttle_ms') ?: $get($block, 'training_upload_throttle_ms') ?: 250);
+            if ($upload_throttle_ms > 0) {
+                usleep(max(0, min($upload_throttle_ms, 5000)) * 1000);
+            }
 
             $try_upload = static function () use ($curl, $upload_url, $upload_body, $upload_opts): array {
                 $upload_raw = (string)$curl->post($upload_url, json_encode($upload_body), $upload_opts);
@@ -647,20 +947,61 @@ class cria
                 ];
             };
 
+            $try_update = static function () use ($curl, $update_url, $upload_body, $upload_opts): array {
+                $update_opts = $upload_opts;
+                $update_opts['CURLOPT_CUSTOMREQUEST'] = 'PATCH';
+                $update_raw = (string)$curl->post($update_url, json_encode($upload_body), $update_opts);
+                $updated = json_decode((string)$update_raw, true);
+                $status = is_array($updated) ? (int)($updated['status'] ?? 0) : 0;
+                return [
+                    'raw' => $update_raw,
+                    'updated' => $updated,
+                    'status' => $status,
+                ];
+            };
+
             $attempt = $try_upload();
             $uploaded = $attempt['uploaded'];
             $upload_raw = $attempt['raw'];
             $is_duplicate = (bool)$attempt['duplicate'];
             $upload_status = (int)$attempt['status'];
 
+            // If document already exists, update in place instead of delete-then-reupload.
+            // This prevents data loss if the operation fails mid-flight.
+            if ($is_duplicate) {
+                $update_attempt = $try_update();
+                $updated = $update_attempt['updated'];
+                $update_status = (int)$update_attempt['status'];
+                if (is_array($updated) && $update_status === 200) {
+                    $uploaded = $updated;
+                    $upload_raw = (string)$update_attempt['raw'];
+                    $upload_status = 200;
+                    $is_duplicate = false;
+                } else {
+                    error_log('block_ai_assistant: upload_content_to_bot failed updating existing document for bot ' . $bot_name . ' status=' . $update_status . ' response=' . substr((string)$update_attempt['raw'], 0, 500));
+                    return '';
+                }
+            }
+
             // Retry once for transient validation/network race failures.
-            if (!$is_duplicate && $upload_status !== 200 && ($upload_status === 422 || $upload_status >= 500)) {
-                self::delete_content_document_name_from_bot((int)$course_id, (string)$file_name, 'documents');
+            if ($upload_status !== 200 && ($upload_status === 422 || $upload_status >= 500)) {
                 $attempt = $try_upload();
                 $uploaded = $attempt['uploaded'];
                 $upload_raw = $attempt['raw'];
                 $is_duplicate = (bool)$attempt['duplicate'];
                 $upload_status = (int)$attempt['status'];
+
+                if ($is_duplicate) {
+                    $update_attempt = $try_update();
+                    $updated = $update_attempt['updated'];
+                    $update_status = (int)$update_attempt['status'];
+                    if (is_array($updated) && $update_status === 200) {
+                        $uploaded = $updated;
+                        $upload_raw = (string)$update_attempt['raw'];
+                        $upload_status = 200;
+                        $is_duplicate = false;
+                    }
+                }
             }
 
             if ((!is_array($uploaded) || $upload_status !== 200) && !$is_duplicate) {
@@ -681,6 +1022,9 @@ class cria
                 $DB->set_field('block_aia_settings', 'syllabus_document_name', $document_name, ['courseid' => $course_id]);
                 $DB->set_field('block_aia_settings', 'syllabus_trained', 1, ['courseid' => $course_id]);
             }
+
+            @flock($lock_handle, LOCK_UN);
+            @fclose($lock_handle);
 
             return $document_name;
         }
@@ -1122,10 +1466,10 @@ class cria
      */
     public static function get_embed_bot_code($bot_name)
     {
-        $config = get_config('block_ai_assistant');
         $embed_code = '';
-        if (!empty($config->cria_embed_url)) {
-            $embed_code = '<script type="text/javascript" src="' . $config->cria_embed_url . '/embed/' . $bot_name . '/load" async> </script>';
+        $embed_loader_url = webservice::get_embed_loader_url($bot_name);
+        if ($embed_loader_url !== '') {
+            $embed_code = '<script type="text/javascript" src="' . $embed_loader_url . '" async> </script>';
         }
         return $embed_code;
     }
@@ -1503,24 +1847,24 @@ class cria
         return json_decode($response);
     }
 
-    public static function gradebook_start(int $courseid, int $professorid): string
+    /**
+     * Build gradeable course activities for Criabot from current Moodle grade items.
+     *
+     * @param int $courseid
+     * @return array<int, array<string, mixed>>
+     */
+    private static function build_course_activities_for_gradebook(int $courseid): array
     {
         global $DB;
-        $bot_name = (string)$DB->get_field('block_aia_settings', 'bot_name', ['courseid' => $courseid]);
-        if ($bot_name === '') {
-            return json_encode([
-                'status' => 500,
-                'code' => 'BOT_NOT_CONFIGURED',
-                'message' => 'Bot is not configured for this course.',
-            ]);
+
+        if ($courseid < 1) {
+            return [];
         }
 
         $activities = [];
-        $resources = [];
         try {
             $modinfo = get_fast_modinfo($courseid);
 
-            // Build activities from grade_items first so mapping works with real gradeable targets only.
             $gradeitemsql = "
                 SELECT
                     gi.id AS grade_item_id,
@@ -1537,23 +1881,30 @@ class cria
                    AND cm.module = m.id
                    AND cm.instance = gi.iteminstance
                 WHERE gi.courseid = :courseid
-                  AND gi.itemtype = 'mod'
-                  AND gi.itemmodule IS NOT NULL
-                  AND gi.itemmodule <> ''
+                  AND gi.itemtype <> 'course'
+                  AND gi.itemtype <> 'category'
+                  AND (
+                        gi.itemtype = 'manual'
+                        OR (
+                            gi.itemtype = 'mod'
+                            AND gi.itemmodule IS NOT NULL
+                            AND gi.itemmodule <> ''
+                        )
+                  )
                 ORDER BY gi.id ASC
             ";
             $gradeitems = $DB->get_records_sql($gradeitemsql, ['courseid' => $courseid]);
 
             foreach ($gradeitems as $gi) {
                 $cmid = isset($gi->cmid) ? (int)$gi->cmid : 0;
+                $itemtype = trim((string)($gi->itemtype ?? ''));
                 $module = trim((string)($gi->itemmodule ?? ''));
-                if ($module === '') {
+                if ($itemtype === 'mod' && $module === '') {
                     continue;
                 }
 
                 $activityname = trim((string)($gi->itemname ?? ''));
 
-                // Respect visibility when the grade item can be resolved to a course module.
                 if ($cmid > 0) {
                     try {
                         $cm = $modinfo->get_cm($cmid);
@@ -1569,17 +1920,145 @@ class cria
                 }
 
                 if ($activityname === '') {
-                    $activityname = $module . ' #' . (int)($gi->iteminstance ?? 0);
+                    if ($itemtype === 'manual') {
+                        $activityname = 'Manual Grade Item #' . (int)($gi->grade_item_id ?? 0);
+                    } else {
+                        $activityname = $module . ' #' . (int)($gi->iteminstance ?? 0);
+                    }
                 }
 
                 $activities[] = [
                     'cmid' => $cmid > 0 ? $cmid : null,
-                    'module' => $module,
+                    'module' => $module !== '' ? $module : null,
                     'name' => $activityname,
                     'grade_item_id' => (int)$gi->grade_item_id,
-                    'itemtype' => (string)($gi->itemtype ?? 'mod'),
+                    'itemtype' => $itemtype !== '' ? $itemtype : 'mod',
                 ];
             }
+        } catch (\Throwable $e) {
+            debugging('Could not build gradebook activities for course ' . $courseid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+
+        return $activities;
+    }
+
+    /**
+     * @param array $normalized_mapping
+     * @return int[]
+     */
+    private static function extract_preserve_grade_item_ids(array $normalized_mapping, ?array $proposal = null, int $courseid = 0): array
+    {
+        $ids = [];
+        $labelkeys = [];
+
+        foreach ($normalized_mapping as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $itemid = (int)($row['grade_item_id'] ?? 0);
+            if ($itemid > 0) {
+                $ids[$itemid] = true;
+            }
+
+            $label = strtolower(trim((string)($row['activity_name'] ?? $row['grade_item_name'] ?? '')));
+            if ($label !== '') {
+                $labelkeys[$label] = true;
+            }
+        }
+
+        if (is_array($proposal) && !empty($proposal['categories']) && is_array($proposal['categories'])) {
+            foreach ($proposal['categories'] as $cat) {
+                if (!is_array($cat)) {
+                    continue;
+                }
+                foreach (($cat['items'] ?? []) as $rawitem) {
+                    $label = strtolower(trim((string)$rawitem));
+                    if ($label !== '') {
+                        $labelkeys[$label] = true;
+                    }
+                }
+            }
+        }
+
+        if ($courseid > 0 && !empty($labelkeys)) {
+            global $DB;
+            foreach (self::_get_ai_owned_grade_item_ids($courseid) as $ownedid) {
+                $ownedid = (int)$ownedid;
+                if ($ownedid < 1 || !empty($ids[$ownedid])) {
+                    continue;
+                }
+                $record = $DB->get_record('grade_items', ['id' => $ownedid, 'courseid' => $courseid], 'id, itemname', IGNORE_MISSING);
+                if (!$record) {
+                    continue;
+                }
+                $namekey = strtolower(trim((string)($record->itemname ?? '')));
+                if ($namekey !== '' && !empty($labelkeys[$namekey])) {
+                    $ids[$ownedid] = true;
+                }
+            }
+        }
+
+        return array_values(array_map('intval', array_keys($ids)));
+    }
+
+    /**
+     * Push current Moodle activities (and optional mapping) into the Criabot session.
+     */
+    private static function sync_gradebook_session_context(
+        int $courseid,
+        string $session_id,
+        ?array $confirmed_mapping = null
+    ): void {
+        $session_id = trim($session_id);
+        if ($courseid < 1 || $session_id === '') {
+            return;
+        }
+
+        $payload = [
+            'session_id' => $session_id,
+            'course_activities' => self::build_course_activities_for_gradebook($courseid),
+        ];
+        if ($confirmed_mapping !== null) {
+            $payload['confirmed_mapping'] = $confirmed_mapping;
+        }
+
+        try {
+            webservice::exec('cria_gradebook_sync', $payload);
+        } catch (\Throwable $e) {
+            debugging('Gradebook session sync failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
+    public static function gradebook_start(int $courseid, int $professorid, string $import_mode = ''): string
+    {
+        global $DB;
+        $correlationid = self::build_gradebook_correlation_id('gradebook_start', $courseid, (string)$professorid);
+        $bot_name = (string)$DB->get_field('block_aia_settings', 'bot_name', ['courseid' => $courseid]);
+        if ($bot_name === '') {
+            self::log_gradebook_audit_event(
+                $courseid,
+                '',
+                'gradebook_start',
+                'blocked',
+                [
+                    'reason' => 'bot_not_configured',
+                    'import_mode' => trim($import_mode),
+                ],
+                0,
+                $correlationid
+            );
+            return json_encode([
+                'status' => 500,
+                'code' => 'BOT_NOT_CONFIGURED',
+                'message' => 'Bot is not configured for this course.',
+                'data' => ['gradebook_audit_correlation_id' => $correlationid],
+            ]);
+        }
+
+        $activities = self::build_course_activities_for_gradebook($courseid);
+        $resources = [];
+        try {
+            $modinfo = get_fast_modinfo($courseid);
 
             foreach ($modinfo->get_cms() as $cm) {
                 if (!$cm->uservisible) {
@@ -1673,6 +2152,33 @@ class cria
             // Ignore metadata read failures; continue with available data.
         }
 
+        $baseline_snapshot = self::build_gradebook_baseline_snapshot($courseid);
+        $normalized_import_mode = strtolower(trim($import_mode));
+        if ($normalized_import_mode !== 'fresh' && $normalized_import_mode !== 'baseline') {
+            $normalized_import_mode = !empty($baseline_snapshot['available']) ? 'baseline' : 'fresh';
+        }
+        if ($normalized_import_mode === 'baseline' && empty($baseline_snapshot['available'])) {
+            $normalized_import_mode = 'fresh';
+        }
+
+        $resources = self::dedupe_moodle_resources_by_name($resources);
+
+        self::log_gradebook_audit_event(
+            $courseid,
+            '',
+            'gradebook_start',
+            'requested',
+            [
+                'professor_id' => $professorid,
+                'import_mode' => $normalized_import_mode,
+                'baseline_available' => !empty($baseline_snapshot['available']),
+                'baseline_policy' => !empty($baseline_snapshot['available']) ? 'mirror_then_override' : 'generate_fresh',
+                'context_source' => !empty($baseline_snapshot['available']) ? 'baseline_import' : 'syllabus_generation',
+            ],
+            0,
+            $correlationid
+        );
+
         $method = 'cria_gradebook_start';
         $data = array(
             'course_id' => (string)$courseid,
@@ -1680,8 +2186,32 @@ class cria
             'bot_name' => $bot_name,
             'moodle_resources' => $resources,
             'course_activities' => $activities,
+            'baseline_snapshot' => $baseline_snapshot,
+            'import_mode' => $normalized_import_mode,
         );
-        return webservice::exec($method, $data);
+        $response_json = webservice::exec($method, $data);
+        $response = json_decode($response_json, true);
+        if (is_array($response)) {
+            $sessionid = trim((string)($response['session_id'] ?? ''));
+            if (
+                $normalized_import_mode === 'baseline'
+                && !empty($baseline_snapshot['available'])
+                && $sessionid !== ''
+            ) {
+                $startwarnings = [];
+                self::ensure_preapply_baseline_snapshot($courseid, $sessionid, $startwarnings, $correlationid);
+            }
+
+            $response['data'] = array_merge(
+                is_array($response['data'] ?? null) ? $response['data'] : [],
+                [
+                    'gradebook_audit_correlation_id' => $correlationid,
+                    'gradebook_audit_event' => 'gradebook_start',
+                ]
+            );
+            $response_json = json_encode($response);
+        }
+        return $response_json;
     }
 
     public static function gradebook_chat(string $session_id, string $prompt): string
@@ -1734,7 +2264,7 @@ class cria
     public static function gradebook_delete(string $session_id, int $courseid = 0): string
     {
         $session_id = trim($session_id);
-        $hascoursechanges = $courseid > 0 ? self::course_has_ai_gradebook($courseid) : false;
+        $hascoursechanges = $courseid > 0 ? self::course_needs_gradebook_cleanup($courseid) : false;
         $localuploadedfilesremoved = 0;
 
         if ($courseid > 0) {
@@ -1755,7 +2285,7 @@ class cria
             'cleaned' => false,
             'message' => '',
         ];
-        if ($hascoursechanges) {
+        if ($courseid > 0) {
             $cleanup_result = self::remove_ai_gradebook_from_course($courseid);
         }
 
@@ -1796,9 +2326,1045 @@ class cria
         return json_encode($decoded);
     }
 
+    /**
+     * Revert Moodle grade setup to an immutable baseline snapshot.
+     */
+    public static function gradebook_revert(int $courseid, string $session_id, int $revision = 0): string
+    {
+        $session_id = trim($session_id);
+        $correlationid = self::build_gradebook_correlation_id('gradebook_revert', $courseid, $session_id);
+        if ($courseid < 1 || $session_id === '') {
+            self::log_gradebook_audit_event(
+                $courseid,
+                $session_id,
+                'gradebook_revert',
+                'blocked',
+                ['reason' => 'missing_course_or_session', 'revision' => $revision],
+                $revision,
+                $correlationid
+            );
+            return json_encode([
+                'status' => 400,
+                'code' => 'INVALID_ARGUMENTS',
+                'message' => 'Missing course/session reference for gradebook revert.',
+                'data' => ['gradebook_audit_correlation_id' => $correlationid],
+            ]);
+        }
+
+        $details = [];
+        self::log_gradebook_audit_event(
+            $courseid,
+            $session_id,
+            'gradebook_revert_requested',
+            'requested',
+            ['revision' => $revision],
+            $revision,
+            $correlationid
+        );
+
+        $restored = self::restore_gradebook_from_snapshot($courseid, $session_id, $revision, $details, $correlationid);
+        if ($restored) {
+            self::ensure_course_gradebook_integrity($courseid);
+        }
+        if (!$restored) {
+            self::log_gradebook_audit_event(
+                $courseid,
+                $session_id,
+                'gradebook_revert_failed',
+                'failed',
+                $details,
+                $revision,
+                $correlationid
+            );
+            return json_encode([
+                'status' => 422,
+                'code' => 'REVERT_FAILED',
+                'message' => get_string('gradebook_revert_failed', 'block_ai_assistant'),
+                'data' => array_merge($details, ['gradebook_audit_correlation_id' => $correlationid]),
+            ]);
+        }
+
+        $backendDeleted = false;
+        try {
+            $deleteRaw = self::gradebook_delete($session_id, 0);
+            $deleteDecoded = json_decode($deleteRaw, true);
+            $backendDeleted = is_array($deleteDecoded)
+                && (int)($deleteDecoded['status'] ?? 0) >= 200
+                && (int)($deleteDecoded['status'] ?? 0) < 300;
+        } catch (\Throwable $e) {
+            $backendDeleted = false;
+            $details['warnings'] = is_array($details['warnings'] ?? null) ? $details['warnings'] : [];
+            $details['warnings'][] = '⚠ Revert completed but backend session cleanup failed: ' . $e->getMessage();
+        }
+
+        $details['backend_session_deleted'] = $backendDeleted;
+
+        self::log_gradebook_audit_event(
+            $courseid,
+            $session_id,
+            'gradebook_revert_completed',
+            'success',
+            $details,
+            $revision,
+            $correlationid
+        );
+
+        return json_encode([
+            'status' => 200,
+            'code' => 'REVERTED',
+            'message' => get_string('gradebook_revert_completed', 'block_ai_assistant'),
+            'data' => array_merge($details, ['gradebook_audit_correlation_id' => $correlationid]),
+        ]);
+    }
+
     private static function course_has_ai_gradebook(int $courseid): bool
     {
         return self::count_ai_gradebook_roots($courseid) > 0;
+    }
+
+    /**
+     * Resolve gradebook session import mode from a status payload or Criabot session.
+     */
+    private static function resolve_gradebook_session_import_mode(
+        int $courseid,
+        string $sessionid,
+        ?array $status = null,
+        bool $allowstatusfetch = true
+    ): string {
+        if (is_array($status)) {
+            $candidates = [
+                $status['import_mode'] ?? null,
+                $status['session']['extraction']['import_mode'] ?? null,
+                $status['extraction']['import_mode'] ?? null,
+                $status['session']['import_mode'] ?? null,
+            ];
+            foreach ($candidates as $candidate) {
+                $mode = strtolower(trim((string)$candidate));
+                if ($mode === 'baseline' || $mode === 'fresh') {
+                    return $mode;
+                }
+            }
+        }
+
+        $sessionid = trim($sessionid);
+        if (!$allowstatusfetch || $courseid < 1 || $sessionid === '') {
+            return '';
+        }
+
+        try {
+            $raw = self::gradebook_status($sessionid);
+            $decoded = json_decode($raw, true);
+            if (!is_array($decoded)) {
+                return '';
+            }
+            return self::resolve_gradebook_session_import_mode($courseid, $sessionid, $decoded, false);
+        } catch (\Throwable $e) {
+            return '';
+        }
+    }
+
+    /**
+     * Revert is only meaningful when the session started from an existing gradebook baseline.
+     * Fresh sessions should use Delete instead (same outcome, clearer UX).
+     */
+    public static function gradebook_revert_available(int $courseid, string $sessionid = '', ?array $sessionstatus = null): bool
+    {
+        $sessionid = trim($sessionid);
+        if ($courseid < 1 || $sessionid === '') {
+            return false;
+        }
+        if (!self::course_has_ai_gradebook($courseid)) {
+            return false;
+        }
+        if (self::resolve_gradebook_session_import_mode($courseid, $sessionid, $sessionstatus) !== 'baseline') {
+            return false;
+        }
+        if (!self::gradebook_snapshot_ledger_available()) {
+            return false;
+        }
+
+        return self::load_gradebook_snapshot_record($courseid, $sessionid, 0) !== null;
+    }
+
+    /**
+     * Restore category/item placement from snapshot ledger payload.
+     *
+     * @param int $courseid
+     * @param string $sessionid
+     * @param int $revision
+     * @param array $details
+     * @return bool
+     */
+    private static function restore_gradebook_from_snapshot(int $courseid, string $sessionid, int $revision, array &$details = [], string $correlationid = ''): bool
+    {
+        global $DB, $CFG;
+
+        require_once($CFG->libdir . '/gradelib.php');
+        require_once($CFG->libdir . '/grade/grade_category.php');
+        require_once($CFG->libdir . '/grade/grade_item.php');
+
+        $details = [
+            'requested_revision' => $revision,
+            'restored_revision' => null,
+            'snapshot_type' => 'baseline',
+            'restored_categories' => 0,
+            'restored_items' => 0,
+            'warnings' => [],
+        ];
+
+        if (!self::gradebook_snapshot_ledger_available()) {
+            $details['warnings'][] = 'Snapshot ledger table is missing. Run plugin upgrade first.';
+            self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_restore_snapshot', 'blocked', $details, $revision, $correlationid);
+            return false;
+        }
+
+        $snapshotrecord = self::load_gradebook_snapshot_record($courseid, $sessionid, $revision);
+        if (!$snapshotrecord) {
+            $details['warnings'][] = 'No baseline snapshot was found for this session.';
+            self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_restore_snapshot', 'missing_snapshot', $details, $revision, $correlationid);
+            return false;
+        }
+
+        $payload = self::decode_gradebook_snapshot_payload($snapshotrecord);
+        if (!$payload) {
+            $details['warnings'][] = 'Snapshot payload is not readable.';
+            self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_restore_snapshot', 'corrupt_snapshot', $details, $revision, $correlationid);
+            return false;
+        }
+
+        $gradebooksnapshot = is_array($payload['gradebook_snapshot'] ?? null) ? $payload['gradebook_snapshot'] : [];
+        $tree = is_array($gradebooksnapshot['tree'] ?? null) ? $gradebooksnapshot['tree'] : [];
+        if (empty($tree)) {
+            $details['warnings'][] = 'Snapshot tree is empty.';
+            self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_restore_snapshot', 'empty_snapshot', $details, $revision, $correlationid);
+            return false;
+        }
+
+        $details['restored_revision'] = (int)($snapshotrecord->revision ?? 0);
+        $details['snapshot_type'] = (string)($snapshotrecord->snapshot_type ?? 'baseline');
+
+        $categorysettings = [];
+        $itemcategorymap = [];
+        $categoryitemsettings = [];
+        self::collect_snapshot_restore_targets($tree, 0, $categorysettings, $itemcategorymap, $categoryitemsettings);
+
+        $coursecategory = \grade_category::fetch_course_category($courseid);
+        if (!$coursecategory) {
+            $details['warnings'][] = 'Could not resolve course root category during restore.';
+            self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_restore_snapshot', 'failed', $details, $revision, $correlationid);
+            return false;
+        }
+
+        $snapshotrootid = (int)($gradebooksnapshot['root_category']['id'] ?? 0);
+        if ($snapshotrootid < 1) {
+            $snapshotrootid = (int)$coursecategory->id;
+        }
+
+        try {
+            $tx = $DB->start_delegated_transaction();
+
+            $cleanup = self::remove_ai_gradebook_from_course($courseid);
+            $details['warnings'][] = (string)($cleanup['message'] ?? '');
+
+            // Resolve/recreate snapshot categories only after AI-tree cleanup,
+            // otherwise IDs can point to categories that are removed above.
+            $resolvedcategoryids = [
+                0 => 0,
+                $snapshotrootid => (int)$coursecategory->id,
+            ];
+            foreach (array_keys($categorysettings) as $snapshotcategoryid) {
+                self::resolve_snapshot_category_target(
+                    $courseid,
+                    (int)$snapshotcategoryid,
+                    $categorysettings,
+                    $resolvedcategoryids,
+                    (int)$coursecategory->id,
+                    $details['warnings']
+                );
+            }
+
+            $restoredcategories = 0;
+            $createdcategories = 0;
+            foreach ($categorysettings as $categoryid => $meta) {
+                $categoryid = (int)$categoryid;
+                $targetcategoryid = (int)($resolvedcategoryids[$categoryid] ?? 0);
+                if ($targetcategoryid < 1) {
+                    continue;
+                }
+
+                if ($targetcategoryid !== $categoryid) {
+                    $createdcategories++;
+                }
+
+                $record = $DB->get_record('grade_categories', ['id' => $targetcategoryid, 'courseid' => $courseid], '*', IGNORE_MISSING);
+                if (!$record) {
+                    continue;
+                }
+
+                $update = new \stdClass();
+                $update->id = $targetcategoryid;
+                $changed = false;
+
+                $fields = ['aggregation', 'keephigh', 'droplow', 'aggregateonlygraded', 'aggregateoutcomes', 'hidden'];
+                foreach ($fields as $field) {
+                    if (!array_key_exists($field, $meta)) {
+                        continue;
+                    }
+                    $newValue = $meta[$field];
+                    if ($field === 'aggregateonlygraded' || $field === 'aggregateoutcomes') {
+                        $newValue = (int)((bool)$newValue);
+                    } else {
+                        $newValue = (int)$newValue;
+                    }
+
+                    if ((int)$record->{$field} !== $newValue) {
+                        $update->{$field} = $newValue;
+                        $changed = true;
+                    }
+                }
+
+                if (array_key_exists('parent', $meta)) {
+                    $parentsnapshotid = (int)$meta['parent'];
+                    $parentid = (int)($resolvedcategoryids[$parentsnapshotid] ?? 0);
+                    if ($parentid !== $targetcategoryid && (int)$record->parent !== $parentid) {
+                        if ($parentid === 0 || $DB->record_exists('grade_categories', ['id' => $parentid, 'courseid' => $courseid])) {
+                            $update->parent = $parentid;
+                            $changed = true;
+                        }
+                    }
+                }
+
+                if ($changed) {
+                    $DB->update_record('grade_categories', $update);
+                    $restoredcategories++;
+                }
+            }
+
+            foreach ($categoryitemsettings as $snapshotcategoryid => $meta) {
+                $snapshotcategoryid = (int)$snapshotcategoryid;
+                $targetcategoryid = (int)($resolvedcategoryids[$snapshotcategoryid] ?? 0);
+                if ($targetcategoryid < 1) {
+                    continue;
+                }
+
+                $categoryitem = $DB->get_record(
+                    'grade_items',
+                    [
+                        'courseid' => $courseid,
+                        'itemtype' => 'category',
+                        'iteminstance' => $targetcategoryid,
+                    ],
+                    '*',
+                    IGNORE_MISSING
+                );
+                if (!$categoryitem) {
+                    continue;
+                }
+
+                $update = new \stdClass();
+                $update->id = (int)$categoryitem->id;
+                $changed = false;
+
+                $parentsnapshotid = (int)($categorysettings[$snapshotcategoryid]['parent'] ?? 0);
+                $targetparentid = (int)($resolvedcategoryids[$parentsnapshotid] ?? 0);
+                if ($targetparentid > 0 && (int)$categoryitem->categoryid !== $targetparentid) {
+                    $update->categoryid = $targetparentid;
+                    $changed = true;
+                }
+
+                if (array_key_exists('aggregationcoef', $meta) && $meta['aggregationcoef'] !== null) {
+                    $coef = (float)$meta['aggregationcoef'];
+                    if ((float)$categoryitem->aggregationcoef !== $coef) {
+                        $update->aggregationcoef = $coef;
+                        $changed = true;
+                    }
+                }
+
+                if (array_key_exists('aggregationcoef2', $meta) && $meta['aggregationcoef2'] !== null) {
+                    $coef2 = (float)$meta['aggregationcoef2'];
+                    if ((float)$categoryitem->aggregationcoef2 !== $coef2) {
+                        $update->aggregationcoef2 = $coef2;
+                        $changed = true;
+                    }
+                }
+
+                if (array_key_exists('weightoverride', $meta) && $meta['weightoverride'] !== null) {
+                    $weightoverride = (int)((bool)$meta['weightoverride']);
+                    if ((int)$categoryitem->weightoverride !== $weightoverride) {
+                        $update->weightoverride = $weightoverride;
+                        $changed = true;
+                    }
+                }
+
+                if ($changed) {
+                    $DB->update_record('grade_items', $update);
+                }
+            }
+
+            $restorestats = [
+                'restored_items' => 0,
+                'created_items' => 0,
+                'categories_updated' => 0,
+            ];
+            self::restore_snapshot_tree_from_node(
+                $courseid,
+                $tree,
+                (int)$coursecategory->id,
+                $categorysettings,
+                $resolvedcategoryids,
+                (int)$coursecategory->id,
+                $details['warnings'],
+                $restorestats
+            );
+
+            $integrity = self::ensure_course_gradebook_integrity($courseid);
+
+            $tx->allow_commit();
+            grade_regrade_final_grades($courseid);
+
+            $details['restored_categories'] = $restoredcategories;
+            $details['recreated_or_remapped_categories'] = $createdcategories;
+            $details['restored_items'] = (int)($restorestats['restored_items'] ?? 0);
+            $details['created_items'] = (int)($restorestats['created_items'] ?? 0);
+            $details['categories_updated'] = (int)($restorestats['categories_updated'] ?? 0);
+            $details['orphaned_items_removed'] = (int)$integrity['removed'];
+            $details['structural_items_repaired'] = (int)$integrity['fixed'];
+            $details['course_total_items'] = (int)$integrity['course_items'];
+
+            self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_restore_snapshot', 'success', $details, $revision, $correlationid);
+
+            return true;
+        } catch (\Throwable $e) {
+            $details['warnings'][] = 'Revert transaction failed: ' . $e->getMessage();
+            self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_restore_snapshot', 'failed', $details, $revision, $correlationid);
+            return false;
+        }
+    }
+
+    private static function load_gradebook_snapshot_record(int $courseid, string $sessionid, int $revision = 0): ?\stdClass
+    {
+        global $DB;
+
+        if ($courseid < 1 || trim($sessionid) === '') {
+            return null;
+        }
+
+        if ($revision > 0) {
+            $record = $DB->get_record(
+                'block_aia_gradebook_snapshots',
+                [
+                    'courseid' => $courseid,
+                    'session_id' => $sessionid,
+                    'revision' => $revision,
+                ]
+            );
+            return $record ?: null;
+        }
+
+        $sql = 'SELECT *
+                  FROM {block_aia_gradebook_snapshots}
+                 WHERE courseid = ?
+                   AND session_id = ?
+                   AND snapshot_type = ?
+              ORDER BY revision DESC';
+        $records = $DB->get_records_sql($sql, [$courseid, $sessionid, 'baseline'], 0, 1);
+        if (!$records) {
+            return null;
+        }
+
+        return reset($records) ?: null;
+    }
+
+    private static function decode_gradebook_snapshot_payload(\stdClass $record): ?array
+    {
+        $json = trim((string)($record->payload_json ?? ''));
+        if ($json === '' && !empty($record->payload_compressed) && function_exists('gzdecode')) {
+            $raw = @base64_decode((string)$record->payload_compressed, true);
+            if ($raw !== false && $raw !== '') {
+                $decoded = @gzdecode($raw);
+                if (is_string($decoded) && $decoded !== '') {
+                    $json = $decoded;
+                }
+            }
+        }
+
+        if ($json === '') {
+            return null;
+        }
+
+        $payload = json_decode($json, true);
+        if (!is_array($payload)) {
+            return null;
+        }
+
+        return $payload;
+    }
+
+    private static function collect_snapshot_restore_targets(
+        array $node,
+        int $parentcategoryid,
+        array &$categorysettings,
+        array &$itemcategorymap,
+        array &$categoryitemsettings
+    ): void
+    {
+        $type = (string)($node['type'] ?? '');
+        $nodeid = (int)($node['id'] ?? 0);
+
+        $nextparentid = $parentcategoryid;
+
+        if ($type === 'category' && $nodeid > 0) {
+            $categorysettings[$nodeid] = [
+                'parent' => $parentcategoryid,
+                'fullname' => trim((string)($node['name'] ?? '')),
+            ];
+
+            $fields = ['aggregation', 'keephigh', 'droplow', 'aggregateonlygraded', 'aggregateoutcomes', 'hidden'];
+            foreach ($fields as $field) {
+                if (array_key_exists($field, $node)) {
+                    $categorysettings[$nodeid][$field] = $node[$field];
+                }
+            }
+
+            $nextparentid = $nodeid;
+        }
+
+        $itemtype = (string)($node['itemtype'] ?? '');
+        if ($type !== 'category' && $itemtype === 'category' && $parentcategoryid > 0) {
+            $categoryitemsettings[$parentcategoryid] = [
+                'aggregationcoef' => array_key_exists('aggregationcoef', $node) ? $node['aggregationcoef'] : null,
+                'aggregationcoef2' => array_key_exists('aggregationcoef2', $node) ? $node['aggregationcoef2'] : null,
+                'weightoverride' => array_key_exists('weightoverride', $node) ? $node['weightoverride'] : null,
+            ];
+        }
+
+        if ($type !== 'category' && $itemtype !== 'category' && $nodeid > 0 && $parentcategoryid > 0) {
+            $itemcategorymap[$nodeid] = $parentcategoryid;
+        }
+
+        $children = is_array($node['children'] ?? null) ? $node['children'] : [];
+        foreach ($children as $child) {
+            if (!is_array($child)) {
+                continue;
+            }
+            self::collect_snapshot_restore_targets($child, $nextparentid, $categorysettings, $itemcategorymap, $categoryitemsettings);
+        }
+    }
+
+    /**
+     * Resolve snapshot category id to an existing/current Moodle category id.
+     * Recreates missing categories from snapshot name+parent when necessary.
+     */
+    private static function resolve_snapshot_category_target(
+        int $courseid,
+        int $snapshotcategoryid,
+        array $categorysettings,
+        array &$resolved,
+        int $coursecategoryid,
+        array &$warnings = []
+    ): int {
+        global $DB;
+
+        if ($snapshotcategoryid < 1) {
+            return 0;
+        }
+
+        if (array_key_exists($snapshotcategoryid, $resolved)) {
+            return (int)$resolved[$snapshotcategoryid];
+        }
+
+        $meta = $categorysettings[$snapshotcategoryid] ?? null;
+        if (!is_array($meta)) {
+            $resolved[$snapshotcategoryid] = 0;
+            return 0;
+        }
+
+        $parentsnapshotid = (int)($meta['parent'] ?? 0);
+        $resolvedparentid = $parentsnapshotid > 0
+            ? self::resolve_snapshot_category_target($courseid, $parentsnapshotid, $categorysettings, $resolved, $coursecategoryid, $warnings)
+            : 0;
+
+        if ($resolvedparentid < 1) {
+            $resolvedparentid = $coursecategoryid;
+        }
+
+        $record = $DB->get_record('grade_categories', ['id' => $snapshotcategoryid, 'courseid' => $courseid], 'id,parent,fullname', IGNORE_MISSING);
+
+        if (!$record) {
+            $fullname = trim((string)($meta['fullname'] ?? ''));
+            if ($fullname !== '') {
+                $existinglist = \grade_category::fetch_all([
+                    'courseid' => $courseid,
+                    'fullname' => $fullname,
+                ]);
+
+                if ($existinglist) {
+                    foreach ($existinglist as $existing) {
+                        if ((int)$existing->parent === (int)$resolvedparentid) {
+                            $record = (object)[
+                                'id' => (int)$existing->id,
+                                'parent' => (int)$existing->parent,
+                                'fullname' => (string)$fullname,
+                            ];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!$record) {
+            $fullname = trim((string)($meta['fullname'] ?? ''));
+            if ($fullname === '') {
+                $resolved[$snapshotcategoryid] = 0;
+                return 0;
+            }
+
+            try {
+                $gc = new \grade_category(['courseid' => $courseid], false);
+                $gc->fullname = $fullname;
+                $gc->courseid = $courseid;
+                if ($resolvedparentid > 0) {
+                    $gc->parent = $resolvedparentid;
+                }
+                $gc->insert('block_ai_assistant');
+                if ($resolvedparentid > 0 && (int)$gc->parent !== (int)$resolvedparentid) {
+                    $gc->set_parent((int)$resolvedparentid);
+                }
+
+                $record = (object)[
+                    'id' => (int)$gc->id,
+                    'parent' => (int)($gc->parent ?? 0),
+                    'fullname' => $fullname,
+                ];
+                $warnings[] = 'ℹ Recreated missing snapshot category "' . $fullname . '" during restore.';
+            } catch (\Throwable $e) {
+                $warnings[] = '⚠ Could not recreate snapshot category "' . $fullname . '": ' . $e->getMessage();
+                $resolved[$snapshotcategoryid] = 0;
+                return 0;
+            }
+        }
+
+        $resolved[$snapshotcategoryid] = (int)$record->id;
+        return (int)$record->id;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private static function iter_snapshot_tree_children(array $node): array
+    {
+        $children = $node['children'] ?? null;
+        if ($children instanceof \stdClass) {
+            $children = (array)$children;
+        }
+        if (!is_array($children)) {
+            return [];
+        }
+
+        $keys = array_keys($children);
+        $islist = ($keys === range(0, count($children) - 1));
+        if ($islist) {
+            return array_values(array_filter($children, 'is_array'));
+        }
+
+        $list = [];
+        foreach ($children as $child) {
+            if (is_array($child)) {
+                $list[] = $child;
+            }
+        }
+        return $list;
+    }
+
+    private static function is_snapshot_category_node(array $node): bool
+    {
+        return strtolower(trim((string)($node['type'] ?? ''))) === 'category';
+    }
+
+    private static function is_snapshot_non_restorable_grade_node(array $node): bool
+    {
+        $itemtype = strtolower(trim((string)($node['itemtype'] ?? '')));
+        return $itemtype === 'course' || $itemtype === 'category';
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function find_snapshot_category_total_child(array $categorynode): ?array
+    {
+        foreach (self::iter_snapshot_tree_children($categorynode) as $child) {
+            if (strtolower(trim((string)($child['itemtype'] ?? ''))) === 'category') {
+                return $child;
+            }
+        }
+        return null;
+    }
+
+    private static function apply_snapshot_grade_category_settings(int $courseid, int $categoryid, array $node, array &$warnings): bool
+    {
+        global $DB;
+
+        if ($categoryid < 1) {
+            return false;
+        }
+
+        $record = $DB->get_record('grade_categories', ['id' => $categoryid, 'courseid' => $courseid], '*', IGNORE_MISSING);
+        if (!$record) {
+            return false;
+        }
+
+        $update = new \stdClass();
+        $update->id = $categoryid;
+        $changed = false;
+        $fields = ['aggregation', 'keephigh', 'droplow', 'aggregateonlygraded', 'aggregateoutcomes', 'hidden'];
+        foreach ($fields as $field) {
+            if (!array_key_exists($field, $node)) {
+                continue;
+            }
+            $newvalue = $node[$field];
+            if ($field === 'aggregateonlygraded' || $field === 'aggregateoutcomes') {
+                $newvalue = (int)((bool)$newvalue);
+            } else {
+                $newvalue = (int)$newvalue;
+            }
+            if ((int)$record->{$field} !== $newvalue) {
+                $update->{$field} = $newvalue;
+                $changed = true;
+            }
+        }
+
+        if ($changed) {
+            $DB->update_record('grade_categories', $update);
+        }
+
+        return $changed;
+    }
+
+    private static function apply_snapshot_category_total_settings(int $courseid, int $categoryid, array $categorynode, array &$warnings): bool
+    {
+        global $DB;
+
+        if ($categoryid < 1) {
+            return false;
+        }
+
+        $gi = \grade_item::fetch(['courseid' => $courseid, 'itemtype' => 'category', 'iteminstance' => $categoryid]);
+        if (!$gi) {
+            return false;
+        }
+
+        $totalchild = self::find_snapshot_category_total_child($categorynode);
+        $sources = [$categorynode];
+        if (is_array($totalchild)) {
+            $sources[] = $totalchild;
+        }
+
+        $changed = false;
+        foreach (['aggregationcoef', 'aggregationcoef2', 'weightoverride', 'hidden', 'hiddenuntil', 'locktime', 'display', 'decimals', 'grademin', 'grademax', 'gradepass'] as $field) {
+            $value = null;
+            foreach ($sources as $source) {
+                if (array_key_exists($field, $source) && $source[$field] !== null) {
+                    $value = $source[$field];
+                    break;
+                }
+            }
+            if ($value === null) {
+                continue;
+            }
+
+            if ($field === 'weightoverride') {
+                $newvalue = (int)((bool)$value);
+            } else if (in_array($field, ['hidden', 'hiddenuntil', 'locktime', 'display', 'decimals'], true)) {
+                $newvalue = (int)$value;
+            } else {
+                $newvalue = (float)$value;
+            }
+
+            $current = $gi->{$field} ?? null;
+            if (is_float($newvalue)) {
+                if ($current === null || abs((float)$current - $newvalue) > 0.00001) {
+                    $gi->{$field} = $newvalue;
+                    $changed = true;
+                }
+            } else if ((int)$current !== $newvalue) {
+                $gi->{$field} = $newvalue;
+                $changed = true;
+            }
+        }
+
+        $calculation = '';
+        foreach ($sources as $source) {
+            $candidate = trim((string)($source['calculation'] ?? ''));
+            if ($candidate !== '') {
+                $calculation = $candidate;
+                break;
+            }
+        }
+        if ($calculation !== '') {
+            try {
+                if (method_exists($gi, 'set_calculation')) {
+                    $gi->set_calculation($calculation, null);
+                } else {
+                    $gi->calculation = $calculation;
+                }
+                $changed = true;
+            } catch (\Throwable $e) {
+                $warnings[] = '⚠ Could not restore category formula for category #' . $categoryid . ': ' . $e->getMessage();
+            }
+        }
+
+        if ($changed) {
+            $gi->update('block_ai_assistant');
+        }
+
+        return $changed;
+    }
+
+    /**
+     * @param array<string, mixed> $node
+     */
+    private static function find_snapshot_grade_item(int $courseid, array $node): ?\grade_item
+    {
+        global $DB;
+
+        $itemtype = strtolower(trim((string)($node['itemtype'] ?? '')));
+        $itemmodule = strtolower(trim((string)($node['itemmodule'] ?? '')));
+        $iteminstance = (int)($node['iteminstance'] ?? 0);
+        $name = trim((string)($node['name'] ?? ''));
+
+        if ($itemtype === 'mod' && $itemmodule !== '' && $iteminstance > 0) {
+            $gi = \grade_item::fetch([
+                'courseid' => $courseid,
+                'itemtype' => 'mod',
+                'itemmodule' => $itemmodule,
+                'iteminstance' => $iteminstance,
+            ]);
+            if ($gi) {
+                return $gi;
+            }
+        }
+
+        if ($name === '' || $itemtype === '') {
+            return null;
+        }
+
+        $records = $DB->get_records_select(
+            'grade_items',
+            "courseid = ? AND itemtype = ? AND LOWER(itemname) = ?",
+            [$courseid, $itemtype, strtolower($name)],
+            'id ASC',
+            'id'
+        );
+        if (count($records) === 1) {
+            $record = reset($records);
+            return \grade_item::fetch(['id' => (int)$record->id]);
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $node
+     */
+    private static function create_manual_grade_item_from_snapshot(int $courseid, int $categoryid, array $node, array &$warnings): ?\grade_item
+    {
+        $name = trim((string)($node['name'] ?? ''));
+        if ($categoryid < 1 || $name === '') {
+            return null;
+        }
+
+        try {
+            $gi = new \grade_item();
+            $gi->courseid = $courseid;
+            $gi->categoryid = $categoryid;
+            $gi->itemtype = 'manual';
+            $gi->itemname = $name;
+            $gi->grademin = array_key_exists('grademin', $node) ? (float)$node['grademin'] : 0.0;
+            $gi->grademax = array_key_exists('grademax', $node) ? (float)$node['grademax'] : 100.0;
+            if (defined('GRADE_TYPE_VALUE')) {
+                $gi->gradetype = GRADE_TYPE_VALUE;
+            }
+            $gi->insert('block_ai_assistant');
+            $warnings[] = 'ℹ Recreated manual grade item "' . $name . '" during baseline restore.';
+            return $gi;
+        } catch (\Throwable $e) {
+            $warnings[] = '⚠ Could not recreate manual grade item "' . $name . '": ' . $e->getMessage();
+            return null;
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $node
+     */
+    private static function apply_snapshot_grade_item_settings(\grade_item $gi, array $node): bool
+    {
+        $changed = false;
+        $fields = [
+            'aggregationcoef' => 'float',
+            'aggregationcoef2' => 'float',
+            'weightoverride' => 'bool',
+            'hidden' => 'int',
+            'hiddenuntil' => 'int',
+            'locktime' => 'int',
+            'display' => 'int',
+            'decimals' => 'int',
+            'grademin' => 'float',
+            'grademax' => 'float',
+            'gradepass' => 'float',
+        ];
+
+        foreach ($fields as $field => $kind) {
+            if (!array_key_exists($field, $node)) {
+                continue;
+            }
+            $value = $node[$field];
+            if ($kind === 'bool') {
+                $newvalue = (int)((bool)$value);
+            } else if ($kind === 'int') {
+                $newvalue = (int)$value;
+            } else {
+                $newvalue = (float)$value;
+            }
+
+            $current = $gi->{$field} ?? null;
+            if ($kind === 'float') {
+                if ($current === null || abs((float)$current - $newvalue) > 0.00001) {
+                    $gi->{$field} = $newvalue;
+                    $changed = true;
+                }
+            } else if ((int)$current !== $newvalue) {
+                $gi->{$field} = $newvalue;
+                $changed = true;
+            }
+        }
+
+        $calculation = trim((string)($node['calculation'] ?? ''));
+        if ($calculation !== '') {
+            try {
+                if (method_exists($gi, 'set_calculation')) {
+                    $gi->set_calculation($calculation, null);
+                } else {
+                    $gi->calculation = $calculation;
+                }
+                $changed = true;
+            } catch (\Throwable $e) {
+                // Item-level formulas are uncommon; keep restore resilient.
+            }
+        }
+
+        return $changed;
+    }
+
+    /**
+     * @param array<string, mixed> $node
+     * @param array<string, mixed> $stats
+     */
+    private static function restore_snapshot_grade_item_from_node(
+        int $courseid,
+        int $liveparentcategoryid,
+        array $node,
+        array &$warnings,
+        array &$stats
+    ): void {
+        if ($liveparentcategoryid < 1 || self::is_snapshot_non_restorable_grade_node($node)) {
+            return;
+        }
+
+        $itemtype = strtolower(trim((string)($node['itemtype'] ?? '')));
+        if ($itemtype === '') {
+            return;
+        }
+
+        $created = false;
+        $gi = self::find_snapshot_grade_item($courseid, $node);
+        if (!$gi && $itemtype === 'manual') {
+            $gi = self::create_manual_grade_item_from_snapshot($courseid, $liveparentcategoryid, $node, $warnings);
+            $created = $gi !== null;
+        }
+        if (!$gi) {
+            $label = trim((string)($node['name'] ?? ''));
+            if ($label !== '') {
+                $warnings[] = '⚠ Could not restore grade item "' . $label . '" from baseline snapshot.';
+            }
+            return;
+        }
+
+        if ((int)$gi->categoryid !== $liveparentcategoryid) {
+            $gi->categoryid = $liveparentcategoryid;
+        }
+
+        if (self::apply_snapshot_grade_item_settings($gi, $node)) {
+            $gi->update('block_ai_assistant');
+        } else if ((int)$gi->categoryid === $liveparentcategoryid) {
+            $gi->update('block_ai_assistant');
+        }
+
+        if ($created) {
+            $stats['created_items'] = (int)($stats['created_items'] ?? 0) + 1;
+        } else {
+            $stats['restored_items'] = (int)($stats['restored_items'] ?? 0) + 1;
+        }
+    }
+
+    /**
+     * Recursively restore categories, subcategories, grade items, and category formulas.
+     *
+     * @param array<string, mixed> $stats
+     */
+    private static function restore_snapshot_tree_from_node(
+        int $courseid,
+        array $node,
+        int $liveparentcategoryid,
+        array $categorysettings,
+        array &$resolvedcategoryids,
+        int $coursecategoryid,
+        array &$warnings,
+        array &$stats
+    ): void {
+        foreach (self::iter_snapshot_tree_children($node) as $child) {
+            if (self::is_snapshot_category_node($child)) {
+                $snapshotcategoryid = (int)($child['id'] ?? 0);
+                if ($snapshotcategoryid < 1) {
+                    continue;
+                }
+
+                $livecategoryid = self::resolve_snapshot_category_target(
+                    $courseid,
+                    $snapshotcategoryid,
+                    $categorysettings,
+                    $resolvedcategoryids,
+                    $coursecategoryid,
+                    $warnings
+                );
+                if ($livecategoryid < 1) {
+                    continue;
+                }
+
+                if (self::apply_snapshot_grade_category_settings($courseid, $livecategoryid, $child, $warnings)) {
+                    $stats['categories_updated'] = (int)($stats['categories_updated'] ?? 0) + 1;
+                }
+                self::apply_snapshot_category_total_settings($courseid, $livecategoryid, $child, $warnings);
+
+                self::restore_snapshot_tree_from_node(
+                    $courseid,
+                    $child,
+                    $livecategoryid,
+                    $categorysettings,
+                    $resolvedcategoryids,
+                    $coursecategoryid,
+                    $warnings,
+                    $stats
+                );
+                continue;
+            }
+
+            if (self::is_snapshot_non_restorable_grade_node($child)) {
+                continue;
+            }
+
+            self::restore_snapshot_grade_item_from_node($courseid, $liveparentcategoryid, $child, $warnings, $stats);
+        }
     }
 
     /**
@@ -1875,6 +3441,223 @@ class cria
         unset_config('ai_gb_roots_' . $courseid, 'block_ai_assistant');
     }
 
+    private static function _get_ai_owned_grade_item_ids(int $courseid): array
+    {
+        $raw = get_config('block_ai_assistant', 'ai_gb_items_' . $courseid);
+        if (!$raw) {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? array_values(array_unique(array_map('intval', $decoded))) : [];
+    }
+
+    private static function _register_ai_owned_grade_item(int $courseid, int $gradeitemid): void
+    {
+        if ($courseid < 1 || $gradeitemid < 1) {
+            return;
+        }
+        $existing = self::_get_ai_owned_grade_item_ids($courseid);
+        $existing[] = $gradeitemid;
+        set_config('ai_gb_items_' . $courseid, json_encode(array_values(array_unique($existing))), 'block_ai_assistant');
+    }
+
+    private static function _clear_ai_owned_grade_item_ids(int $courseid): void
+    {
+        unset_config('ai_gb_items_' . $courseid, 'block_ai_assistant');
+    }
+
+    /**
+     * @param int $courseid
+     * @return int number of grade items removed
+     */
+    private static function _remove_ai_owned_grade_items(int $courseid, array $preserve_grade_item_ids = []): int
+    {
+        global $DB;
+
+        if ($courseid < 1) {
+            return 0;
+        }
+
+        $preserve = [];
+        foreach ($preserve_grade_item_ids as $preserveid) {
+            $preserveid = (int)$preserveid;
+            if ($preserveid > 0) {
+                $preserve[$preserveid] = true;
+            }
+        }
+
+        $removed = 0;
+        $remainingids = [];
+        foreach (self::_get_ai_owned_grade_item_ids($courseid) as $itemid) {
+            $itemid = (int)$itemid;
+            if ($itemid < 1) {
+                continue;
+            }
+            if (!empty($preserve[$itemid])) {
+                $remainingids[] = $itemid;
+                continue;
+            }
+            $record = $DB->get_record('grade_items', ['id' => $itemid, 'courseid' => $courseid], 'id, itemtype', IGNORE_MISSING);
+            if (!$record) {
+                continue;
+            }
+            if ((string)($record->itemtype ?? '') !== 'manual') {
+                continue;
+            }
+            self::_delete_grade_item_by_id($itemid);
+            $removed++;
+        }
+
+        if (empty($remainingids)) {
+            self::_clear_ai_owned_grade_item_ids($courseid);
+        } else {
+            set_config(
+                'ai_gb_items_' . $courseid,
+                json_encode(array_values(array_unique($remainingids))),
+                'block_ai_assistant'
+            );
+        }
+        return $removed;
+    }
+
+    private static function _delete_grade_item_by_id(int $itemid): void
+    {
+        global $DB;
+
+        if ($itemid < 1) {
+            return;
+        }
+
+        try {
+            $gi = \grade_item::fetch(['id' => $itemid]);
+            if ($gi) {
+                $gi->delete('block_ai_assistant');
+                return;
+            }
+        } catch (\Throwable $e) {
+            debugging('grade_item delete failed for id ' . $itemid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+
+        $DB->delete_records('grade_grades', ['itemid' => $itemid]);
+        $DB->delete_records('grade_items', ['id' => $itemid]);
+    }
+
+    /**
+     * Delete manual grade items that live inside categories about to be removed.
+     *
+     * @param int $courseid
+     * @param int[] $categoryids
+     * @return int
+     */
+    private static function _delete_manual_items_in_categories(int $courseid, array $categoryids, array $preserve_grade_item_ids = []): int
+    {
+        global $DB;
+
+        if ($courseid < 1 || empty($categoryids)) {
+            return 0;
+        }
+
+        $preserve = [];
+        foreach ($preserve_grade_item_ids as $preserveid) {
+            $preserveid = (int)$preserveid;
+            if ($preserveid > 0) {
+                $preserve[$preserveid] = true;
+            }
+        }
+
+        list($insql, $inparams) = $DB->get_in_or_equal($categoryids);
+        $items = $DB->get_records_select(
+            'grade_items',
+            "courseid = ? AND categoryid {$insql} AND itemtype = 'manual'",
+            array_merge([$courseid], $inparams)
+        );
+
+        $removed = 0;
+        foreach (($items ?: []) as $item) {
+            $itemid = (int)$item->id;
+            if (!empty($preserve[$itemid])) {
+                continue;
+            }
+            self::_delete_grade_item_by_id($itemid);
+            $removed++;
+        }
+
+        return $removed;
+    }
+
+    private static function course_needs_gradebook_cleanup(int $courseid): bool
+    {
+        if ($courseid < 1) {
+            return false;
+        }
+
+        return self::course_has_ai_gradebook($courseid)
+            || !empty(self::_get_ai_ownership_ids($courseid))
+            || !empty(self::_get_ai_owned_grade_item_ids($courseid));
+    }
+
+    private static function gradebook_tree_missing_config_key(int $courseid): string
+    {
+        return 'ai_gb_tree_missing_' . $courseid;
+    }
+
+    private static function mark_gradebook_tree_missing(int $courseid): void
+    {
+        set_config(self::gradebook_tree_missing_config_key($courseid), (string)time(), 'block_ai_assistant');
+    }
+
+    private static function clear_gradebook_tree_missing(int $courseid): void
+    {
+        unset_config(self::gradebook_tree_missing_config_key($courseid), 'block_ai_assistant');
+    }
+
+    public static function gradebook_tree_missing_flag(int $courseid): bool
+    {
+        $raw = get_config('block_ai_assistant', self::gradebook_tree_missing_config_key($courseid));
+        return trim((string)$raw) !== '';
+    }
+
+    public static function has_ai_gradebook_tree(int $courseid): bool
+    {
+        if ($courseid < 1) {
+            return false;
+        }
+        return self::course_has_ai_gradebook($courseid);
+    }
+
+    /**
+     * Handle Moodle gradebook deletion events and mark stale UI state when an AI tree disappears.
+     */
+    public static function handle_gradebook_structure_deleted_event(int $courseid, string $eventname, int $objectid = 0): void
+    {
+        if ($courseid < 1) {
+            return;
+        }
+
+        try {
+            $hasaitree = self::course_has_ai_gradebook($courseid);
+            if ($hasaitree) {
+                self::clear_gradebook_tree_missing($courseid);
+                return;
+            }
+
+            self::_clear_ai_ownership_ids($courseid);
+            self::mark_gradebook_tree_missing($courseid);
+            error_log(
+                'block_ai_assistant: detected missing AI gradebook tree after event=' . $eventname
+                . ' courseid=' . (int)$courseid
+                . ' objectid=' . (int)$objectid
+            );
+        } catch (\Throwable $e) {
+            error_log(
+                'block_ai_assistant: gradebook structure event handling failed event=' . $eventname
+                . ' courseid=' . (int)$courseid
+                . ' objectid=' . (int)$objectid
+                . ' error=' . $e->getMessage()
+            );
+        }
+    }
+
     private static function get_ai_gradebook_root_ids(int $courseid): array
     {
         global $DB;
@@ -1932,22 +3715,33 @@ class cria
      *
      * @return array with keys 'cleaned' (bool) and 'message' (string)
      */
-    public static function remove_ai_gradebook_from_course(int $courseid): array
+    public static function remove_ai_gradebook_from_course(int $courseid, array $preserve_grade_item_ids = []): array
     {
         global $CFG, $DB;
         require_once($CFG->libdir . '/gradelib.php');
         require_once($CFG->libdir . '/grade/grade_category.php');
         require_once($CFG->libdir . '/grade/grade_item.php');
 
+        $result = [
+            'cleaned' => false,
+            'message' => 'No AI Assistant gradebook categories found to remove.',
+        ];
+
         try {
+            $manualremoved = self::_remove_ai_owned_grade_items($courseid, $preserve_grade_item_ids);
+
             $roots = self::get_ai_gradebook_root_ids($courseid);
             if (empty($roots)) {
-                // Nothing to remove – clear stale ownership entry just in case.
                 self::_clear_ai_ownership_ids($courseid);
-                return [
-                    'cleaned' => false,
-                    'message' => 'No AI Assistant gradebook categories found to remove.'
-                ];
+                self::_purge_orphan_category_grade_items($courseid);
+                if ($manualremoved > 0) {
+                    $result = [
+                        'cleaned' => true,
+                        'message' => 'Removed ' . $manualremoved . ' AI-created manual grade item'
+                            . ($manualremoved === 1 ? '' : 's') . '.',
+                    ];
+                }
+                return $result;
             }
 
             $allcats = $DB->get_records('grade_categories', ['courseid' => $courseid]);
@@ -1963,74 +3757,72 @@ class cria
             $tree_ids = self::_collect_category_tree_ids($roots, $children_by_parent);
             if (empty($tree_ids)) {
                 self::_clear_ai_ownership_ids($courseid);
-                return ['cleaned' => false, 'message' => 'Could not resolve AI gradebook category tree IDs.'];
+                self::_purge_orphan_category_grade_items($courseid);
+                $result['message'] = 'Could not resolve AI gradebook category tree IDs.';
+                return $result;
             }
 
             debugging('Removing AI gradebook tree (' . implode(',', $tree_ids) . ') from course ' . $courseid, DEBUG_DEVELOPER);
 
-            list($inSql, $inParams) = $DB->get_in_or_equal($tree_ids);
+            $manualremoved += self::_delete_manual_items_in_categories($courseid, $tree_ids, $preserve_grade_item_ids);
 
-            // 1. Move non-structural grade items (activities/manual) back to course total.
-            $coursecat = \grade_category::fetch_course_category($courseid);
-            if ($coursecat) {
-                $moditems = $DB->get_records_select(
-                    'grade_items',
-                    'courseid = ? AND categoryid ' . $inSql . " AND itemtype <> 'category'",
-                    array_merge([$courseid], $inParams)
-                );
-                foreach ($moditems as $item) {
-                    $item->categoryid = $coursecat->id;
-                    $DB->update_record('grade_items', $item);
+            foreach ($roots as $rootid) {
+                $rootid = (int)$rootid;
+                if ($rootid < 1 || !$DB->record_exists('grade_categories', ['id' => $rootid, 'courseid' => $courseid])) {
+                    continue;
                 }
+                self::_delete_grade_category_tree($courseid, $rootid, $children_by_parent);
             }
 
-            // 2. Delete structural category-total grade items for the removed categories.
-            $DB->delete_records_select(
-                'grade_items',
-                "courseid = ? AND itemtype = 'category' AND iteminstance " . $inSql,
-                array_merge([$courseid], $inParams)
-            );
+            self::_purge_orphan_category_grade_items($courseid);
 
-            // 3. Delete the category records themselves.
-            $DB->delete_records_select(
-                'grade_categories',
-                'courseid = ? AND id ' . $inSql,
-                array_merge([$courseid], $inParams)
-            );
-
-            grade_regrade_final_grades($courseid);
-
-            // 4. Verify cleanup was complete.
             $remaining_roots = self::count_ai_gradebook_roots($courseid);
             if ($remaining_roots > 0) {
-                return [
-                    'cleaned' => false,
-                    'message' => $remaining_roots . ' AI Assistant gradebook ' . ($remaining_roots === 1 ? 'category' : 'categories') . ' could not be removed. Check Moodle grade setup manually.'
-                ];
+                $result['message'] = $remaining_roots . ' AI Assistant gradebook ' . ($remaining_roots === 1 ? 'category' : 'categories') . ' could not be removed. Check Moodle grade setup manually.';
+                return $result;
             }
 
-            // 5. Repair any items that somehow still point at deleted category IDs.
             if (self::_repair_dangling_grade_items($courseid, $tree_ids) > 0) {
-                return [
-                    'cleaned' => false,
-                    'message' => 'Categories removed but some grade items still referenced deleted AI categories. Please re-run delete session once.'
-                ];
+                $result['message'] = 'Categories removed but some grade items still referenced deleted AI categories. Please re-run delete session once.';
+                return $result;
             }
 
-            // 6. Clear ownership registry now that cleanup succeeded.
+            try {
+                grade_regrade_final_grades($courseid);
+            } catch (\Throwable $regradeex) {
+                debugging('grade_regrade_final_grades failed after AI category delete for course ' . $courseid . ': ' . $regradeex->getMessage(), DEBUG_DEVELOPER);
+            }
+
             self::_clear_ai_ownership_ids($courseid);
 
-            $root_count = count($roots);
-            return [
+            $rootcount = count($roots);
+            $parts = ['Removed ' . $rootcount . ' AI Assistant gradebook ' . ($rootcount === 1 ? 'category' : 'categories') . '.'];
+            if ($manualremoved > 0) {
+                $parts[] = 'Removed ' . $manualremoved . ' AI-created manual grade item' . ($manualremoved === 1 ? '' : 's') . '.';
+            }
+            $result = [
                 'cleaned' => true,
-                'message' => 'Removed ' . $root_count . ' AI Assistant gradebook ' . ($root_count === 1 ? 'category' : 'categories') . '.'
+                'message' => implode(' ', $parts),
             ];
+            return $result;
         } catch (Throwable $e) {
             debugging('Error removing AI gradebook from course: ' . $e->getMessage(), DEBUG_DEVELOPER);
-            return [
+            $result = [
                 'cleaned' => false,
-                'message' => 'Error during cleanup: ' . $e->getMessage()
+                'message' => 'Error during cleanup: ' . $e->getMessage(),
             ];
+            return $result;
+        } finally {
+            if ($courseid > 0) {
+                self::_purge_orphan_category_grade_items($courseid);
+                $integrity = self::ensure_course_gradebook_integrity($courseid);
+                if ($integrity['removed'] > 0) {
+                    debugging(
+                        'Removed ' . (int)$integrity['removed'] . ' orphaned gradebook structural row(s) after AI cleanup for course ' . $courseid,
+                        DEBUG_DEVELOPER
+                    );
+                }
+            }
         }
     }
 
@@ -2072,6 +3864,10 @@ class cria
             [$courseid, $from_category_id]
         );
         foreach ($items as $item) {
+            if ((string)($item->itemtype ?? '') === 'manual') {
+                self::_delete_grade_item_by_id((int)$item->id);
+                continue;
+            }
             $item->categoryid = $course_cat->id;
             $DB->update_record('grade_items', $item);
         }
@@ -2151,13 +3947,57 @@ class cria
             $DB->update_record('grade_items', $item);
         }
 
-        grade_regrade_final_grades($courseid);
+        try {
+            grade_regrade_final_grades($courseid);
+        } catch (\Throwable $regradeex) {
+            debugging('grade_regrade_final_grades (repair dangling) failed for course ' . $courseid . ': ' . $regradeex->getMessage(), DEBUG_DEVELOPER);
+        }
 
         return (int)$DB->count_records_select(
             'grade_items',
             'courseid = ? AND categoryid ' . $inSql . ' AND itemtype <> ?',
             array_merge([$courseid], $inParams, ['category'])
         );
+    }
+
+    /**
+     * Delete category-total grade_items whose iteminstance category row is gone.
+     * Prevents grade/edit/tree "sortorder on null" fatals after AI tree removal.
+     *
+     * @param int $courseid
+     * @return int
+     */
+    private static function _purge_orphan_category_grade_items(int $courseid): int
+    {
+        global $DB;
+
+        if ($courseid < 1) {
+            return 0;
+        }
+
+        $orphans = $DB->get_records_sql(
+            'SELECT gi.id
+               FROM {grade_items} gi
+              WHERE gi.courseid = ?
+                AND gi.itemtype = ?
+                AND NOT EXISTS (
+                    SELECT 1
+                      FROM {grade_categories} gc
+                     WHERE gc.id = gi.iteminstance
+                       AND gc.courseid = gi.courseid
+                )',
+            [$courseid, 'category']
+        );
+
+        $removed = 0;
+        foreach (($orphans ?: []) as $orphan) {
+            $itemid = (int)$orphan->id;
+            $DB->delete_records('grade_grades', ['itemid' => $itemid]);
+            $DB->delete_records('grade_items', ['id' => $itemid]);
+            $removed++;
+        }
+
+        return $removed;
     }
 
     /**
@@ -2182,14 +4022,50 @@ class cria
 
     public static function gradebook_finalize(int $courseid, string $session_id, array $confirmed_mapping): string
     {
-        global $CFG;
+        global $CFG, $DB;
         require_once($CFG->libdir . '/gradelib.php');
         require_once($CFG->libdir . '/grade/grade_item.php');
         require_once($CFG->libdir . '/grade/grade_category.php');
+        $correlationid = self::build_gradebook_correlation_id('gradebook_finalize', $courseid, trim($session_id));
 
-        // Clean up any orphaned category items before applying new gradebook structure
         if ($courseid > 0) {
-            self::cleanup_orphaned_category_items($courseid);
+            self::ensure_course_gradebook_integrity($courseid);
+        }
+
+        $applywarnings = [];
+        $normalized_mapping = self::normalize_confirmed_mapping($courseid, $confirmed_mapping, $applywarnings);
+        $mappingconstraints = self::extract_mapping_constraints($normalized_mapping);
+
+        if ($courseid > 0 && !empty($confirmed_mapping) && empty($normalized_mapping)) {
+            $applywarnings[] = '⚠ Finalize was blocked because no valid Moodle grade items could be resolved from the submitted mapping rows.';
+            self::log_gradebook_audit_event(
+                $courseid,
+                trim($session_id),
+                'gradebook_finalize_guard_failed',
+                'blocked',
+                [
+                    'reason' => 'normalized_mapping_empty',
+                    'submitted_rows' => count($confirmed_mapping),
+                    'normalized_rows' => 0,
+                    'warnings' => $applywarnings,
+                ],
+                0,
+                $correlationid
+            );
+
+            return json_encode([
+                'status' => 422,
+                'code' => 'MAPPING_INVALID',
+                'phase' => 'REFINEMENT',
+                'message' => 'Finalize blocked: mapping rows could not be resolved to Moodle grade items. Regenerate mapping and try again.',
+                'data' => [
+                    'grade_setup_skipped' => true,
+                    'grade_setup_apply_rolled_back' => false,
+                    'grade_setup_skip_reason' => 'normalized_mapping_empty',
+                    'grade_setup_warnings' => $applywarnings,
+                    'gradebook_audit_correlation_id' => $correlationid,
+                ],
+            ]);
         }
 
         $method = 'cria_gradebook_finalize';
@@ -2199,23 +4075,185 @@ class cria
             'create_categories' => true,
             'reorganize_resources' => false,
         );
+
+        if ($courseid > 0) {
+            self::sync_gradebook_session_context($courseid, trim($session_id), $confirmed_mapping);
+        }
+
         $response_json = webservice::exec($method, $data);
-        $applywarnings = [];
-        $normalized_mapping = self::normalize_confirmed_mapping($courseid, $confirmed_mapping, $applywarnings);
+
+        self::log_gradebook_audit_event(
+            $courseid,
+            trim($session_id),
+            'gradebook_finalize_requested',
+            'requested',
+            [
+                'mapping_rows' => count($normalized_mapping),
+                'constraint_rows' => count($mappingconstraints),
+            ],
+            0,
+            $correlationid
+        );
 
         if ($courseid > 0) {
             try {
                 $response = json_decode($response_json, true);
-                if (is_array($response) && isset($response['proposal'])) {
-                    // Treat repeated finalize as override, not append: clear prior AI tree first.
-                    $precleanup = self::remove_ai_gradebook_from_course($courseid);
-                    if (!empty($precleanup['message']) && empty($precleanup['cleaned'])) {
-                        $applywarnings[] = (string)$precleanup['message'];
+                $proposal = self::extract_finalize_proposal($response);
+                if ((!is_array($proposal) || !is_array($proposal['categories'] ?? null)) && trim($session_id) !== '') {
+                    $proposalresponse = json_decode(self::gradebook_proposal(trim($session_id)), true);
+                    $fallbackproposal = self::extract_finalize_proposal($proposalresponse);
+                    if (is_array($fallbackproposal) && is_array($fallbackproposal['categories'] ?? null)) {
+                        $proposal = $fallbackproposal;
+                        $applywarnings[] = 'ℹ Finalize response did not include proposal payload; loaded latest proposal before Moodle apply.';
+                        if (is_array($response)) {
+                            $response['proposal'] = $proposal;
+                        }
+                    }
+                }
+
+                if (is_array($response) && is_array($proposal) && is_array($proposal['categories'] ?? null)) {
+                    if (trim($session_id) !== '') {
+                        $freshresponse = json_decode(self::gradebook_proposal(trim($session_id)), true);
+                        $freshproposal = self::extract_finalize_proposal($freshresponse);
+                        if (is_array($freshproposal) && is_array($freshproposal['categories'] ?? null)) {
+                            $proposal = $freshproposal;
+                            $response['proposal'] = $proposal;
+                        }
                     }
 
-                    $localwarnings = self::apply_gradebook_to_course($courseid, $response['proposal'], $normalized_mapping);
-                    if (!empty($localwarnings)) {
-                        $applywarnings = array_merge($applywarnings, $localwarnings);
+                    $phase = strtoupper(trim((string)($response['phase'] ?? '')));
+                    $validation = is_array($response['content_mapping']['validation'] ?? null)
+                        ? $response['content_mapping']['validation']
+                        : [];
+                    $canproceed = !isset($validation['can_proceed']) ? true : (bool)$validation['can_proceed'];
+
+                    if ($phase !== 'COMPLETED' || !$canproceed) {
+                        self::log_gradebook_audit_event(
+                            $courseid,
+                            trim($session_id),
+                            'gradebook_finalize_guard_failed',
+                            'blocked',
+                            [
+                                'phase' => $phase,
+                                'can_proceed' => $canproceed,
+                                'validation' => $validation,
+                            ],
+                            0,
+                            $correlationid
+                        );
+                        $response['phase'] = 'REFINEMENT';
+                        $response['data'] = array_merge(
+                            is_array($response['data'] ?? null) ? $response['data'] : [],
+                            [
+                                'grade_setup_skipped' => true,
+                                'grade_setup_apply_rolled_back' => false,
+                                'grade_setup_skip_reason' => 'defensive_guard_validation_failed',
+                            ]
+                        );
+                        if (!empty($mappingconstraints)) {
+                            $response['data']['grade_setup_constraints'] = $mappingconstraints;
+                        }
+                        $response['data']['gradebook_audit_correlation_id'] = $correlationid;
+                        if (!empty($applywarnings)) {
+                            $response['data']['grade_setup_warnings'] = $applywarnings;
+                        }
+                        if (empty($response['message'])) {
+                            $response['message'] = 'Finalize blocked by validation; no Moodle gradebook changes were applied.';
+                        }
+                        return json_encode($response);
+                    }
+
+                    $transaction = $DB->start_delegated_transaction();
+                    try {
+                        if (!self::ensure_preapply_baseline_snapshot($courseid, trim($session_id), $applywarnings, $correlationid)) {
+                            throw new \moodle_exception('Missing immutable baseline snapshot; finalize apply aborted.');
+                        }
+
+                        // Treat repeated finalize as override, not append: clear prior AI tree first.
+                        $preserveids = self::extract_preserve_grade_item_ids($normalized_mapping, $proposal, $courseid);
+                        $precleanup = self::remove_ai_gradebook_from_course($courseid, $preserveids);
+                        if (!empty($precleanup['message']) && empty($precleanup['cleaned'])) {
+                            $applywarnings[] = (string)$precleanup['message'];
+                        }
+
+                        $localwarnings = self::apply_gradebook_to_course($courseid, $proposal, $normalized_mapping);
+                        if (!empty($localwarnings)) {
+                            $applywarnings = array_merge($applywarnings, $localwarnings);
+                        }
+
+                        $applywarnings = array_merge(
+                            $applywarnings,
+                            self::gradebook_integrity_warnings($courseid, 'finalize apply')
+                        );
+
+                        $revisionmeta = self::capture_gradebook_snapshot(
+                            $courseid,
+                            trim($session_id),
+                            'apply_revision',
+                            [
+                                'phase' => strtoupper(trim((string)($response['phase'] ?? ''))),
+                                'mapping_rows' => count($normalized_mapping),
+                            ]
+                            ,
+                            $correlationid
+                        );
+                        if ($revisionmeta === null) {
+                            $applywarnings[] = '⚠ Could not store apply revision snapshot in gradebook ledger.';
+                        } else {
+                            $applywarnings[] = 'ℹ Stored gradebook revision snapshot #' . (int)$revisionmeta['revision'] . '.';
+                        }
+
+                        $transaction->allow_commit();
+                    } catch (Throwable $applyexception) {
+                        try {
+                            $transaction->rollback($applyexception);
+                        } catch (Throwable $rollbackexception) {
+                            debugging('Error rolling back gradebook finalize transaction: ' . $rollbackexception->getMessage(), DEBUG_DEVELOPER);
+                        }
+
+                        // Compensating cleanup: force-purge AI-owned tree then repair common integrity pitfalls.
+                        $compensating = self::_force_purge_ai_gradebook_tree($courseid);
+                        if (!empty($compensating['message'])) {
+                            $applywarnings[] = (string)$compensating['message'];
+                        }
+
+                        $applywarnings = array_merge(
+                            $applywarnings,
+                            self::gradebook_integrity_warnings($courseid, 'finalize rollback recovery')
+                        );
+
+                        debugging('Error applying gradebook to course (rolled back): ' . $applyexception->getMessage(), DEBUG_DEVELOPER);
+
+                        $response['phase'] = 'REFINEMENT';
+                        $response['message'] = 'Finalize blocked: Moodle gradebook apply was rolled back after an internal error.';
+                        $response['data'] = array_merge(
+                            is_array($response['data'] ?? null) ? $response['data'] : [],
+                            [
+                                'grade_setup_skipped' => true,
+                                'grade_setup_apply_rolled_back' => true,
+                                'grade_setup_skip_reason' => 'apply_exception_rolled_back',
+                            ]
+                        );
+                        if (!empty($mappingconstraints)) {
+                            $response['data']['grade_setup_constraints'] = $mappingconstraints;
+                        }
+                        $response['data']['gradebook_audit_correlation_id'] = $correlationid;
+                        if (!empty($applywarnings)) {
+                            $response['data']['grade_setup_warnings'] = $applywarnings;
+                        }
+                        self::log_gradebook_audit_event(
+                            $courseid,
+                            trim($session_id),
+                            'gradebook_finalize_apply_rolled_back',
+                            'failed',
+                            [
+                                'message' => $applyexception->getMessage(),
+                                'warnings' => $applywarnings,
+                            ],
+                            0,
+                            $correlationid
+                        );
+                        return json_encode($response);
                     }
 
                     if (!empty($applywarnings)) {
@@ -2225,16 +4263,490 @@ class cria
                             is_array($response['data'] ?? null) ? $response['data'] : [],
                             ['grade_setup_warnings' => $applywarnings]
                         );
+                        if (!empty($mappingconstraints)) {
+                            $response['data']['grade_setup_constraints'] = $mappingconstraints;
+                        }
+                        $response['data']['gradebook_audit_correlation_id'] = $correlationid;
+                        $response_json = json_encode($response);
+                    } else if (!empty($mappingconstraints)) {
+                        $response['data'] = array_merge(
+                            is_array($response['data'] ?? null) ? $response['data'] : [],
+                            ['grade_setup_constraints' => $mappingconstraints]
+                        );
+                        $response['data']['gradebook_audit_correlation_id'] = $correlationid;
+                        $response_json = json_encode($response);
+                    } else {
+                        $response = is_array($response) ? $response : [];
+                        $response['data'] = array_merge(
+                            is_array($response['data'] ?? null) ? $response['data'] : [],
+                            ['gradebook_audit_correlation_id' => $correlationid]
+                        );
                         $response_json = json_encode($response);
                     }
+
+                    self::log_gradebook_audit_event(
+                        $courseid,
+                        trim($session_id),
+                        'gradebook_finalize_completed',
+                        'success',
+                        [
+                            'warnings' => $applywarnings,
+                            'constraints' => $mappingconstraints,
+                        ],
+                        0,
+                        $correlationid
+                    );
+                } else if (is_array($response)) {
+                    $response['data'] = array_merge(
+                        is_array($response['data'] ?? null) ? $response['data'] : [],
+                        [
+                            'grade_setup_skipped' => true,
+                            'grade_setup_skip_reason' => 'missing_proposal_payload',
+                            'gradebook_audit_correlation_id' => $correlationid,
+                        ]
+                    );
+                    $response['message'] = trim((string)($response['message'] ?? 'Gradebook finalized.'))
+                        . ' Moodle grade setup apply skipped because no proposal payload was available.';
+                    $response_json = json_encode($response);
+                    self::log_gradebook_audit_event(
+                        $courseid,
+                        trim($session_id),
+                        'gradebook_finalize_apply_skipped',
+                        'blocked',
+                        ['reason' => 'missing_proposal_payload'],
+                        0,
+                        $correlationid
+                    );
                 }
             } catch (Throwable $e) {
-                // Never block finalization on gradebook update failure
                 debugging('Error applying gradebook to course: ' . $e->getMessage(), DEBUG_DEVELOPER);
+                self::log_gradebook_audit_event(
+                    $courseid,
+                    trim($session_id),
+                    'gradebook_finalize_exception',
+                    'failed',
+                    ['message' => $e->getMessage()],
+                    0,
+                    $correlationid
+                );
+                return json_encode([
+                    'status' => 500,
+                    'code' => 'MOODLE_APPLY_FAILED',
+                    'phase' => 'REFINEMENT',
+                    'message' => 'Finalize blocked: Moodle gradebook apply failed before commit.',
+                    'data' => [
+                        'grade_setup_skipped' => true,
+                        'grade_setup_apply_rolled_back' => true,
+                        'grade_setup_skip_reason' => 'unhandled_apply_exception',
+                        'grade_setup_warnings' => ['⚠ A server-side issue occurred while applying gradebook changes. Check logs with the reference ID.'],
+                        'gradebook_audit_correlation_id' => $correlationid,
+                    ],
+                ]);
             }
         }
 
         return $response_json;
+    }
+
+    public static function gradebook_create_manual_item(int $courseid, string $itemname): array
+    {
+        global $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
+        require_once($CFG->libdir . '/grade/grade_item.php');
+        require_once($CFG->libdir . '/grade/grade_category.php');
+
+        $cleanname = trim($itemname);
+        if ($courseid <= 0 || $cleanname === '') {
+            return [
+                'success' => false,
+                'message' => 'Manual grade item name is required.',
+                'grade_item_id' => 0,
+                'activity_name' => '',
+                'moodle_cmid' => 0,
+                'itemtype' => 'manual',
+                'module' => '',
+            ];
+        }
+
+        try {
+            $coursecategory = \grade_category::fetch_course_category($courseid);
+            if (!$coursecategory) {
+                return [
+                    'success' => false,
+                    'message' => 'Could not resolve the course gradebook category.',
+                    'grade_item_id' => 0,
+                    'activity_name' => '',
+                    'moodle_cmid' => 0,
+                    'itemtype' => 'manual',
+                    'module' => '',
+                ];
+            }
+
+            $gradeitem = new \grade_item();
+            $gradeitem->courseid = $courseid;
+            $gradeitem->categoryid = (int)$coursecategory->id;
+            $gradeitem->itemtype = 'manual';
+            $gradeitem->itemname = $cleanname;
+            $gradeitem->grademin = 0;
+            $gradeitem->grademax = 100;
+            if (defined('GRADE_TYPE_VALUE')) {
+                $gradeitem->gradetype = GRADE_TYPE_VALUE;
+            }
+            $gradeitem->insert();
+
+            if (empty($gradeitem->id)) {
+                throw new \moodle_exception('Manual grade item insert did not return an id.');
+            }
+
+            self::_register_ai_owned_grade_item($courseid, (int)$gradeitem->id);
+
+            return [
+                'success' => true,
+                'message' => 'Manual grade item created.',
+                'grade_item_id' => (int)$gradeitem->id,
+                'activity_name' => $cleanname,
+                'moodle_cmid' => 0,
+                'itemtype' => 'manual',
+                'module' => '',
+            ];
+        } catch (\Throwable $e) {
+            debugging('Could not create manual grade item: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return [
+                'success' => false,
+                'message' => 'Could not create manual grade item.',
+                'grade_item_id' => 0,
+                'activity_name' => '',
+                'moodle_cmid' => 0,
+                'itemtype' => 'manual',
+                'module' => '',
+            ];
+        }
+    }
+
+    /**
+     * Best-effort repair for null/invalid sortorder values in gradebook tables.
+     *
+     * @param int $courseid
+     * @return int number of repaired rows
+     */
+    private static function normalize_null_sortorders(int $courseid): int
+    {
+        global $DB;
+
+        if ($courseid < 1) {
+            return 0;
+        }
+
+        $fixed = 0;
+
+        $categorycolumns = $DB->get_columns('grade_categories');
+        $categoryhassortorder = is_array($categorycolumns) && array_key_exists('sortorder', $categorycolumns);
+
+        // Moodle schemas can differ across versions; skip category sortorder repair if column is absent.
+        if ($categoryhassortorder) {
+            $nextcategorysortorder = (int)$DB->get_field_sql(
+                'SELECT COALESCE(MAX(sortorder), 0) FROM {grade_categories} WHERE courseid = ?',
+                [$courseid]
+            ) + 1;
+
+            $categoryrows = $DB->get_records_select(
+                'grade_categories',
+                'courseid = ? AND (sortorder IS NULL OR sortorder < 1)',
+                [$courseid],
+                'id ASC',
+                'id, sortorder'
+            );
+            foreach ($categoryrows as $row) {
+                $update = new \stdClass();
+                $update->id = (int)$row->id;
+                $update->sortorder = $nextcategorysortorder++;
+                $DB->update_record('grade_categories', $update);
+                $fixed++;
+            }
+        }
+
+        $nextitemsortorder = (int)$DB->get_field_sql(
+            'SELECT COALESCE(MAX(sortorder), 0) FROM {grade_items} WHERE courseid = ?',
+            [$courseid]
+        ) + 1;
+
+        $itemrows = $DB->get_records_select(
+            'grade_items',
+            'courseid = ? AND (sortorder IS NULL OR sortorder < 1)',
+            [$courseid],
+            'id ASC',
+            'id, sortorder'
+        );
+        foreach ($itemrows as $row) {
+            $update = new \stdClass();
+            $update->id = (int)$row->id;
+            $update->sortorder = $nextitemsortorder++;
+            $DB->update_record('grade_items', $update);
+            $fixed++;
+        }
+
+        return $fixed;
+    }
+
+    /**
+     * Ensure immutable pre-first-apply baseline snapshot exists for this course/session.
+     *
+     * @param int $courseid
+     * @param string $sessionid
+     * @param array $warnings output accumulator
+     * @return bool
+     */
+    private static function ensure_preapply_baseline_snapshot(int $courseid, string $sessionid, array &$warnings = [], string $correlationid = ''): bool
+    {
+        global $DB;
+
+        if ($courseid < 1 || $sessionid === '') {
+            $warnings[] = '⚠ Baseline snapshot prerequisite failed: missing course/session reference.';
+            return false;
+        }
+
+        if (!self::gradebook_snapshot_ledger_available()) {
+            $warnings[] = '⚠ Baseline snapshot prerequisite failed: snapshot ledger table is missing (run plugin upgrade).';
+            self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_baseline_snapshot', 'blocked', ['reason' => 'snapshot_ledger_missing'], 0, $correlationid);
+            return false;
+        }
+
+        $exists = $DB->record_exists(
+            'block_aia_gradebook_snapshots',
+            ['courseid' => $courseid, 'session_id' => $sessionid, 'snapshot_type' => 'baseline']
+        );
+        if ($exists) {
+            self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_baseline_snapshot', 'exists', ['reason' => 'already_present'], 0, $correlationid);
+            return true;
+        }
+
+        $captured = self::capture_gradebook_snapshot($courseid, $sessionid, 'baseline', ['immutable' => true], $correlationid);
+        if ($captured === null) {
+            $warnings[] = '⚠ Failed to capture immutable baseline snapshot before apply.';
+            self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_baseline_snapshot', 'failed', ['reason' => 'capture_failed'], 0, $correlationid);
+            return false;
+        }
+
+        $warnings[] = 'ℹ Captured immutable baseline snapshot #' . (int)$captured['revision'] . ' before apply.';
+        self::log_gradebook_audit_event($courseid, $sessionid, 'gradebook_baseline_snapshot', 'success', ['revision' => (int)$captured['revision']], (int)$captured['revision'], $correlationid);
+        return true;
+    }
+
+    /**
+     * Store a gradebook snapshot entry in the ledger table.
+     *
+     * @param int $courseid
+     * @param string $sessionid
+     * @param string $snapshottype
+     * @param array $extra
+     * @return array|null
+     */
+    private static function capture_gradebook_snapshot(int $courseid, string $sessionid, string $snapshottype, array $extra = [], string $correlationid = ''): ?array
+    {
+        global $DB;
+
+        if ($courseid < 1 || trim($sessionid) === '' || !self::gradebook_snapshot_ledger_available()) {
+            return null;
+        }
+
+        try {
+            $nextrevision = (int)$DB->get_field_sql(
+                'SELECT COALESCE(MAX(revision), -1) + 1 FROM {block_aia_gradebook_snapshots} WHERE courseid = ? AND session_id = ?',
+                [$courseid, $sessionid]
+            );
+
+            $snapshot = self::build_gradebook_baseline_snapshot($courseid);
+            $payload = [
+                'contract_name' => 'gradebook_snapshot_ledger_v1',
+                'schema_version' => 1,
+                'courseid' => (string)$courseid,
+                'session_id' => $sessionid,
+                'revision' => $nextrevision,
+                'snapshot_type' => $snapshottype,
+                'captured_at' => time(),
+                'gradebook_snapshot' => $snapshot,
+                'extra' => $extra,
+            ];
+
+            $payloadjson = json_encode($payload);
+            if (!is_string($payloadjson) || $payloadjson === '') {
+                return null;
+            }
+
+            $payloadcompressed = null;
+            if (function_exists('gzencode')) {
+                $compressed = @gzencode($payloadjson, 6);
+                if ($compressed !== false) {
+                    $payloadcompressed = base64_encode($compressed);
+                }
+            }
+
+            $record = new \stdClass();
+            $record->courseid = $courseid;
+            $record->session_id = $sessionid;
+            $record->revision = $nextrevision;
+            $record->snapshot_type = substr(trim($snapshottype), 0, 32);
+            $record->schema_version = 1;
+            $record->checksum = hash('sha256', $payloadjson);
+            $record->payload_json = $payloadjson;
+            $record->payload_compressed = $payloadcompressed;
+            $record->timecreated = time();
+            $record->timemodified = time();
+
+            $DB->insert_record('block_aia_gradebook_snapshots', $record);
+
+            self::log_gradebook_audit_event(
+                $courseid,
+                $sessionid,
+                'gradebook_snapshot_captured',
+                'success',
+                [
+                    'snapshot_type' => $record->snapshot_type,
+                    'revision' => $nextrevision,
+                    'checksum' => $record->checksum,
+                    'extra' => $extra,
+                ],
+                $nextrevision,
+                $correlationid
+            );
+
+            return [
+                'revision' => $nextrevision,
+                'checksum' => $record->checksum,
+                'snapshot_type' => $record->snapshot_type,
+            ];
+        } catch (\Throwable $e) {
+            debugging('Snapshot capture failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return null;
+        }
+    }
+
+    /**
+     * @return bool
+     */
+    private static function gradebook_snapshot_ledger_available(): bool
+    {
+        global $DB;
+
+        try {
+            $dbman = $DB->get_manager();
+            $table = new \xmldb_table('block_aia_gradebook_snapshots');
+            return $dbman->table_exists($table);
+        } catch (\Throwable $e) {
+            debugging('Snapshot ledger availability check failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return false;
+        }
+    }
+
+    /**
+     * @return bool
+     */
+    private static function gradebook_audit_ledger_available(): bool
+    {
+        global $DB;
+
+        try {
+            $dbman = $DB->get_manager();
+            $table = new \xmldb_table('block_aia_gradebook_audit');
+            return $dbman->table_exists($table);
+        } catch (\Throwable $e) {
+            debugging('Gradebook audit ledger availability check failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return false;
+        }
+    }
+
+    private static function build_gradebook_correlation_id(string $seed, int $courseid, string $sessionid = ''): string
+    {
+        $material = implode('|', [
+            trim($seed),
+            (string)$courseid,
+            trim($sessionid),
+            (string)microtime(true),
+            (string)random_int(0, PHP_INT_MAX),
+        ]);
+
+        return substr(hash('sha256', $material), 0, 32);
+    }
+
+    private static function log_gradebook_audit_event(
+        int $courseid,
+        string $sessionid,
+        string $eventname,
+        string $outcome,
+        array $details = [],
+        int $revision = 0,
+        string $correlationid = ''
+    ): ?string {
+        global $DB;
+
+        if ($courseid < 1 || !self::gradebook_audit_ledger_available()) {
+            return null;
+        }
+
+        try {
+            $correlationid = trim($correlationid) !== ''
+                ? trim($correlationid)
+                : self::build_gradebook_correlation_id($eventname, $courseid, $sessionid);
+
+            $payload = [
+                'event' => trim($eventname),
+                'outcome' => trim($outcome),
+                'courseid' => $courseid,
+                'session_id' => trim($sessionid),
+                'revision' => $revision,
+                'details' => $details,
+            ];
+            $payloadjson = json_encode($payload);
+            if (!is_string($payloadjson) || $payloadjson === '') {
+                $payloadjson = null;
+            }
+
+            $record = new \stdClass();
+            $record->courseid = $courseid;
+            $record->session_id = trim($sessionid) !== '' ? trim($sessionid) : null;
+            $record->revision = $revision;
+            $record->correlation_id = $correlationid;
+            $record->event_name = substr(trim($eventname), 0, 64);
+            $record->outcome = substr(trim($outcome), 0, 32);
+            $record->details_json = $payloadjson;
+            $record->timecreated = time();
+            $record->timemodified = time();
+
+            $DB->insert_record('block_aia_gradebook_audit', $record);
+            return $correlationid;
+        } catch (\Throwable $e) {
+            debugging('Gradebook audit event insert failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return null;
+        }
+    }
+
+    /**
+     * Extract a gradebook proposal payload from known response shapes.
+     *
+     * @param mixed $response
+     * @return array|null
+     */
+    private static function extract_finalize_proposal($response): ?array
+    {
+        if (!is_array($response)) {
+            return null;
+        }
+
+        $candidates = [
+            $response['proposal'] ?? null,
+            $response['data']['proposal'] ?? null,
+            $response['result']['proposal'] ?? null,
+            $response['data']['result']['proposal'] ?? null,
+            $response['payload']['proposal'] ?? null,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_array($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -2270,15 +4782,19 @@ class cria
             $cmid = (int)($row['moodle_cmid'] ?? 0);
             $gradeitemid = (int)($row['grade_item_id'] ?? 0);
             $activityname = trim((string)($row['activity_name'] ?? $row['grade_item_name'] ?? ''));
+            $subcategory = trim((string)($row['subcategory'] ?? ''));
 
             $entry = [
                 'category' => $category,
+                'subcategory' => $subcategory,
                 'moodle_cmid' => $cmid,
                 'activity_name' => $activityname,
                 'grade_item_id' => 0,
                 'grade_item_type' => '',
                 'itemmodule' => '',
                 'iteminstance' => 0,
+                'is_constrained' => false,
+                'constraint_reason' => '',
             ];
 
             $gi = null;
@@ -2328,11 +4844,35 @@ class cria
                 }
             }
 
+            if (!$gi && $activityname !== '') {
+                $manualrecords = $DB->get_records_select(
+                    'grade_items',
+                    "courseid = :courseid AND itemtype = 'manual'",
+                    ['courseid' => $courseid],
+                    'id DESC',
+                    'id, courseid, itemtype, itemname'
+                );
+                foreach (($manualrecords ?: []) as $manualrecord) {
+                    if (strcasecmp(trim((string)($manualrecord->itemname ?? '')), $activityname) === 0) {
+                        $gi = \grade_item::fetch(['id' => (int)$manualrecord->id]);
+                        if ($gi) {
+                            break;
+                        }
+                    }
+                }
+            }
+
             if ($gi) {
                 $entry['grade_item_id'] = (int)$gi->id;
                 $entry['grade_item_type'] = (string)($gi->itemtype ?? '');
                 $entry['itemmodule'] = (string)($gi->itemmodule ?? '');
                 $entry['iteminstance'] = (int)($gi->iteminstance ?? 0);
+
+                $constraint = self::gradebook_item_mutation_constraint($gi);
+                if ($constraint !== null) {
+                    $entry['is_constrained'] = true;
+                    $entry['constraint_reason'] = $constraint;
+                }
 
                 if ($entry['activity_name'] === '') {
                     $entry['activity_name'] = trim((string)($gi->itemname ?? ''));
@@ -2365,7 +4905,174 @@ class cria
         return $normalized;
     }
 
+    /**
+     * Build compact constraint list for finalize response payload.
+     *
+     * @param array $normalized_mapping
+     * @return array
+     */
+    private static function extract_mapping_constraints(array $normalized_mapping): array
+    {
+        $constraints = [];
+        foreach ($normalized_mapping as $row) {
+            if (!is_array($row) || empty($row['is_constrained'])) {
+                continue;
+            }
 
+            $constraints[] = [
+                'grade_item_id' => (int)($row['grade_item_id'] ?? 0),
+                'activity_name' => trim((string)($row['activity_name'] ?? '')),
+                'itemmodule' => trim((string)($row['itemmodule'] ?? '')),
+                'reason' => trim((string)($row['constraint_reason'] ?? 'constrained item')),
+            ];
+        }
+
+        return $constraints;
+    }
+
+    /**
+     * Collapse a subcategory label for tolerant matching (e.g. "In-Lab" vs "In-Lab Work").
+     */
+    private static function normalize_subcategory_label(string $label): string
+    {
+        $clean = strtolower(trim($label));
+        if ($clean === '') {
+            return '';
+        }
+        return (string)preg_replace('/[^a-z0-9]+/', '', $clean);
+    }
+
+    /**
+     * Resolve a subcategory id under a parent using exact then prefix-normalized matching.
+     *
+     * @param string $subcategory_name
+     * @param array<string,int> $subcategory_map lowercase subcategory name => category id
+     * @return int|null
+     */
+    private static function resolve_subcategory_id_for_parent(string $subcategory_name, array $subcategory_map): ?int
+    {
+        $subcategory_name = trim($subcategory_name);
+        if ($subcategory_name === '' || empty($subcategory_map)) {
+            return null;
+        }
+
+        $sub_key = strtolower($subcategory_name);
+        if (isset($subcategory_map[$sub_key])) {
+            return (int)$subcategory_map[$sub_key];
+        }
+
+        $normalized_request = self::normalize_subcategory_label($subcategory_name);
+        if ($normalized_request === '') {
+            return null;
+        }
+
+        $best_id = null;
+        $best_len = -1;
+        foreach ($subcategory_map as $name_key => $sub_id) {
+            $normalized_candidate = self::normalize_subcategory_label((string)$name_key);
+            if ($normalized_candidate === '') {
+                continue;
+            }
+            if ($normalized_request === $normalized_candidate) {
+                return (int)$sub_id;
+            }
+            if (
+                str_starts_with($normalized_candidate, $normalized_request)
+                || str_starts_with($normalized_request, $normalized_candidate)
+            ) {
+                $matchlen = min(strlen($normalized_request), strlen($normalized_candidate));
+                if ($matchlen > $best_len) {
+                    $best_len = $matchlen;
+                    $best_id = (int)$sub_id;
+                }
+            }
+        }
+
+        return $best_id;
+    }
+
+    /**
+     * Resolve the Moodle grade category id for a mapping row (parent or nested subcategory).
+     */
+    private static function resolve_mapping_target_category_id(
+        array $mapping,
+        array $category_id_map,
+        array $subcategory_by_parent,
+        array $subcategory_global_map,
+        array &$warnings = [],
+        string $item_label = ''
+    ): ?int {
+        $category_name = trim((string)($mapping['category'] ?? ''));
+        $subcategory_name = trim((string)($mapping['subcategory'] ?? ''));
+        $category_key = strtolower($category_name);
+
+        if ($category_key === '') {
+            return null;
+        }
+
+        if (!isset($category_id_map[$category_key])) {
+            if (isset($subcategory_global_map[$category_key])) {
+                return (int)$subcategory_global_map[$category_key];
+            }
+            return null;
+        }
+
+        $target_category_id = (int)$category_id_map[$category_key];
+        if ($subcategory_name === '') {
+            return $target_category_id;
+        }
+
+        $sub_map = is_array($subcategory_by_parent[$category_key] ?? null) ? $subcategory_by_parent[$category_key] : [];
+        $resolved_sub_id = self::resolve_subcategory_id_for_parent($subcategory_name, $sub_map);
+        if ($resolved_sub_id !== null) {
+            // #region agent log
+            @file_put_contents(
+                '/Users/kiarash/Desktop/project/Prog/Cria/.cursor/debug-bc8bf1.log',
+                json_encode([
+                    'sessionId' => 'bc8bf1',
+                    'hypothesisId' => 'H1',
+                    'location' => 'cria.php:resolve_mapping_target_category_id',
+                    'message' => 'subcategory_resolved',
+                    'data' => [
+                        'category' => $category_name,
+                        'requested_subcategory' => $subcategory_name,
+                        'resolved_subcategory_id' => $resolved_sub_id,
+                        'item_label' => $item_label,
+                    ],
+                    'timestamp' => (int)round(microtime(true) * 1000),
+                ]) . "\n",
+                FILE_APPEND
+            );
+            // #endregion
+            return $resolved_sub_id;
+        }
+
+        $warnings[] = '⚠ Subcategory "' . $subcategory_name . '" was not found under category "' . $category_name
+            . ($item_label !== '' ? '" for item "' . $item_label : '')
+            . '". Kept under parent category instead.';
+
+        // #region agent log
+        @file_put_contents(
+            '/Users/kiarash/Desktop/project/Prog/Cria/.cursor/debug-bc8bf1.log',
+            json_encode([
+                'sessionId' => 'bc8bf1',
+                'hypothesisId' => 'H1',
+                'location' => 'cria.php:resolve_mapping_target_category_id',
+                'message' => 'subcategory_unresolved_fallback_parent',
+                'data' => [
+                    'category' => $category_name,
+                    'requested_subcategory' => $subcategory_name,
+                    'available_subcategories' => array_keys($sub_map),
+                    'item_label' => $item_label,
+                ],
+                'timestamp' => (int)round(microtime(true) * 1000),
+            ]) . "\n",
+            FILE_APPEND
+        );
+        // #endregion
+
+        return $target_category_id;
+    }
 
     /**
      * Apply the finalized gradebook proposal to the Moodle course gradebook.
@@ -2374,7 +5081,7 @@ class cria
      */
     private static function apply_gradebook_to_course(int $courseid, array $proposal, array $confirmed_mapping): array
     {
-        global $CFG;
+        global $CFG, $DB;
         require_once($CFG->libdir . '/gradelib.php');
         require_once($CFG->libdir . '/grade/grade_category.php');
         require_once($CFG->libdir . '/grade/grade_item.php');
@@ -2390,10 +5097,15 @@ class cria
 
         $aggregation_method = (int)($proposal['aggregation_method'] ?? 13);
 
+        // Get course name for root category naming
+        $course = $DB->get_record('course', ['id' => $courseid], 'shortname, fullname', MUST_EXIST);
+        $course_name = trim((string)($course->shortname ?? '')) !== '' ? trim($course->shortname) : trim($course->fullname);
+        $root_category_name = $course_name . ' - AI Assistant - Gradebook';
+
         // Get or create top-level parent category for this AI-generated structure
         $parent = self::get_or_create_grade_category(
             $courseid,
-            'AI Assistant - Gradebook',
+            $root_category_name,
             $aggregation_method,
             null,
             1.0,
@@ -2406,13 +5118,24 @@ class cria
 
         // Register root so cleanup can find it even if the name is later changed.
         self::_set_ai_ownership_id($courseid, (int)$parent->id);
+        self::clear_gradebook_tree_missing($courseid);
+
+        // Legacy runs could have created proposal categories directly under course total
+        // (without the AI root wrapper). Rehome empty legacy shells so we reuse them
+        // instead of creating duplicate Assignment/Quizzes/Midterm/Final trees.
+        self::rehome_legacy_top_level_categories($courseid, $parent, $proposal['categories'], $warnings);
 
         // Create / update each top-level category and optional nested subcategories.
         $category_id_map = [];
         $subcategory_by_parent = [];
         $subcategory_global_map = [];
-        $subcategory_rr_index = [];
         $category_formula_map = [];
+        $formula_reference_alias_map = [];
+        $category_visibility_by_id = [];
+        $root_visibility = self::normalize_visibility_settings([
+            'hidden' => false,
+            'hidden_until' => null,
+        ]);
 
         foreach ($proposal['categories'] as $cat) {
             $name = trim((string)($cat['name'] ?? ''));
@@ -2445,6 +5168,7 @@ class cria
                 'display_type'         => (int)($cat['display_type'] ?? 0),
                 'decimals'             => (int)($cat['decimals'] ?? -1),
             ];
+            $settings = self::merge_visibility_with_parent($settings, $root_visibility);
 
             $cat_obj = self::get_or_create_grade_category(
                 $courseid,
@@ -2455,12 +5179,16 @@ class cria
                 $settings
             );
             $category_id_map[$category_key] = $cat_obj->id;
+            $category_visibility_by_id[(int)$cat_obj->id] = self::normalize_visibility_settings($settings);
+            self::register_formula_aliases($formula_reference_alias_map, $name, (int)$cat_obj->id);
 
             $formula_text = trim((string)($cat['calculation_formula'] ?? ''));
             if ($formula_text !== '') {
                 $category_formula_map[$category_key] = [
                     'category_id' => (int)$cat_obj->id,
                     'formula' => $formula_text,
+                    'explicit_override' => (bool)($cat['formula_override'] ?? false),
+                    'formula_item_refs' => is_array($cat['formula_item_refs'] ?? null) ? $cat['formula_item_refs'] : [],
                 ];
             }
 
@@ -2482,13 +5210,17 @@ class cria
                     'grade_min' => null,
                     'grade_max' => 100.0,
                     'grade_pass' => null,
-                    'hidden' => false,
-                    'hidden_until' => null,
+                    'hidden' => (bool)($sub['hidden'] ?? false),
+                    'hidden_until' => isset($sub['hidden_until']) && $sub['hidden_until'] !== null ? (int)$sub['hidden_until'] : null,
                     'locked' => false,
                     'lock_time' => null,
                     'display_type' => 0,
                     'decimals' => -1,
                 ];
+                $sub_settings = self::merge_visibility_with_parent(
+                    $sub_settings,
+                    $category_visibility_by_id[(int)$cat_obj->id] ?? $root_visibility
+                );
 
                 $sub_obj = self::get_or_create_grade_category(
                     $courseid,
@@ -2502,10 +5234,146 @@ class cria
                 $sub_key = strtolower($sub_name);
                 $subcategory_by_parent[$category_key][$sub_key] = $sub_obj->id;
                 $subcategory_global_map[$sub_key] = $sub_obj->id;
+                $category_visibility_by_id[(int)$sub_obj->id] = self::normalize_visibility_settings($sub_settings);
+                self::register_formula_aliases($formula_reference_alias_map, $sub_name, (int)$sub_obj->id);
             }
 
-            if (!empty($subcategory_by_parent[$category_key])) {
-                $subcategory_rr_index[$category_key] = 0;
+        }
+
+        // Final authoritative pass: enforce top-level category weights from proposal.
+        // This guarantees requested percentages are applied even when categories are
+        // reused/reparented from legacy structures.
+        $applied_top_level_weights = [];
+        $top_level_weight_expectations = [];
+        foreach ($proposal['categories'] as $cat) {
+            $name = trim((string)($cat['name'] ?? ''));
+            if ($name === '') {
+                continue;
+            }
+
+            $category_key = strtolower($name);
+            if (empty($category_id_map[$category_key])) {
+                continue;
+            }
+
+            $category_id = (int)$category_id_map[$category_key];
+            $gi_record = $DB->get_record(
+                'grade_items',
+                ['courseid' => $courseid, 'itemtype' => 'category', 'iteminstance' => $category_id],
+                'id, categoryid, aggregationcoef, aggregationcoef2, weightoverride',
+                IGNORE_MISSING
+            );
+            if (!$gi_record) {
+                continue;
+            }
+
+            $weight = max(0.0, min(1.0, floatval($cat['weight'] ?? 0) / 100.0));
+            $extra_credit = (bool)($cat['extra_credit'] ?? false);
+            $parent_aggregation = (int)($parent->aggregation ?? $aggregation_method);
+            $expected_parent_categoryid = (int)$parent->id;
+
+            $update = new \stdClass();
+            $update->id = (int)$gi_record->id;
+            $changed = false;
+
+            if ((int)($gi_record->categoryid ?? 0) !== $expected_parent_categoryid) {
+                $update->categoryid = $expected_parent_categoryid;
+                $changed = true;
+            }
+
+            if ($parent_aggregation === 13) {
+                $target_coef = (float)((int)$extra_credit);
+                $target_coef2 = (float)$weight;
+                $target_override = 1;
+            } elseif ($parent_aggregation === 10 || $parent_aggregation === 11) {
+                $target_coef = (float)($weight * 100.0);
+                $target_coef2 = 0.0;
+                $target_override = 0;
+            } else {
+                $target_coef = (float)((int)$extra_credit);
+                $target_coef2 = 0.0;
+                $target_override = 0;
+            }
+
+            if (abs((float)($gi_record->aggregationcoef ?? 0.0) - $target_coef) > 0.00001) {
+                $update->aggregationcoef = $target_coef;
+                $changed = true;
+            }
+            if (abs((float)($gi_record->aggregationcoef2 ?? 0.0) - $target_coef2) > 0.00001) {
+                $update->aggregationcoef2 = $target_coef2;
+                $changed = true;
+            }
+            if ((int)($gi_record->weightoverride ?? 0) !== $target_override) {
+                $update->weightoverride = $target_override;
+                $changed = true;
+            }
+
+            if ($changed) {
+                $DB->update_record('grade_items', $update);
+            }
+
+            $applied_top_level_weights[] = $name . '=' . round($weight * 100.0, 2) . '%';
+            $top_level_weight_expectations[(int)$gi_record->id] = [
+                'name' => $name,
+                'aggregation' => $parent_aggregation,
+                'target_coef' => (float)$target_coef,
+                'target_coef2' => (float)$target_coef2,
+                'target_override' => (int)$target_override,
+            ];
+        }
+
+        if (!empty($applied_top_level_weights)) {
+            $warnings[] = 'ℹ Applied top-level category weights: ' . implode(', ', $applied_top_level_weights) . '.';
+        }
+
+        if (!empty($top_level_weight_expectations)) {
+            $records = $DB->get_records_list(
+                'grade_items',
+                'id',
+                array_keys($top_level_weight_expectations),
+                '',
+                'id, aggregationcoef, aggregationcoef2, weightoverride'
+            );
+
+            foreach ($top_level_weight_expectations as $grade_item_id => $expected) {
+                $record = $records[$grade_item_id] ?? null;
+                if (!$record) {
+                    $warnings[] = '⚠ Post-apply verification could not load grade item for category "'
+                        . (string)$expected['name'] . '".';
+                    continue;
+                }
+
+                $actual_coef = (float)($record->aggregationcoef ?? 0.0);
+                $actual_coef2 = (float)($record->aggregationcoef2 ?? 0.0);
+                $actual_override = (int)($record->weightoverride ?? 0);
+
+                $coef_mismatch = abs($actual_coef - (float)$expected['target_coef']) > 0.00001;
+                $coef2_mismatch = abs($actual_coef2 - (float)$expected['target_coef2']) > 0.00001;
+                $override_mismatch = $actual_override !== (int)$expected['target_override'];
+
+                if ($coef_mismatch || $coef2_mismatch || $override_mismatch) {
+                    $warnings[] = '⚠ Post-apply category weight mismatch for "' . (string)$expected['name']
+                        . '": expected coef=' . round((float)$expected['target_coef'], 6)
+                        . ', coef2=' . round((float)$expected['target_coef2'], 6)
+                        . ', override=' . (int)$expected['target_override']
+                        . '; got coef=' . round($actual_coef, 6)
+                        . ', coef2=' . round($actual_coef2, 6)
+                        . ', override=' . $actual_override
+                        . ' (aggregation=' . (int)$expected['aggregation'] . ').';
+
+                    error_log(
+                        'block_ai_assistant: gradebook finalize weight mismatch'
+                        . ' courseid=' . (int)$courseid
+                        . ' category=' . (string)$expected['name']
+                        . ' aggregation=' . (int)$expected['aggregation']
+                        . ' expected_coef=' . (float)$expected['target_coef']
+                        . ' expected_coef2=' . (float)$expected['target_coef2']
+                        . ' expected_override=' . (int)$expected['target_override']
+                        . ' actual_coef=' . $actual_coef
+                        . ' actual_coef2=' . $actual_coef2
+                        . ' actual_override=' . $actual_override
+                    );
+                }
             }
         }
 
@@ -2515,31 +5383,247 @@ class cria
                 . '.';
         }
 
+        // Build per-category item_weights lookup (name → [item_name → weight_pct]).
+        // Also count how many items are assigned to each category to handle single-item weight enforcement.
+        $category_item_weights = [];
+        $category_item_counts = [];
+
+        foreach ($proposal['categories'] as $cat) {
+            $cat_key = strtolower(trim((string)($cat['name'] ?? '')));
+            $weights = is_array($cat['item_weights'] ?? null) ? $cat['item_weights'] : [];
+            if (!empty($weights)) {
+                $category_item_weights[$cat_key] = $weights;
+            }
+        }
+
+        foreach ($confirmed_mapping as $mapping) {
+            $cat_name = trim((string)($mapping['category'] ?? ''));
+            if ($cat_name !== '') {
+                $ckey = strtolower($cat_name);
+                $category_item_counts[$ckey] = ($category_item_counts[$ckey] ?? 0) + 1;
+            }
+        }
+
+        // Materialize proposal-only manual grade items before mapped items are moved.
+        // This covers chat prompts like "add item exam to Midterm" which backend
+        // proposal validation accepts, but which were previously never created in Moodle.
+        $course_category = \grade_category::fetch_course_category($courseid);
+        $course_category_id = $course_category ? (int)$course_category->id : 0;
+        $mapped_grade_item_ids = [];
+        $mapped_labels_global = [];
+        $mapping_by_activity = [];
+        foreach ($confirmed_mapping as $mapping) {
+            if (!is_array($mapping)) {
+                continue;
+            }
+
+            $mapped_grade_item_id = (int)($mapping['grade_item_id'] ?? 0);
+            if ($mapped_grade_item_id > 0) {
+                $mapped_grade_item_ids[$mapped_grade_item_id] = true;
+            }
+
+            $mapped_activity_name = strtolower(trim((string)($mapping['activity_name'] ?? $mapping['grade_item_name'] ?? '')));
+            if ($mapped_activity_name !== '') {
+                $mapped_labels_global[$mapped_activity_name] = true;
+                $mapping_by_activity[$mapped_activity_name] = $mapping;
+            }
+        }
+
+        $course_manual_items = $DB->get_records_select(
+            'grade_items',
+            "courseid = ? AND itemtype = 'manual'",
+            [$courseid],
+            'id ASC',
+            'id, courseid, categoryid, itemtype, itemname, grademin, grademax, gradetype, aggregationcoef, aggregationcoef2, weightoverride, hidden, locked, locktime, display, decimals, gradepass'
+        );
+        $manual_items_by_name = [];
+        foreach (($course_manual_items ?: []) as $manual_item) {
+            $manual_name_key = strtolower(trim((string)($manual_item->itemname ?? '')));
+            if ($manual_name_key === '') {
+                continue;
+            }
+            if (!isset($manual_items_by_name[$manual_name_key])) {
+                $manual_items_by_name[$manual_name_key] = [];
+            }
+            $manual_items_by_name[$manual_name_key][] = $manual_item;
+        }
+
+        $mod_grade_item_names = [];
+        $modgradeitems = $DB->get_records_select(
+            'grade_items',
+            "courseid = ? AND itemtype = 'mod'",
+            [$courseid],
+            'id ASC',
+            'id, itemname'
+        );
+        foreach (($modgradeitems ?: []) as $moditem) {
+            $modnamekey = strtolower(trim((string)($moditem->itemname ?? '')));
+            if ($modnamekey !== '') {
+                $mod_grade_item_names[$modnamekey] = true;
+            }
+        }
+
+        foreach ($proposal['categories'] as $cat) {
+            $category_name = trim((string)($cat['name'] ?? ''));
+            if ($category_name === '') {
+                continue;
+            }
+
+            $category_key = strtolower($category_name);
+            if (empty($category_id_map[$category_key])) {
+                continue;
+            }
+
+            $target_category_id = (int)$category_id_map[$category_key];
+            $manual_items = is_array($cat['items'] ?? null) ? $cat['items'] : [];
+            foreach ($manual_items as $manual_item_name_raw) {
+                $manual_item_name = trim((string)$manual_item_name_raw);
+                if ($manual_item_name === '') {
+                    continue;
+                }
+
+                $manual_item_key = strtolower($manual_item_name);
+                if (!empty($mod_grade_item_names[$manual_item_key])) {
+                    continue;
+                }
+                if (!empty($mapped_labels_global[$manual_item_key])) {
+                    $labelalreadyapplied = false;
+                    foreach (($manual_items_by_name[$manual_item_key] ?? []) as $candidate) {
+                        if (!empty($mapped_grade_item_ids[(int)$candidate->id])) {
+                            $labelalreadyapplied = true;
+                            break;
+                        }
+                    }
+                    if ($labelalreadyapplied) {
+                        continue;
+                    }
+                }
+
+                // If not in confirmed mapping, this item contributes to its category item count.
+                $category_item_counts[$category_key] = ($category_item_counts[$category_key] ?? 0) + 1;
+
+                if (isset($mapping_by_activity[$manual_item_key])) {
+                    $resolved_target = self::resolve_mapping_target_category_id(
+                        $mapping_by_activity[$manual_item_key],
+                        $category_id_map,
+                        $subcategory_by_parent,
+                        $subcategory_global_map,
+                        $warnings,
+                        $manual_item_name
+                    );
+                    if ($resolved_target !== null) {
+                        $target_category_id = $resolved_target;
+                    }
+                }
+
+                $manual_grade_item = null;
+                foreach (($manual_items_by_name[$manual_item_key] ?? []) as $candidate) {
+                    if (!empty($mapped_grade_item_ids[(int)$candidate->id])) {
+                        continue;
+                    }
+                    if ((int)($candidate->categoryid ?? 0) === $target_category_id) {
+                        $manual_grade_item = \grade_item::fetch(['id' => (int)$candidate->id]);
+                        break;
+                    }
+                    if ($manual_grade_item === null && $course_category_id > 0 && (int)($candidate->categoryid ?? 0) === $course_category_id) {
+                        $manual_grade_item = \grade_item::fetch(['id' => (int)$candidate->id]);
+                    }
+                    if ($manual_grade_item === null) {
+                        $manual_grade_item = \grade_item::fetch(['id' => (int)$candidate->id]);
+                    }
+                }
+
+                if (!$manual_grade_item) {
+                    $manual_grade_item = new \grade_item();
+                    $manual_grade_item->courseid = $courseid;
+                    $manual_grade_item->categoryid = $target_category_id;
+                    $manual_grade_item->itemtype = 'manual';
+                    $manual_grade_item->itemname = $manual_item_name;
+                    $manual_grade_item->grademin = 0;
+                    $manual_grade_item->grademax = 100;
+                    if (defined('GRADE_TYPE_VALUE')) {
+                        $manual_grade_item->gradetype = GRADE_TYPE_VALUE;
+                    }
+                    $manual_grade_item->insert('block_ai_assistant');
+                    self::_register_ai_owned_grade_item($courseid, (int)$manual_grade_item->id);
+                    $placement_label = $category_name;
+                    if (isset($mapping_by_activity[$manual_item_key])) {
+                        $mapped_sub = trim((string)($mapping_by_activity[$manual_item_key]['subcategory'] ?? ''));
+                        if ($mapped_sub !== '' && $target_category_id !== (int)$category_id_map[$category_key]) {
+                            $placement_label = $mapped_sub;
+                        }
+                    }
+                    $warnings[] = 'ℹ Created manual grade item "' . $manual_item_name . '" in ' . $placement_label . '.';
+                }
+
+                if ((int)($manual_grade_item->categoryid ?? 0) !== $target_category_id) {
+                    $manual_grade_item->categoryid = $target_category_id;
+                }
+
+                if (isset($category_visibility_by_id[$target_category_id])) {
+                    self::apply_visibility_to_grade_item(
+                        $manual_grade_item,
+                        $category_visibility_by_id[$target_category_id]
+                    );
+                }
+
+                if (isset($category_item_weights[$category_key][$manual_item_name])) {
+                    $item_weight_pct = (float)$category_item_weights[$category_key][$manual_item_name];
+                    $item_weight_frac = $item_weight_pct / 100.0;
+                    if ($aggregation_method === 13) {
+                        $manual_grade_item->weightoverride = 1;
+                        $manual_grade_item->aggregationcoef2 = $item_weight_frac;
+                    } elseif ($aggregation_method === 10 || $aggregation_method === 11) {
+                        $manual_grade_item->aggregationcoef = $item_weight_pct;
+                        $manual_grade_item->aggregationcoef2 = 0;
+                        $manual_grade_item->weightoverride = 0;
+                    }
+                } else {
+                    // Reset to natural/equal distribution if no explicit weight is requested.
+                    // This is especially important for single-item categories to ensure 100% weight.
+                    $manual_grade_item->weightoverride = 0;
+                    if ($aggregation_method === 13) {
+                        $manual_grade_item->aggregationcoef2 = 0;
+                    }
+                }
+
+                $manual_grade_item->update('block_ai_assistant');
+                $mapped_grade_item_ids[(int)$manual_grade_item->id] = true;
+            }
+        }
+
         // Move mapped grade items into mapped categories/subcategories.
         foreach ($confirmed_mapping as $mapping) {
+            if (!is_array($mapping)) {
+                continue;
+            }
+
             $grade_item_id = intval($mapping['grade_item_id'] ?? 0);
             $category_name = trim((string)($mapping['category'] ?? ''));
             $category_key = strtolower($category_name);
             $activity_name = trim((string)($mapping['activity_name'] ?? ''));
+
+            if ($grade_item_id <= 0 && $activity_name !== '') {
+                $activity_key = strtolower($activity_name);
+                foreach (($manual_items_by_name[$activity_key] ?? []) as $candidate) {
+                    $grade_item_id = (int)$candidate->id;
+                    break;
+                }
+            }
 
             if ($grade_item_id <= 0 || $category_name === '') {
                 continue;
             }
 
             try {
-                $target_category_id = null;
-                if (isset($subcategory_global_map[$category_key])) {
-                    $target_category_id = (int)$subcategory_global_map[$category_key];
-                } elseif (isset($category_id_map[$category_key])) {
-                    $target_category_id = (int)$category_id_map[$category_key];
-                    if (!empty($subcategory_by_parent[$category_key])) {
-                        $target_category_id = self::pick_subcategory_target(
-                            $activity_name,
-                            $subcategory_by_parent[$category_key],
-                            $subcategory_rr_index[$category_key]
-                        );
-                    }
-                }
+                $target_category_id = self::resolve_mapping_target_category_id(
+                    $mapping,
+                    $category_id_map,
+                    $subcategory_by_parent,
+                    $subcategory_global_map,
+                    $warnings,
+                    $activity_name !== '' ? $activity_name : ('#' . $grade_item_id)
+                );
 
                 if ($target_category_id === null) {
                     continue;
@@ -2555,25 +5639,219 @@ class cria
                     continue;
                 }
 
+                $constraint = self::gradebook_item_mutation_constraint($gi);
+                if ($constraint !== null) {
+                    $itemlabel = trim((string)($gi->itemname ?? ''));
+                    if ($itemlabel === '') {
+                        $itemlabel = 'item #' . $grade_item_id;
+                    }
+                    $warnings[] = '⚠ Skipped moving ' . $itemlabel . ': ' . $constraint . '.';
+                    continue;
+                }
+
                 $gi->categoryid = $target_category_id;
+
+                if (isset($category_visibility_by_id[(int)$target_category_id])) {
+                    self::apply_visibility_to_grade_item(
+                        $gi,
+                        $category_visibility_by_id[(int)$target_category_id]
+                    );
+                }
+
+                // Apply per-item weight override if present for this category.
+                if (isset($category_item_weights[$category_key][$activity_name])) {
+                    $item_weight_pct = (float)$category_item_weights[$category_key][$activity_name];
+                    $item_weight_frac = $item_weight_pct / 100.0;
+                    if ($aggregation_method === 13) {
+                        $gi->weightoverride   = 1;
+                        $gi->aggregationcoef2 = $item_weight_frac;
+                    } elseif ($aggregation_method === 10 || $aggregation_method === 11) {
+                        $gi->aggregationcoef  = $item_weight_pct;
+                        $gi->aggregationcoef2 = 0;
+                        $gi->weightoverride   = 0;
+                    }
+                } else {
+                    // Reset to natural/equal distribution if no explicit weight is requested.
+                    // This is especially important for single-item categories to ensure 100% weight.
+                    $gi->weightoverride = 0;
+                    if ($aggregation_method === 13) {
+                        $gi->aggregationcoef2 = 0;
+                    }
+                }
+
                 $gi->update('block_ai_assistant');
             } catch (Throwable $e) {
+                $warnings[] = '⚠ Failed to move grade item #' . $grade_item_id . ' to category ' . $category_name . ': ' . $e->getMessage();
                 debugging('Error mapping grade_item_id ' . $grade_item_id . ' to category ' . $category_name . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
         }
 
         // Apply category calculation formulas after category/item mapping is complete.
         if (!empty($category_formula_map)) {
-            $formula_warnings = self::apply_category_formulas($courseid, $category_formula_map);
+            $formula_item_ref_map = self::build_formula_item_reference_map($courseid);
+            $formula_warnings = self::apply_category_formulas(
+                $courseid,
+                $category_formula_map,
+                $formula_reference_alias_map,
+                $formula_item_ref_map
+            );
             if (!empty($formula_warnings)) {
                 $warnings = array_merge($warnings, $formula_warnings);
             }
         }
 
-        // Recalculate grades after structural change
-        grade_regrade_final_grades($courseid);
+        // Clean up orphaned items and fix null sortorders before regrade to prevent null property errors.
+        $applywarnings = self::gradebook_integrity_warnings($courseid, 'gradebook apply');
+        if (!empty($applywarnings)) {
+            $warnings = array_merge($warnings, $applywarnings);
+        }
+
+        try {
+            grade_regrade_final_grades($courseid);
+        } catch (\Throwable $regradeex) {
+            debugging('grade_regrade_final_grades failed after gradebook apply for course ' . $courseid . ': ' . $regradeex->getMessage(), DEBUG_DEVELOPER);
+            $warnings[] = '⚠ Grade regrade failed after apply: ' . $regradeex->getMessage();
+        }
 
         return $warnings;
+    }
+
+    /**
+     * Rehome legacy top-level categories into the AI root to avoid duplicate trees.
+     *
+    * Rehome when:
+    * - Category name matches a proposal category.
+    * - It is currently a direct child of course total.
+    * - No same-name category already exists under the AI root.
+    *
+    * This keeps reruns idempotent and prevents duplicate top-level + AI-root trees.
+    * Any existing items/subcategories are preserved because set_parent moves the branch.
+     */
+    private static function rehome_legacy_top_level_categories(
+        int $courseid,
+        \grade_category $root_parent,
+        array $proposal_categories,
+        array &$warnings
+    ): void {
+        $coursecat = \grade_category::fetch_course_category($courseid);
+        if (!$coursecat) {
+            return;
+        }
+
+        $names = [];
+        foreach ($proposal_categories as $cat) {
+            $name = trim((string)($cat['name'] ?? ''));
+            if ($name !== '') {
+                $names[$name] = true;
+            }
+        }
+
+        foreach (array_keys($names) as $name) {
+            $existing_list = \grade_category::fetch_all([
+                'courseid' => $courseid,
+                'fullname' => $name,
+            ]);
+            if (!$existing_list) {
+                continue;
+            }
+
+            $already_under_root = false;
+            $legacy_top_level = null;
+            foreach ($existing_list as $existing) {
+                if ((int)$existing->id === (int)$root_parent->id) {
+                    continue;
+                }
+                if ((int)$existing->parent === (int)$root_parent->id) {
+                    $already_under_root = true;
+                    break;
+                }
+                if ((int)$existing->parent === (int)$coursecat->id) {
+                    $legacy_top_level = $existing;
+                }
+            }
+
+            if ($legacy_top_level === null) {
+                continue;
+            }
+
+            if ($already_under_root) {
+                $legacy_id = (int)$legacy_top_level->id;
+                if (self::category_has_non_structural_items($courseid, $legacy_id)) {
+                    continue;
+                }
+                if (self::category_has_children($courseid, $legacy_id)) {
+                    continue;
+                }
+
+                try {
+                    self::_delete_category_total_item($courseid, $legacy_id);
+                    $legacy_obj = \grade_category::fetch(['id' => $legacy_id]);
+                    if ($legacy_obj) {
+                        $legacy_obj->delete('block_ai_assistant');
+                    }
+                    $warnings[] = 'ℹ Removed legacy duplicate top-level category "' . $name
+                        . '" that was outside "' . (string)$root_parent->fullname . '".';
+                } catch (\Throwable $e) {
+                    $warnings[] = '⚠ Could not remove legacy duplicate category "' . $name . '": ' . $e->getMessage();
+                }
+                continue;
+            }
+
+            try {
+                $legacy_top_level->set_parent((int)$root_parent->id);
+                $warnings[] = 'ℹ Moved legacy top-level category "' . $name
+                    . '" under "' . (string)$root_parent->fullname
+                    . '" to avoid duplicate category trees.';
+            } catch (\Throwable $e) {
+                $warnings[] = '⚠ Could not rehome legacy category "' . $name . '": ' . $e->getMessage();
+            }
+        }
+    }
+
+    /**
+     * Return true when category contains real grade items (mod/manual/etc).
+     */
+    private static function category_has_non_structural_items(int $courseid, int $category_id): bool
+    {
+        global $DB;
+        return (int)$DB->count_records_select(
+            'grade_items',
+            "courseid = ? AND categoryid = ? AND itemtype <> 'category'",
+            [$courseid, $category_id]
+        ) > 0;
+    }
+
+    /**
+     * Return true when category has direct child categories.
+     */
+    private static function category_has_children(int $courseid, int $category_id): bool
+    {
+        global $DB;
+        return $DB->record_exists('grade_categories', ['courseid' => $courseid, 'parent' => $category_id]);
+    }
+
+    /**
+     * Return non-null reason when a grade item should not be structurally moved by AI apply.
+     */
+    private static function gradebook_item_mutation_constraint(\grade_item $gi): ?string
+    {
+        try {
+            if (method_exists($gi, 'is_locked') && (bool)$gi->is_locked()) {
+                return 'item is locked';
+            }
+        } catch (\Throwable $e) {
+        }
+
+        if ((int)($gi->locked ?? 0) > 0) {
+            return 'item is locked';
+        }
+
+        $itemmodule = strtolower(trim((string)($gi->itemmodule ?? '')));
+        if (in_array($itemmodule, ['lti', 'tool', 'external'], true)) {
+            return 'item is external/LTI managed';
+        }
+
+        return null;
     }
 
     /**
@@ -2735,11 +6013,7 @@ class cria
         }
 
         // Visibility
-        if (isset($settings['hidden_until']) && !empty($settings['hidden_until'])) {
-            $gi->hidden = (int)$settings['hidden_until'];
-        } elseif (isset($settings['hidden'])) {
-            $gi->hidden = (bool)$settings['hidden'] ? 1 : 0;
-        }
+        self::apply_visibility_to_grade_item($gi, self::normalize_visibility_settings($settings));
 
         // Locking
         if (isset($settings['lock_time']) && !empty($settings['lock_time'])) {
@@ -2767,15 +6041,91 @@ class cria
     }
 
     /**
+     * Normalize visibility settings to Moodle hidden semantics.
+     *
+     * @param array $settings
+     * @return array{hidden: bool, hidden_until: ?int}
+     */
+    private static function normalize_visibility_settings(array $settings): array
+    {
+        $hidden = !empty($settings['hidden']);
+        $hidden_until = isset($settings['hidden_until']) && (int)$settings['hidden_until'] > 0
+            ? (int)$settings['hidden_until']
+            : null;
+
+        if ($hidden) {
+            $hidden_until = null;
+        }
+
+        return [
+            'hidden' => $hidden,
+            'hidden_until' => $hidden_until,
+        ];
+    }
+
+    /**
+     * Inherit visibility from a parent category using Moodle behavior.
+     *
+     * @param array $settings
+     * @param array $parent_visibility
+     * @return array
+     */
+    private static function merge_visibility_with_parent(array $settings, array $parent_visibility): array
+    {
+        $current = self::normalize_visibility_settings($settings);
+        $parent = self::normalize_visibility_settings($parent_visibility);
+
+        if (!empty($parent['hidden'])) {
+            $current['hidden'] = true;
+            $current['hidden_until'] = null;
+        } elseif (!empty($parent['hidden_until']) && empty($current['hidden'])) {
+            $current['hidden_until'] = max((int)$current['hidden_until'], (int)$parent['hidden_until']);
+        }
+
+        $settings['hidden'] = (bool)$current['hidden'];
+        $settings['hidden_until'] = $current['hidden_until'];
+        return $settings;
+    }
+
+    /**
+     * Apply normalized visibility settings to a grade item.
+     *
+     * @param \grade_item $grade_item
+     * @param array $visibility
+     * @return void
+     */
+    private static function apply_visibility_to_grade_item(\grade_item $grade_item, array $visibility): void
+    {
+        $normalized = self::normalize_visibility_settings($visibility);
+        if (!empty($normalized['hidden'])) {
+            $grade_item->hidden = 1;
+            return;
+        }
+
+        if (!empty($normalized['hidden_until'])) {
+            $grade_item->hidden = (int)$normalized['hidden_until'];
+            return;
+        }
+
+        $grade_item->hidden = 0;
+    }
+
+    /**
      * Convert a user-facing formula into Moodle-compatible calculation syntax.
      *
      * - Normalizes separators to comma (YorkU standard).
      * - Accepts both [ref] and [[ref]] input.
      * - Resolves refs against grade_item idnumber first, then itemname.
      * - Ensures output uses [[idnumber]] references.
+     *
+     * @param array<string, string> $item_alias_map
      */
-    private static function resolve_moodle_formula(int $courseid, string $formula): array
-    {
+    private static function resolve_moodle_formula(
+        int $courseid,
+        string $formula,
+        array $alias_category_map = [],
+        array $item_alias_map = []
+    ): array {
         global $DB;
 
         $text = trim($formula);
@@ -2803,6 +6153,56 @@ class cria
             $key = strtolower($ref);
             if (isset($resolved[$key])) {
                 continue;
+            }
+
+            if (array_key_exists($key, $alias_category_map)) {
+                $alias_category_id = (int)$alias_category_map[$key];
+                if ($alias_category_id < 1) {
+                    $errors[] = 'Reference [' . $ref . '] is ambiguous (multiple categories match this alias).';
+                    continue;
+                }
+
+                $alias_item = $DB->get_record(
+                    'grade_items',
+                    ['courseid' => $courseid, 'itemtype' => 'category', 'iteminstance' => $alias_category_id],
+                    'id, idnumber, itemname',
+                    IGNORE_MISSING
+                );
+
+                if ($alias_item) {
+                    $resolved[$key] = self::ensure_formula_item_idnumber(
+                        $courseid,
+                        $alias_item,
+                        $ref,
+                        $ref,
+                        $warnings
+                    );
+                    continue;
+                }
+            }
+
+            if (array_key_exists($key, $item_alias_map)) {
+                $resolved[$key] = (string)$item_alias_map[$key];
+                continue;
+            }
+
+            if (ctype_digit($key)) {
+                $item_by_id = $DB->get_record(
+                    'grade_items',
+                    ['id' => (int)$key, 'courseid' => $courseid],
+                    'id, idnumber, itemname',
+                    IGNORE_MISSING
+                );
+                if ($item_by_id) {
+                    $resolved[$key] = self::ensure_formula_item_idnumber(
+                        $courseid,
+                        $item_by_id,
+                        'gi_' . $item_by_id->id,
+                        $ref,
+                        $warnings
+                    );
+                    continue;
+                }
             }
 
             $items_by_idnumber = $DB->get_records_select(
@@ -2844,30 +6244,13 @@ class cria
                 $warnings[] = 'Reference [' . $ref . '] resolved by item name. Prefer using exact idnumber references.';
             }
 
-            $idnumber = trim((string)($item->idnumber ?? ''));
-            if ($idnumber === '') {
-                $seed = trim((string)($item->itemname ?? ''));
-                if ($seed === '') {
-                    $seed = $ref;
-                }
-                $base = self::build_formula_idnumber($seed);
-                $candidate = $base;
-                $suffix = 2;
-                while ($DB->record_exists_select('grade_items', 'courseid = ? AND idnumber = ? AND id <> ?', [$courseid, $candidate, (int)$item->id])) {
-                    $candidate = $base . '_' . $suffix;
-                    $suffix++;
-                    if ($suffix > 100) {
-                        break;
-                    }
-                }
-
-                $item->idnumber = $candidate;
-                $DB->update_record('grade_items', $item);
-                $idnumber = $candidate;
-                $warnings[] = 'Reference [' . $ref . '] had no idnumber; generated idnumber [[' . $idnumber . ']] for stable formula resolution.';
-            }
-
-            $resolved[$key] = $idnumber;
+            $resolved[$key] = self::ensure_formula_item_idnumber(
+                $courseid,
+                $item,
+                trim((string)($item->itemname ?? '')),
+                $ref,
+                $warnings
+            );
         }
 
         $converted = preg_replace_callback(
@@ -2906,15 +6289,243 @@ class cria
     }
 
     /**
+     * Build a formula reference token from a user-facing label.
+     */
+    private static function build_formula_reference_token(string $value): string
+    {
+        $token = strtolower(trim($value));
+        $token = preg_replace('/[^a-z0-9_]+/', '_', $token) ?? '';
+        return trim($token, '_');
+    }
+
+    /**
+     * Register formula aliases for a category/subcategory label.
+     * Alias collisions are marked as ambiguous (0) and skipped during resolution.
+     */
+    private static function register_formula_aliases(array &$alias_map, string $label, int $categoryid): void
+    {
+        $label = trim($label);
+        if ($label === '' || $categoryid < 1) {
+            return;
+        }
+
+        $aliases = [];
+        $token = self::build_formula_reference_token($label);
+        if ($token !== '') {
+            $aliases[] = $token;
+
+            $compact = str_replace('_', '', $token);
+            if ($compact !== '' && $compact !== $token) {
+                $aliases[] = $compact;
+            }
+
+            if (str_ends_with($token, 's') && strlen($token) > 3) {
+                $aliases[] = rtrim($token, 's');
+            } else if (!str_ends_with($token, 's') && strlen($token) > 2) {
+                $aliases[] = $token . 's';
+            }
+        }
+
+        $parts = preg_split('/\s+/', $label) ?: [];
+        if (!empty($parts)) {
+            $first = self::build_formula_reference_token((string)($parts[0] ?? ''));
+            if ($first !== '' && strlen($first) > 2) {
+                $aliases[] = $first;
+            }
+        }
+
+        $aliases = array_values(array_unique(array_filter($aliases, static fn($a) => $a !== '')));
+        foreach ($aliases as $alias) {
+            if (!array_key_exists($alias, $alias_map)) {
+                $alias_map[$alias] = $categoryid;
+                continue;
+            }
+            if ((int)$alias_map[$alias] !== $categoryid) {
+                $alias_map[$alias] = 0;
+            }
+        }
+    }
+
+    /**
+     * Ensure a grade item has idnumber and return it.
+     */
+    private static function ensure_formula_item_idnumber(int $courseid, \stdClass $item, string $seed, string $ref, array &$warnings): string
+    {
+        global $DB;
+
+        $idnumber = trim((string)($item->idnumber ?? ''));
+        if ($idnumber !== '') {
+            return $idnumber;
+        }
+
+        $base_seed = trim($seed);
+        if ($base_seed === '') {
+            $base_seed = trim((string)($item->itemname ?? ''));
+        }
+        if ($base_seed === '') {
+            $base_seed = $ref;
+        }
+
+        $base = self::build_formula_idnumber($base_seed);
+        $candidate = $base;
+        $suffix = 2;
+        while ($DB->record_exists_select('grade_items', 'courseid = ? AND idnumber = ? AND id <> ?', [$courseid, $candidate, (int)$item->id])) {
+            $candidate = $base . '_' . $suffix;
+            $suffix++;
+            if ($suffix > 100) {
+                break;
+            }
+        }
+
+        $item->idnumber = $candidate;
+        $DB->update_record('grade_items', $item);
+        $warnings[] = 'Reference [' . $ref . '] had no idnumber; generated idnumber [[' . $candidate . ']] for stable formula resolution.';
+        return $candidate;
+    }
+
+    /**
      * Apply calculation formulas to category total grade items.
      * Returns warning strings for any categories that could not be updated.
      */
-    private static function apply_category_formulas(int $courseid, array $category_formula_map): array
+    /**
+     * @return array<string, string>
+     */
+    private static function build_formula_item_reference_map(int $courseid): array
     {
+        global $DB;
+
+        if ($courseid < 1) {
+            return [];
+        }
+
+        $map = [];
+        $records = $DB->get_records_select(
+            'grade_items',
+            "courseid = ? AND itemtype IN ('manual', 'mod')",
+            [$courseid],
+            'id ASC',
+            'id, itemname, idnumber'
+        );
+
+        foreach (($records ?: []) as $record) {
+            $label = trim((string)($record->itemname ?? ''));
+            if ($label === '') {
+                continue;
+            }
+            $idnumberwarnings = [];
+            $idnumber = self::ensure_formula_item_idnumber(
+                $courseid,
+                $record,
+                $label,
+                $label,
+                $idnumberwarnings
+            );
+            self::register_item_formula_aliases($map, $label, $idnumber);
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param array<string, string> $map
+     */
+    private static function register_item_formula_aliases(array &$map, string $label, string $idnumber): void
+    {
+        $label = trim($label);
+        $idnumber = trim($idnumber);
+        if ($label === '' || $idnumber === '') {
+            return;
+        }
+
+        $token = self::build_formula_reference_token($label);
+        if ($token !== '') {
+            $map[$token] = $idnumber;
+            $compact = str_replace('_', '', $token);
+            if ($compact !== '' && $compact !== $token) {
+                $map[$compact] = $idnumber;
+            }
+        }
+
+        $lower = strtolower($label);
+        if (preg_match('/\b(\d{1,3})\b/', $label, $number_match)) {
+            $num = (string)($number_match[1] ?? '');
+            if ($num !== '') {
+                if (strpos($lower, 'hw') !== false || strpos($lower, 'homework') !== false) {
+                    $map['hw' . $num] = $idnumber;
+                }
+                if (strpos($lower, 'lab') !== false) {
+                    $map['lab' . $num] = $idnumber;
+                }
+                if (strpos($lower, 'quiz') !== false || strpos($lower, 'test') !== false) {
+                    $map['quiz' . $num] = $idnumber;
+                    $map['q' . $num] = $idnumber;
+                }
+            }
+        }
+
+        if (strpos($lower, 'project') !== false) {
+            $map['project'] = $idnumber;
+            $map['proj'] = $idnumber;
+        }
+    }
+
+    /**
+     * @param array<int, string> $formula_item_refs
+     * @param array<string, string> $item_alias_map
+     */
+    private static function remap_stale_formula_refs_with_item_aliases(
+        string $formula,
+        array $formula_item_refs,
+        array $item_alias_map
+    ): string {
+        if ($formula === '' || empty($formula_item_refs) || empty($item_alias_map)) {
+            return $formula;
+        }
+
+        if (!preg_match_all('/\[\[([A-Za-z0-9_]+)\]\]|\[([A-Za-z0-9_]+)\]/', $formula, $matches, PREG_SET_ORDER)) {
+            return $formula;
+        }
+
+        $converted = $formula;
+        $index = 0;
+        foreach ($matches as $match) {
+            $ref = isset($match[1]) && $match[1] !== '' ? $match[1] : (isset($match[2]) ? $match[2] : '');
+            $alias = trim((string)($formula_item_refs[$index] ?? ''));
+            $index++;
+            if ($ref === '' || $alias === '') {
+                continue;
+            }
+            if (!ctype_digit($ref)) {
+                continue;
+            }
+
+            $alias_key = self::build_formula_reference_token($alias);
+            $target = $item_alias_map[$alias_key]
+                ?? $item_alias_map[str_replace('_', '', $alias_key)]
+                ?? null;
+            if ($target === null || $target === '') {
+                continue;
+            }
+
+            $converted = str_replace('[[' . $ref . ']]', '[[' . $target . ']]', $converted);
+            $converted = str_replace('[' . $ref . ']', '[[' . $target . ']]', $converted);
+        }
+
+        return $converted;
+    }
+
+    private static function apply_category_formulas(
+        int $courseid,
+        array $category_formula_map,
+        array $formula_reference_alias_map = [],
+        array $formula_item_ref_map = []
+    ): array {
         $warnings = [];
         foreach ($category_formula_map as $key => $entry) {
             $category_id = (int)($entry['category_id'] ?? 0);
             $formula = trim((string)($entry['formula'] ?? ''));
+            $explicit_override = (bool)($entry['explicit_override'] ?? false);
+            $formula_item_refs = is_array($entry['formula_item_refs'] ?? null) ? $entry['formula_item_refs'] : [];
             if ($category_id < 1 || $formula === '') {
                 continue;
             }
@@ -2926,10 +6537,30 @@ class cria
                     continue;
                 }
 
-                $resolved_data = self::resolve_moodle_formula($courseid, $formula);
+                if (!empty($formula_item_refs) && !empty($formula_item_ref_map)) {
+                    $formula = self::remap_stale_formula_refs_with_item_aliases(
+                        $formula,
+                        $formula_item_refs,
+                        $formula_item_ref_map
+                    );
+                }
+
+                $resolved_data = self::resolve_moodle_formula(
+                    $courseid,
+                    $formula,
+                    $formula_reference_alias_map,
+                    $formula_item_ref_map
+                );
                 $resolved = trim((string)($resolved_data['formula'] ?? ''));
                 $resolver_warnings = is_array($resolved_data['warnings'] ?? null) ? $resolved_data['warnings'] : [];
                 $resolver_errors = is_array($resolved_data['errors'] ?? null) ? $resolved_data['errors'] : [];
+
+                $existing_formula = trim((string)($gi->calculation ?? ''));
+                if ($existing_formula !== '' && $resolved !== '' && $existing_formula !== $resolved && !$explicit_override) {
+                    $warnings[] = '⚠ Preserved existing formula for category ' . $key
+                        . ' (explicit override required for formula-backed categories).';
+                    continue;
+                }
 
                 if (!empty($resolver_errors)) {
                     $warnings[] = '⚠ Formula was not applied for category ' . $key . ': ' . implode(' ', $resolver_errors);
@@ -2937,7 +6568,7 @@ class cria
                 }
 
                 foreach ($resolver_warnings as $w) {
-                    $warnings[] = '⚠ Formula note for category ' . $key . ': ' . $w;
+                    $warnings[] = 'ℹ Formula note for category ' . $key . ': ' . $w;
                 }
 
                 if (method_exists($gi, 'set_calculation')) {
@@ -2961,6 +6592,10 @@ class cria
      *
      * Removes category grade_items whose iteminstance points to a non-existent
      * grade_category, or have NULL categoryid when they shouldn't.
+     *
+     * Also removes stale course-total grade_items (itemtype='course') left behind
+     * when categories are recreated with new IDs. Those rows break Moodle grade UI
+     * AJAX (get_gradeitems) and grade tree rendering.
      *
      * @param int $courseid Course ID to clean (0 = all courses)
      * @return int Number of orphaned items removed
@@ -2992,6 +6627,7 @@ class cria
 
             // Check if the referenced category exists
             if ($category_id < 1 || !$DB->record_exists('grade_categories', ['id' => $category_id])) {
+                $DB->delete_records('grade_grades', ['itemid' => (int)$item->id]);
                 $DB->delete_records('grade_items', ['id' => (int)$item->id]);
                 $removed++;
                 continue;
@@ -3014,7 +6650,306 @@ class cria
             }
         }
 
+        $removed += self::cleanup_orphaned_course_items($courseid);
+
         return $removed;
+    }
+
+    /**
+     * Repair gradebook structural integrity.
+     *
+     * Safe to call before grade report/tree pages. Removes stale itemtype='course' rows
+     * that reference deleted root category ids (causes morethanonerecordinfetch).
+     *
+     * @param int $courseid
+     * @return array{removed:int, fixed:int, course_items:int}
+     */
+    public static function ensure_course_gradebook_integrity(int $courseid): array {
+        global $CFG, $DB;
+
+        if ($courseid < 1) {
+            return ['removed' => 0, 'fixed' => 0, 'course_items' => 0];
+        }
+
+        require_once($CFG->libdir . '/grade/grade_category.php');
+        require_once($CFG->libdir . '/grade/grade_item.php');
+
+        $removed = self::cleanup_orphaned_category_items($courseid);
+        $fixed = self::ensure_gradebook_structural_items($courseid);
+        self::normalize_null_sortorders($courseid);
+
+        $root = \grade_category::fetch_course_category($courseid);
+        if ($root) {
+            $DB->set_field(
+                'grade_items',
+                'sortorder',
+                1,
+                ['courseid' => $courseid, 'itemtype' => 'course', 'iteminstance' => (int)$root->id]
+            );
+        }
+
+        $courseitems = (int)$DB->count_records('grade_items', ['courseid' => $courseid, 'itemtype' => 'course']);
+
+        return [
+            'removed' => $removed,
+            'fixed' => $fixed,
+            'course_items' => $courseitems,
+        ];
+    }
+
+    /**
+     * Run integrity repair and return user-facing warning lines.
+     *
+     * @param int $courseid
+     * @param string $contextlabel
+     * @return string[]
+     */
+    private static function gradebook_integrity_warnings(int $courseid, string $contextlabel = ''): array {
+        $warnings = [];
+        $integrity = self::ensure_course_gradebook_integrity($courseid);
+
+        if ($integrity['removed'] > 0) {
+            $suffix = $contextlabel !== '' ? ' during ' . $contextlabel : '';
+            $warnings[] = '⚠ Removed ' . (int)$integrity['removed'] . ' orphaned gradebook structural row(s)' . $suffix . '.';
+        }
+
+        if ((int)$integrity['course_items'] !== 1) {
+            $warnings[] = '⚠ Gradebook integrity check found ' . (int)$integrity['course_items']
+                . ' course-total items (expected 1). Run clean_gradebook_orphans for this course.';
+        }
+
+        return $warnings;
+    }
+
+    /**
+     * Remove stale or duplicate course-total grade_items.
+     *
+     * @param int $courseid Course ID to clean (0 = all courses)
+     * @return int Number of rows removed
+     */
+    private static function cleanup_orphaned_course_items(int $courseid = 0): int {
+        global $DB;
+
+        $removed = 0;
+        $coursesql = '';
+        $courseparams = [];
+        if ($courseid > 0) {
+            $coursesql = ' AND gi.courseid = ?';
+            $courseparams[] = $courseid;
+        }
+
+        $courseitems = $DB->get_records_sql(
+            'SELECT gi.id, gi.courseid, gi.iteminstance, gi.categoryid
+               FROM {grade_items} gi
+              WHERE gi.itemtype = ?' . $coursesql,
+            array_merge(['course'], $courseparams)
+        );
+
+        $validbycourse = [];
+        foreach ($courseitems as $item) {
+            $cid = (int)$item->courseid;
+            if (!isset($validbycourse[$cid])) {
+                $root = \grade_category::fetch_course_category($cid);
+                $validbycourse[$cid] = $root ? (int)$root->id : 0;
+            }
+            $validrootid = (int)$validbycourse[$cid];
+            $iteminstance = (int)($item->iteminstance ?? 0);
+            $shoulddelete = false;
+
+            if ($validrootid < 1) {
+                $shoulddelete = true;
+            } else if ($iteminstance !== $validrootid) {
+                $shoulddelete = true;
+            } else if (!$DB->record_exists('grade_categories', ['id' => $validrootid, 'courseid' => $cid])) {
+                $shoulddelete = true;
+            } else {
+                $actualcategoryid = (int)($item->categoryid ?? 0);
+                if ($actualcategoryid !== $validrootid) {
+                    $update = new \stdClass();
+                    $update->id = (int)$item->id;
+                    $update->categoryid = $validrootid;
+                    $DB->update_record('grade_items', $update);
+                }
+            }
+
+            if ($shoulddelete) {
+                $DB->delete_records('grade_grades', ['itemid' => (int)$item->id]);
+                $DB->delete_records('grade_items', ['id' => (int)$item->id]);
+                $removed++;
+            }
+        }
+
+        $dupesql = 'SELECT gi.courseid, MIN(gi.id) AS keepid
+                      FROM {grade_items} gi
+                     WHERE gi.itemtype = ?';
+        $dupeparams = ['course'];
+        if ($courseid > 0) {
+            $dupesql .= ' AND gi.courseid = ?';
+            $dupeparams[] = $courseid;
+        }
+        $dupesql .= ' GROUP BY gi.courseid HAVING COUNT(1) > 1';
+
+        $dupes = $DB->get_records_sql($dupesql, $dupeparams);
+        foreach ($dupes as $dupe) {
+            $extras = $DB->get_records_select(
+                'grade_items',
+                'courseid = ? AND itemtype = ? AND id <> ?',
+                [(int)$dupe->courseid, 'course', (int)$dupe->keepid],
+                '',
+                'id'
+            );
+            foreach ($extras as $extra) {
+                $DB->delete_records('grade_grades', ['itemid' => (int)$extra->id]);
+                $DB->delete_records('grade_items', ['id' => (int)$extra->id]);
+                $removed++;
+            }
+        }
+
+        return $removed;
+    }
+
+    /**
+     * Ensure every grade_category has its structural grade_item.
+     *
+     * Repairs two corruption patterns that break grade/edit/tree rendering:
+     * - Missing course total grade_item (itemtype='course')
+     * - Missing category total grade_item (itemtype='category', iteminstance=category id)
+     *
+     * @param int $courseid
+     * @return int number of repaired/created rows
+     */
+    private static function ensure_gradebook_structural_items(int $courseid): int
+    {
+        global $DB;
+
+        if ($courseid < 1) {
+            return 0;
+        }
+
+        if (!class_exists('\\grade_item') || !class_exists('\\grade_category')) {
+            return 0;
+        }
+
+        self::cleanup_orphaned_category_items($courseid);
+
+        $coursecat = \grade_category::fetch_course_category($courseid);
+        if (!$coursecat) {
+            return 0;
+        }
+
+        $fixed = 0;
+        $nextsortorder = (int)$DB->get_field_sql(
+            'SELECT COALESCE(MAX(sortorder), 0) FROM {grade_items} WHERE courseid = ?',
+            [$courseid]
+        ) + 1;
+
+        // Ensure course total grade item exists.
+        $courseitem = $DB->get_record(
+            'grade_items',
+            ['courseid' => $courseid, 'itemtype' => 'course', 'iteminstance' => (int)$coursecat->id],
+            'id, categoryid, sortorder',
+            IGNORE_MISSING
+        );
+        if (!$courseitem) {
+            try {
+                $gi = new \grade_item();
+                $gi->courseid = $courseid;
+                $gi->itemtype = 'course';
+                $gi->iteminstance = (int)$coursecat->id;
+                $gi->categoryid = (int)$coursecat->id;
+                $gi->gradetype = defined('GRADE_TYPE_VALUE') ? GRADE_TYPE_VALUE : 1;
+                $gi->grademin = 0;
+                $gi->grademax = 100;
+                $gi->sortorder = $nextsortorder++;
+                $gi->insert('block_ai_assistant');
+                $fixed++;
+            } catch (\Throwable $e) {
+                debugging('Could not recreate course total grade_item for course ' . $courseid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+        }
+
+        $categories = $DB->get_records('grade_categories', ['courseid' => $courseid], 'id ASC', 'id,parent');
+        foreach (($categories ?: []) as $cat) {
+            $catid = (int)$cat->id;
+            if ($catid === (int)$coursecat->id) {
+                continue;
+            }
+
+            $item = $DB->get_record(
+                'grade_items',
+                ['courseid' => $courseid, 'itemtype' => 'category', 'iteminstance' => $catid],
+                'id, categoryid, sortorder',
+                IGNORE_MISSING
+            );
+
+            if (!$item) {
+                try {
+                    $gi = new \grade_item();
+                    $gi->courseid = $courseid;
+                    $gi->itemtype = 'category';
+                    $gi->iteminstance = $catid;
+                    $gi->categoryid = !empty($cat->parent) ? (int)$cat->parent : null;
+                    $gi->gradetype = defined('GRADE_TYPE_VALUE') ? GRADE_TYPE_VALUE : 1;
+                    $gi->grademin = 0;
+                    $gi->grademax = 100;
+                    $gi->sortorder = $nextsortorder++;
+                    $gi->insert('block_ai_assistant');
+                    $fixed++;
+                } catch (\Throwable $e) {
+                    debugging('Could not recreate category total grade_item for category ' . $catid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
+                continue;
+            }
+
+            $expectedparent = !empty($cat->parent) ? (int)$cat->parent : null;
+            $actualparent = isset($item->categoryid) ? (int)$item->categoryid : null;
+            $actualparent = ($actualparent === 0) ? null : $actualparent;
+            if ($actualparent !== $expectedparent || (int)($item->sortorder ?? 0) < 1) {
+                $update = new \stdClass();
+                $update->id = (int)$item->id;
+                $changed = false;
+
+                if ($actualparent !== $expectedparent) {
+                    $update->categoryid = $expectedparent;
+                    $changed = true;
+                }
+                if ((int)($item->sortorder ?? 0) < 1) {
+                    $update->sortorder = $nextsortorder++;
+                    $changed = true;
+                }
+
+                if ($changed) {
+                    $DB->update_record('grade_items', $update);
+                    $fixed++;
+                }
+            }
+        }
+
+        return $fixed;
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $resources
+     * @return array<int, array<string, mixed>>
+     */
+    private static function dedupe_moodle_resources_by_name(array $resources): array
+    {
+        $seen = [];
+        $deduped = [];
+
+        foreach ($resources as $resource) {
+            if (!is_array($resource)) {
+                continue;
+            }
+            $name = strtolower(trim((string)($resource['name'] ?? '')));
+            if ($name === '' || isset($seen[$name])) {
+                continue;
+            }
+            $seen[$name] = true;
+            $deduped[] = $resource;
+        }
+
+        return $deduped;
     }
 
     private static function is_syllabus_like_filename(string $filename): bool
@@ -3149,6 +7084,7 @@ class cria
         );
 
         $conflict = false;
+        $mappingchanged = false;
         if ($existing) {
             // Optimistic concurrency: if the server has a newer record than the client last saw,
             // reject this write (unless caller explicitly asked to force).
@@ -3177,6 +7113,11 @@ class cria
                 }
                 if ($confirmed_mapping_json !== null
                     && self::gradebook_should_write_field($existing->confirmed_mapping_json, $confirmed_mapping_json, $force)) {
+                    $incomingmapping = trim($confirmed_mapping_json);
+                    $storedmapping = trim((string)($existing->confirmed_mapping_json ?? ''));
+                    if ($incomingmapping !== $storedmapping) {
+                        $mappingchanged = true;
+                    }
                     $updates->confirmed_mapping_json = $confirmed_mapping_json;
                 }
                 if ($result_json !== null
@@ -3199,6 +7140,22 @@ class cria
             $insert->timemodified = $now;
             $id = $DB->insert_record('block_aia_gradebook_state', $insert);
             $record = $DB->get_record('block_aia_gradebook_state', ['id' => $id]);
+            $incomingmapping = trim((string)($confirmed_mapping_json ?? ''));
+            if ($incomingmapping !== '' && $incomingmapping !== '[]' && $incomingmapping !== 'null') {
+                $mappingchanged = true;
+            }
+        }
+
+        if (!$conflict && $mappingchanged) {
+            $sessionid = trim((string)($record->session_id ?? ''));
+            if ($sessionid !== '') {
+                $decodedmapping = json_decode((string)($record->confirmed_mapping_json ?? ''), true);
+                self::sync_gradebook_session_context(
+                    $courseid,
+                    $sessionid,
+                    is_array($decodedmapping) ? $decodedmapping : []
+                );
+            }
         }
 
         return [
@@ -3385,8 +7342,23 @@ class cria
      */
     public static function start_session($course_id, $api_key, $payload = "{}"): string
     {
+        global $DB;
+
+        $bot_identifier = '';
+        $record = $DB->get_record('block_aia_settings', ['courseid' => (int)$course_id], 'bot_name, bot_id');
+        if ($record) {
+            $bot_identifier = trim((string)($record->bot_name ?? ''));
+            if ($bot_identifier === '' && !empty($record->bot_id)) {
+                $bot_identifier = (string)((int)$record->bot_id);
+            }
+        }
+
+        if ($bot_identifier === '') {
+            $bot_identifier = (string)((int)self::get_bot_id($course_id));
+        }
+
         $session = webservice::exec_embed(
-            (int)self::get_bot_id($course_id),
+            $bot_identifier,
             $api_key,
             json_encode($payload)
         );

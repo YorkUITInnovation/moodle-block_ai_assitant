@@ -207,11 +207,29 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_gradebook_revert' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'revert',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Revert Moodle grade setup to the immutable pre-apply baseline snapshot.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
     'block_ai_assistant_gradebook_finalize' => array(
         'classname' => 'block_ai_assistant_gradebook_ws',
         'methodname' => 'finalize',
         'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
         'description' => 'Finalize gradebook mapping and mark ready for Moodle sync.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_create_manual_item' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'create_manual_item',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Create a standalone manual Moodle grade item during mapping review.',
         'type' => 'write',
         'capabilities' => '',
         'ajax' => true

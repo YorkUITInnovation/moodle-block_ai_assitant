@@ -58,6 +58,18 @@ body.moove-darkmode .activityname {
     height:100%;
 }
 
+.block-ai-assistant-embed-warning {
+    border-left: 4px solid #d39e00;
+    background: #fff8e1;
+    color: #5a4500;
+}
+
+body.moove-darkmode .block-ai-assistant-embed-warning {
+    background: #4f3e12;
+    color: #f6e7c0;
+    border-left-color: #f0c14b;
+}
+
 /* Diagonal red line for disabled AI Assistant */
 .cria-launcher.disabled {
     position: relative;

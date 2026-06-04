@@ -1,13 +1,28 @@
 <?php
 $observers = [
     [
+        'eventname' => '\core\event\course_viewed',
+        'callback' => 'block_ai_assistant_course_viewed',
+        'includefile' => '/blocks/ai_assistant/eventslib.php',
+    ],
+    [
         'eventname' => '\core\event\course_module_updated',
         'callback' => 'block_ai_assistant_course_module_updated',
         'includefile' => '/blocks/ai_assistant/eventslib.php'
     ],
     [
-        'eventname' => '\core\event\\core\event\course_module_deleted',
+        'eventname' => '\core\event\course_module_deleted',
         'callback' => 'block_ai_assistant_course_module_deleted',
+        'includefile' => '/blocks/ai_assistant/eventslib.php'
+    ],
+    [
+        'eventname' => '\core\event\grade_item_deleted',
+        'callback' => 'block_ai_assistant_gradebook_item_deleted',
+        'includefile' => '/blocks/ai_assistant/eventslib.php'
+    ],
+    [
+        'eventname' => '\core\event\grade_category_deleted',
+        'callback' => 'block_ai_assistant_gradebook_category_deleted',
         'includefile' => '/blocks/ai_assistant/eventslib.php'
     ],
     [

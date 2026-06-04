@@ -134,71 +134,73 @@ class import
     public function autotest_excel($course_id, $columns, $rows)
     {
         global $CFG, $DB, $USER;
-        // Make sure the columns exist
-        if (!in_array('section', $columns)) {
-            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', ['section']));
-            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
-        }
-        if (!in_array('questions', $columns)) {
-            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', ['questions']));
-            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
-        }
-        if (!in_array('answer', $columns)) {
-            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', ['answer']));
-            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
-        }
+        $normalize_column = static function ($columnname): string {
+            $columnname = trim((string)$columnname);
+            $columnname = preg_replace('/[^\w\s]+/', '', $columnname);
+            $columnname = str_replace(' ', '_', $columnname);
+            return strtolower($columnname);
+        };
 
-
-        // Set the proper key value for the columns
+        $normalizedcolumns = [];
         foreach ($columns as $key => $column) {
-            switch (trim($column)) {
+            $normalizedcolumns[$key] = $normalize_column($column);
+        }
+
+        // Make sure required columns exist (case-insensitive).
+        if (!in_array('section', $normalizedcolumns, true)) {
+            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', 'section'));
+            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
+        }
+        if (!in_array('questions', $normalizedcolumns, true) && !in_array('question', $normalizedcolumns, true)) {
+            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', 'questions'));
+            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
+        }
+        if (!in_array('answer', $normalizedcolumns, true)) {
+            \core\notification::error(get_string('column_name_must_exist', 'block_ai_assistant', 'answer'));
+            redirect($CFG->wwwroot . '/course/view.php?id=' . $course_id);
+        }
+
+        // Resolve column indexes.
+        $sectioncol = null;
+        $questionscol = null;
+        $answercol = null;
+        foreach ($normalizedcolumns as $key => $column) {
+            switch ($column) {
                 case 'section':
-                    $section = $key;
+                    $sectioncol = $key;
                     break;
                 case 'questions':
-                    $questions = $key;
+                case 'question':
+                    $questionscol = $key;
                     break;
                 case 'answer':
-                    $answer = $key;
+                    $answercol = $key;
                     break;
             }
         }
 
         $current_section = '';
-        $current_section_row = 0;
         for ($i = 1; $i < count($rows); $i++) {
-            if (!empty(trim($rows[$i][$section]))) {
-                $current_section = trim($rows[$i][$section]);
-                $current_section_row = $i;
-                if (isset($rows[$i][$answer])) {
-                    if (empty(trim($rows[$i][$answer]))) {
-                        continue;
-                    } else {
-                        $answer = $rows[$i][$answer];
-                    }
-                }
-
-                // Create question
-                $params = [
-                    'courseid' => $course_id,
-                    'section' => str_replace('_', ' ', $current_section),
-                    'questions' => trim($rows[$i][$questions]),
-                    'human_answer' => trim($answer),
-                    'timecreated' => time(),
-                    'timemodified' => time(),
-                    'usermodified' => $USER->id
-                ];
-            } else {
-                $params = [
-                    'courseid' => $course_id,
-                    'section' => str_replace('_', ' ', $current_section),
-                    'questions' => trim($rows[$i][$questions]),
-                    'human_answer' => trim($answer),
-                    'timecreated' => time(),
-                    'timemodified' => time(),
-                    'usermodified' => $USER->id
-                ];
+            if (!empty(trim((string)$rows[$i][$sectioncol]))) {
+                $current_section = trim((string)$rows[$i][$sectioncol]);
             }
+
+            $questionvalue = trim((string)$rows[$i][$questionscol]);
+            $answervalue = trim((string)$rows[$i][$answercol]);
+            if ($current_section === '' || $questionvalue === '' || $answervalue === '') {
+                continue;
+            }
+
+            $params = [
+                'courseid' => $course_id,
+                'section' => str_replace('_', ' ', $current_section),
+                'questions' => $questionvalue,
+                'human_answer' => $answervalue,
+                'timecreated' => time(),
+                'timemodified' => time(),
+                'usermodified' => $USER->id
+            ];
+
             $DB->insert_record('block_aia_autotest', $params);
         }
 

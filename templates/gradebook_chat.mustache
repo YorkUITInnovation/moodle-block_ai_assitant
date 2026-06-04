@@ -126,7 +126,7 @@
     }
 
     .gradebook-mapping-body {
-        padding: 8px 14px 12px 14px;
+        padding: 10px 14px 12px 14px;
         max-height: 34vh;
         overflow-y: auto;
     }
@@ -139,7 +139,8 @@
         max-height: 26vh;
         overflow-y: auto;
         border: 1px solid var(--bs-border-color, #dee2e6);
-        border-radius: 6px;
+        border-radius: 10px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
     }
 
     #gradebook-mapping-table-wrapper table {
@@ -149,12 +150,22 @@
     #gradebook-mapping-table-wrapper thead th {
         position: sticky;
         top: 0;
-        background: var(--bs-secondary-bg, #e9ecef);
+        background: linear-gradient(180deg, var(--bs-secondary-bg, #e9ecef), var(--bs-tertiary-bg, #f8f9fa));
         z-index: 1;
         font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.03em;
+        color: var(--bs-secondary-color, #6c757d);
+        border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    }
+
+    #gradebook-mapping-table-wrapper tbody td {
+        vertical-align: middle;
+    }
+
+    #gradebook-mapping-table-wrapper tbody tr:nth-child(even):not(.gradebook-row-not-graded) {
+        background: rgba(13, 110, 253, 0.02);
     }
 
     .gradebook-row-not-graded .gradebook-activity-name {
@@ -178,6 +189,32 @@
     .gradebook-category-select {
         min-width: 150px;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .gradebook-subcategory-select {
+        min-width: 160px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .gradebook-subcategory-select:disabled {
+        opacity: 0.8;
+        cursor: not-allowed;
+        background: var(--bs-tertiary-bg, #f8f9fa);
+    }
+
+    .gradebook-mapping-help {
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-left: 3px solid var(--bs-primary, #0d6efd);
+        background: var(--bs-body-bg, #ffffff);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        color: var(--bs-secondary-color, #6c757d);
+    }
+
+    .gradebook-mapping-help strong {
+        color: var(--bs-body-color, #212529);
+        font-weight: 600;
     }
 
     .gradebook-select-empty {
@@ -347,6 +384,28 @@
         border-color: var(--bs-success-text-emphasis, #0f5132) !important;
         color: var(--bs-white, #ffffff) !important;
     }
+
+    @media (max-width: 991px) {
+        #gradebook-mapping-table-wrapper {
+            max-height: 32vh;
+        }
+
+        .gradebook-category-select,
+        .gradebook-subcategory-select {
+            min-width: 130px;
+            font-size: 12px;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .gradebook-mapping-body {
+            padding: 8px 10px 10px 10px;
+        }
+
+        #gradebook-mapping-table-wrapper table {
+            min-width: 680px;
+        }
+    }
 </style>
 
 <div class="row">
@@ -377,6 +436,10 @@
                             <button type="button" class="btn btn-outline-danger" id="btn-gradebook-delete"
                                     title="{{#str}}gradebook_delete_session_tooltip, block_ai_assistant{{/str}}">
                                 {{#str}}gradebook_delete_session, block_ai_assistant{{/str}}
+                            </button>
+                            <button type="button" class="btn btn-danger d-none" id="btn-gradebook-revert"
+                                    title="{{#str}}gradebook_revert_session_tooltip, block_ai_assistant{{/str}}">
+                                {{#str}}gradebook_revert_session, block_ai_assistant{{/str}}
                             </button>
                         </div>
                     </div>
@@ -441,10 +504,17 @@
                                     <th style="width: 60px">CMID</th>
                                     <th>Activity</th>
                                     <th style="width: 180px">Category</th>
+                                    <th style="width: 180px">Subcategory</th>
                                 </tr>
                                 </thead>
                                 <tbody id="gradebook-mapping-rows"></tbody>
                             </table>
+                        </div>
+
+                        <div class="gradebook-mapping-help mt-2" id="gradebook-mapping-help">
+                            <strong>Mapping tip:</strong>
+                            choose a top-level category first, then optionally choose a subcategory.
+                            Leaving subcategory as "None" keeps the item directly under the parent category.
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center mt-2 flex-wrap gap-2">
@@ -474,7 +544,7 @@
                             <div class="mb-2">
                                 <label for="gradebook-confirmed-mapping" class="form-label">JSON Configuration</label>
                                 <textarea id="gradebook-confirmed-mapping" class="form-control form-control-sm" rows="5"
-                                          placeholder='[{"moodle_cmid":101,"category":"Assignments"}]'></textarea>
+                                          placeholder='[{"moodle_cmid":101,"category":"Assignments","subcategory":"Homework"}]'></textarea>
                                 <small class="text-muted d-block mt-1">
                                     Synced with the table above. Rows with category "{{#str}}gradebook_not_graded, block_ai_assistant{{/str}}" are excluded from Finalize.
                                 </small>

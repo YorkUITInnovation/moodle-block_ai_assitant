@@ -1,11 +1,11 @@
 {{^error_code}}
-    {{#embed_offset}}
+    {{#teacher_embed_position_style}}
         <style>
             .cria-wrapper {
-                bottom: {{embed_offset}}px !important;
+                {{teacher_embed_position_style}}
             }
         </style>
-    {{/embed_offset}}
+    {{/teacher_embed_position_style}}
     <input type="hidden" id="block-ai_assistant-training-status-id" data-course_id="{{courseid}}"
            value="{{training_status_id}}">
     <input type="hidden" id="block-ai_assistant-question-training-status-id" data-question_id="{{question_id}}"
@@ -159,6 +159,15 @@
                         data-courseid="{{courseid}}">{{#str}}disable_ai_assistant, block_ai_assistant{{/str}}
                 </button>
             {{/published}}
+
+            {{#embed_warning_message}}
+                <div class="block-ai-assistant-embed-warning alert alert-warning mt-2" role="alert">
+                    <strong>{{embed_warning_message}}</strong>
+                    {{#embed_warning_details}}
+                        <div class="small mt-1">{{embed_warning_details}}</div>
+                    {{/embed_warning_details}}
+                </div>
+            {{/embed_warning_message}}
 
             {{{teacher_embed_code}}}
         </div>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="blocks/ai_assistant/db" VERSION="20250730" COMMENT="XMLDB file for Moodle blocks/ai_assistant"
+<XMLDB PATH="blocks/ai_assistant/db" VERSION="2026052504" COMMENT="XMLDB file for Moodle blocks/ai_assistant"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -170,6 +170,49 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="course_user_x" UNIQUE="true" FIELDS="courseid, userid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="block_aia_gradebook_snapshots" COMMENT="Immutable gradebook snapshot ledger for apply/revert safety">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="session_id" TYPE="char" LENGTH="128" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="revision" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="snapshot_type" TYPE="char" LENGTH="32" NOTNULL="true" DEFAULT="baseline" SEQUENCE="false" COMMENT="baseline|apply_revision|restore"/>
+        <FIELD NAME="schema_version" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
+        <FIELD NAME="checksum" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="sha256 of payload_json"/>
+        <FIELD NAME="payload_json" TYPE="text" LENGTH="big" NOTNULL="true" SEQUENCE="false" COMMENT="Canonical snapshot payload JSON"/>
+        <FIELD NAME="payload_compressed" TYPE="text" LENGTH="big" NOTNULL="false" SEQUENCE="false" COMMENT="Base64(gzencode(payload_json)) for compact storage"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course_session_rev_uix" UNIQUE="true" FIELDS="courseid, session_id, revision"/>
+        <INDEX NAME="course_session_type_x" UNIQUE="false" FIELDS="courseid, session_id, snapshot_type"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="block_aia_gradebook_audit" COMMENT="Concise audit trail for gradebook import, apply, revert, and snapshot activity">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="session_id" TYPE="char" LENGTH="128" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="revision" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="correlation_id" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="event_name" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="outcome" TYPE="char" LENGTH="32" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="details_json" TYPE="text" LENGTH="big" NOTNULL="false" SEQUENCE="false" COMMENT="JSON payload with compact audit details"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="course_session_event_x" UNIQUE="false" FIELDS="courseid, session_id, event_name"/>
+        <INDEX NAME="correlation_x" UNIQUE="false" FIELDS="correlation_id"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="block_aia_chat_history" COMMENT="Default comment for the table, please edit me">

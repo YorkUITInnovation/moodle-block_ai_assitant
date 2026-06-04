@@ -12,11 +12,12 @@ class block_ai_assistant_gradebook_ws extends external_api
         return new external_function_parameters(
             array(
                 'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'import_mode' => new external_value(PARAM_ALPHA, 'Session origin mode: fresh|baseline', VALUE_DEFAULT, ''),
             )
         );
     }
 
-    public static function start(int $courseid): string
+    public static function start(int $courseid, string $import_mode = ''): string
     {
         global $USER;
 
@@ -24,6 +25,7 @@ class block_ai_assistant_gradebook_ws extends external_api
             self::start_parameters(),
             [
                 'courseid' => $courseid,
+                'import_mode' => $import_mode,
             ]
         );
 
@@ -31,7 +33,7 @@ class block_ai_assistant_gradebook_ws extends external_api
         self::validate_context($context);
 
         // Delegate to plugin service wrapper; returns JSON string from Criabot.
-        return cria::gradebook_start($courseid, (int)$USER->id);
+        return cria::gradebook_start($courseid, (int)$USER->id, $import_mode);
     }
 
     public static function start_returns(): external_description
@@ -115,6 +117,8 @@ class block_ai_assistant_gradebook_ws extends external_api
 
     public static function status(int $courseid, string $session_id): string
     {
+        global $USER;
+
         self::validate_parameters(
             self::status_parameters(),
             [
@@ -126,7 +130,86 @@ class block_ai_assistant_gradebook_ws extends external_api
         $context = \context_course::instance($courseid);
         self::validate_context($context);
 
-        return cria::gradebook_status($session_id);
+        $status_json = cria::gradebook_status($session_id);
+        $status = json_decode($status_json, true);
+
+        if (!is_array($status)) {
+            return $status_json;
+        }
+
+        $revertavailable = cria::gradebook_revert_available($courseid, $session_id, $status);
+        $hasaitree = cria::has_ai_gradebook_tree($courseid);
+        $missingtreeflag = cria::gradebook_tree_missing_flag($courseid);
+
+        $statusphase = strtoupper(trim((string)($status['phase'] ?? ($status['session']['phase'] ?? ''))));
+        $finalizedphase = in_array($statusphase, ['COMPLETED', 'FINALIZED'], true);
+        $missingafterfinalize = $finalizedphase && !$hasaitree;
+
+        $status['revert_available'] = $revertavailable;
+        $status['data'] = array_merge(
+            is_array($status['data'] ?? null) ? $status['data'] : [],
+            [
+                'revert_available' => $revertavailable,
+                'grade_setup_present' => $hasaitree,
+                'grade_setup_missing_after_finalize' => $missingafterfinalize,
+                'grade_setup_deleted_event_detected' => $missingtreeflag,
+            ]
+        );
+        $status_json = json_encode($status);
+
+        $localstate = cria::gradebook_get_state($courseid, (int)$USER->id);
+        if (!is_array($localstate)
+            || empty($localstate['found'])
+            || trim((string)($localstate['session_id'] ?? '')) !== trim($session_id)) {
+            return $status_json;
+        }
+
+        $localphase = strtoupper(trim((string)($localstate['phase'] ?? '')));
+        $remotephase = strtoupper(trim((string)(
+            $status['phase']
+            ?? ($status['session']['phase'] ?? '')
+        )));
+
+        // Keep Moodle UI authoritative when local grade setup apply was blocked/rolled back.
+        $localresult = [];
+        if (!empty($localstate['result_json'])) {
+            $decodedresult = json_decode((string)$localstate['result_json'], true);
+            if (is_array($decodedresult)) {
+                $localresult = $decodedresult;
+            }
+        }
+
+        $localdata = is_array($localresult['data'] ?? null) ? $localresult['data'] : [];
+        $locallyblocked = (
+            ($localphase === 'REFINEMENT' && in_array($remotephase, ['COMPLETED', 'FINALIZED'], true))
+            || !empty($localdata['grade_setup_skipped'])
+            || !empty($localdata['grade_setup_apply_rolled_back'])
+        );
+
+        if (!$locallyblocked) {
+            return $status_json;
+        }
+
+        if (isset($status['session']) && is_array($status['session'])) {
+            $status['session']['phase'] = $localphase !== '' ? $localphase : 'REFINEMENT';
+        } else {
+            $status['phase'] = $localphase !== '' ? $localphase : 'REFINEMENT';
+        }
+
+        $status['data'] = array_merge(
+            is_array($status['data'] ?? null) ? $status['data'] : [],
+            [
+                'revert_available' => $revertavailable,
+                'grade_setup_present' => $hasaitree,
+                'grade_setup_missing_after_finalize' => $missingafterfinalize,
+                'grade_setup_deleted_event_detected' => $missingtreeflag,
+                'grade_setup_skipped' => !empty($localdata['grade_setup_skipped']) || !empty($localdata['grade_setup_apply_rolled_back']),
+                'grade_setup_apply_rolled_back' => !empty($localdata['grade_setup_apply_rolled_back']),
+                'grade_setup_skip_reason' => (string)($localdata['grade_setup_skip_reason'] ?? 'local_state_reconciliation'),
+            ]
+        );
+
+        return json_encode($status);
     }
 
     public static function status_returns(): external_description
@@ -229,6 +312,39 @@ class block_ai_assistant_gradebook_ws extends external_api
         return new external_value(PARAM_RAW, 'JSON response from Criabot gradebook delete');
     }
 
+    public static function revert_parameters(): external_function_parameters
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'session_id' => new external_value(PARAM_RAW, 'Gradebook session id', VALUE_REQUIRED),
+                'revision' => new external_value(PARAM_INT, 'Revision to restore (0 = immutable baseline)', VALUE_DEFAULT, 0),
+            )
+        );
+    }
+
+    public static function revert(int $courseid, string $session_id, int $revision = 0): string
+    {
+        self::validate_parameters(
+            self::revert_parameters(),
+            [
+                'courseid' => $courseid,
+                'session_id' => $session_id,
+                'revision' => $revision,
+            ]
+        );
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        return cria::gradebook_revert($courseid, $session_id, $revision);
+    }
+
+    public static function revert_returns(): external_description
+    {
+        return new external_value(PARAM_RAW, 'JSON response from Moodle gradebook snapshot revert');
+    }
+
     public static function finalize_parameters(): external_function_parameters
     {
         return new external_function_parameters(
@@ -256,7 +372,7 @@ class block_ai_assistant_gradebook_ws extends external_api
 
         $decoded = json_decode($confirmed_mapping_json, true);
         if (!is_array($decoded)) {
-            $decoded = [];
+            throw new invalid_parameter_exception('confirmed_mapping_json must be a valid JSON array.');
         }
 
         return cria::gradebook_finalize($courseid, $session_id, $decoded);
@@ -265,6 +381,47 @@ class block_ai_assistant_gradebook_ws extends external_api
     public static function finalize_returns(): external_description
     {
         return new external_value(PARAM_RAW, 'JSON response from Criabot gradebook finalize');
+    }
+
+    public static function create_manual_item_parameters(): external_function_parameters
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'item_name' => new external_value(PARAM_TEXT, 'Manual grade item name', VALUE_REQUIRED),
+            )
+        );
+    }
+
+    public static function create_manual_item(int $courseid, string $item_name): array
+    {
+        self::validate_parameters(
+            self::create_manual_item_parameters(),
+            [
+                'courseid' => $courseid,
+                'item_name' => $item_name,
+            ]
+        );
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        return cria::gradebook_create_manual_item($courseid, $item_name);
+    }
+
+    public static function create_manual_item_returns(): external_description
+    {
+        return new external_single_structure(
+            array(
+                'success' => new external_value(PARAM_BOOL, 'Whether the manual grade item was created.'),
+                'message' => new external_value(PARAM_TEXT, 'Result message.'),
+                'grade_item_id' => new external_value(PARAM_INT, 'Created grade item id.'),
+                'activity_name' => new external_value(PARAM_TEXT, 'Manual item display name.'),
+                'moodle_cmid' => new external_value(PARAM_INT, 'CMID for the item, 0 for manual rows.'),
+                'itemtype' => new external_value(PARAM_ALPHA, 'Grade item type.'),
+                'module' => new external_value(PARAM_RAW, 'Module name, empty for manual rows.'),
+            )
+        );
     }
 
     public static function upload_parameters(): external_function_parameters

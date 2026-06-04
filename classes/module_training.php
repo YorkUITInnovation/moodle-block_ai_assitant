@@ -281,7 +281,10 @@ abstract class module_training
             return false; // If the module is not registered, return false
         }
         if ($this->mod[0]->type !== 'news') {
-            return false; // Only news forums are supported
+            error_log('block_ai_assistant: skipping forum cmid=' . $this->cmid
+                . ' name="' . $this->mod[0]->name . '" type=' . $this->mod[0]->type
+                . ' (only news/announcement forums are trained)');
+            return false;
         }
         // Set URL to the module
         $mod_url =$CFG->wwwroot . '/mod/forum/view.php?id=' . $this->cmid;
@@ -291,7 +294,9 @@ abstract class module_training
         // Get forum discussions
         $forum_discussions = $DB->get_records('forum_discussions', array('forum' => $this->mod[0]->instance));
         if (empty($forum_discussions)) {
-            return false; // No discussions found
+            error_log('block_ai_assistant: skipping forum cmid=' . $this->cmid
+                . ' name="' . $this->mod[0]->name . '" (no discussions/announcements yet; add a post to enable training)');
+            return false;
         }
         foreach ($forum_discussions as $fd) {
             // Get forum posts

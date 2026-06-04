@@ -4,6 +4,228 @@ namespace block_ai_assistant;
 
 class webservice
 {
+    /**
+     * Build the preferred embed loader URL for a bot.
+     *
+     * @param string|int $bot_id
+     * @return string
+     */
+    public static function get_embed_loader_url($bot_id): string
+    {
+        $candidates = self::get_embed_loader_candidates($bot_id);
+        return $candidates[0] ?? '';
+    }
+
+    /**
+     * Build possible embed loader URLs from the configured base URL.
+     *
+     * Some environments still point Moodle at the embed app URL. In that case
+     * the real JavaScript loader lives on the embed API service instead.
+     *
+     * @param string|int $bot_id
+     * @return array
+     */
+    private static function get_embed_loader_candidates($bot_id): array
+    {
+        $config = get_config('block_ai_assistant');
+        $base_url = rtrim(trim((string)($config->cria_embed_url ?? '')), '/');
+        if ($base_url === '') {
+            return [];
+        }
+
+        $bot_id = rawurlencode((string)$bot_id);
+        $candidates = [];
+        $add_candidate = static function(string $url) use (&$candidates, $bot_id): void {
+            $url = rtrim(trim($url), '/');
+            if ($url === '') {
+                return;
+            }
+
+            $loader_url = $url . '/embed/' . $bot_id . '/load';
+            if (!in_array($loader_url, $candidates, true)) {
+                $candidates[] = $loader_url;
+            }
+        };
+
+        $add_candidate($base_url);
+
+        $parts = parse_url($base_url);
+        if ($parts !== false && !empty($parts['host'])) {
+            $variants = [];
+            $host = (string)$parts['host'];
+            $port = isset($parts['port']) ? (int)$parts['port'] : null;
+
+            if (strpos($host, 'criaembed-app') !== false) {
+                $variant = $parts;
+                $variant['host'] = str_replace('criaembed-app', 'criaembed-api', $host);
+                $variant['port'] = 3003;
+                $variants[] = self::build_url_from_parts($variant);
+            }
+
+            if ($port === 4000) {
+                $variant = $parts;
+                $variant['port'] = 3003;
+                $variants[] = self::build_url_from_parts($variant);
+            }
+
+            foreach ($variants as $variant_url) {
+                $add_candidate($variant_url);
+            }
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * Rebuild a URL from parse_url() parts.
+     *
+     * @param array $parts
+     * @return string
+     */
+    private static function build_url_from_parts(array $parts): string
+    {
+        if (empty($parts['host'])) {
+            return '';
+        }
+
+        $url = '';
+        if (!empty($parts['scheme'])) {
+            $url .= $parts['scheme'] . '://';
+        }
+
+        if (!empty($parts['user'])) {
+            $url .= $parts['user'];
+            if (isset($parts['pass'])) {
+                $url .= ':' . $parts['pass'];
+            }
+            $url .= '@';
+        }
+
+        $url .= $parts['host'];
+
+        if (isset($parts['port']) && (int)$parts['port'] > 0) {
+            $url .= ':' . (int)$parts['port'];
+        }
+
+        if (!empty($parts['path']) && $parts['path'] !== '/') {
+            $url .= rtrim((string)$parts['path'], '/');
+        }
+
+        return $url;
+    }
+
+    /**
+     * Detect an invalid embed loader response.
+     *
+     * If the configured URL points at the embed app instead of the embed API,
+     * the response is usually the full HTML shell instead of JavaScript.
+     *
+     * @param string $response
+     * @return bool
+     */
+    private static function is_invalid_embed_loader_response(string $response): bool
+    {
+        $response = ltrim($response);
+        if ($response === '') {
+            return true;
+        }
+
+        if (preg_match('/^(<!DOCTYPE html|<html\b|<head\b|<body\b|<div\b|<meta\b)/i', $response) === 1) {
+            return true;
+        }
+
+        // Loader must be JavaScript. Any generic HTML-like payload is invalid here.
+        if (strpos($response, '<') === 0 && preg_match('/^<\/?[a-z][^>]*>/i', $response) === 1) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Execute one embed loader request.
+     *
+     * @param string $url
+     * @param string $api_key
+     * @param mixed $payload
+     * @return array
+     */
+    private static function execute_embed_request(string $url, string $api_key, $payload): array
+    {
+        $curl = curl_init();
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => [
+                'accept: application/javascript',
+                'X-Api-Key: ' . $api_key,
+                'Content-Type: application/json',
+            ],
+        ]);
+
+        $response = curl_exec($curl);
+        $error = curl_error($curl);
+        $http_status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+
+        curl_close($curl);
+
+        return [
+            'ok' => $response !== false && $http_status >= 200 && $http_status < 300,
+            'response' => $response === false ? '' : (string)$response,
+            'error' => $error,
+            'http_status' => $http_status,
+        ];
+    }
+
+    /**
+     * Execute one embed loader GET request.
+     *
+     * GET /embed/{bot}/load does not require a session payload and is used as
+     * a safe fallback when POST tracking/session bootstrap fails.
+     *
+     * @param string $url
+     * @return array
+     */
+    private static function execute_embed_get_request(string $url): array
+    {
+        $curl = curl_init();
+
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'GET',
+            CURLOPT_HTTPHEADER => [
+                'accept: application/javascript',
+            ],
+        ]);
+
+        $response = curl_exec($curl);
+        $error = curl_error($curl);
+        $http_status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
+
+        curl_close($curl);
+
+        return [
+            'ok' => $response !== false && $http_status >= 200 && $http_status < 300,
+            'response' => $response === false ? '' : (string)$response,
+            'error' => $error,
+            'http_status' => $http_status,
+        ];
+    }
+
     private static function get_effective_config(): array
     {
         $block = get_config('block_ai_assistant');
@@ -218,6 +440,18 @@ class webservice
                     return $resp['raw'];
                 }
 
+                case 'cria_gradebook_sync': {
+                    $session_id = trim((string)($data['session_id'] ?? ''));
+                    $body = [
+                        'course_activities' => $data['course_activities'] ?? [],
+                    ];
+                    if (array_key_exists('confirmed_mapping', $data)) {
+                        $body['confirmed_mapping'] = $data['confirmed_mapping'];
+                    }
+                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/sync', $headers, $body, 5);
+                    return $resp['raw'];
+                }
+
                 case 'cria_gradebook_upload': {
                     $session_id = trim((string)($data['session_id'] ?? ''));
                     $body = [
@@ -259,34 +493,30 @@ class webservice
 
     public static function exec_embed($bot_id, $api_key, $payload)
     {
-        // Get the plugin configuration
-        $config = get_config('block_ai_assistant');
-        // Set the URL
-        $url = $config->cria_embed_url . '/embed/' . $bot_id . '/load';
+        $last_response = '';
+        foreach (self::get_embed_loader_candidates($bot_id) as $url) {
+            $post_result = self::execute_embed_request($url, (string)$api_key, $payload);
+            if ($post_result['ok']) {
+                $last_response = $post_result['response'];
+                if (!self::is_invalid_embed_loader_response($last_response)) {
+                    return $last_response;
+                }
+            }
 
-        $curl = curl_init();
+            // Fallback path: if POST fails (e.g. missing bot API key or strict
+            // session tracking rules), still fetch the launcher script via GET.
+            $get_result = self::execute_embed_get_request($url);
+            if (!$get_result['ok']) {
+                continue;
+            }
 
-        curl_setopt_array($curl, array(
-            CURLOPT_URL => $url,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'POST',
-            CURLOPT_POSTFIELDS => $payload,
-            CURLOPT_HTTPHEADER => array(
-                'accept: application/javascript',
-                'X-Api-Key: ' . $api_key,
-                'Content-Type: application/json'
-            ),
-        ));
+            $last_response = $get_result['response'];
+            if (!self::is_invalid_embed_loader_response($last_response)) {
+                return $last_response;
+            }
+        }
 
-        $response = curl_exec($curl);
-
-        curl_close($curl);
-        return $response;
+        return self::is_invalid_embed_loader_response($last_response) ? '' : $last_response;
 
     }
 }

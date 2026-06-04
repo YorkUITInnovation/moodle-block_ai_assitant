@@ -13,26 +13,35 @@ define(['jquery'], function($) {
      * @param {boolean} isPublished Whether the AI Assistant is published for students
      */
     var init = function(isPublished) {
+        var selector = '.cria-launcher';
 
-        // Function to add disabled class to cria-launcher
-        var addDisabledClass = function() {
-            var criaLauncher = $('.cria-launcher');
-            if (criaLauncher.length > 0) {
-                criaLauncher.addClass('disabled');
-            } else {
-                // If element doesn't exist yet, wait and try again
-                setTimeout(addDisabledClass, 100);
-            }
+        var syncState = function() {
+            $(selector).toggleClass('disabled', !isPublished);
         };
 
-        // Only add disabled class if the assistant is not published
-        if (!isPublished) {
-            // Wait for the DOM to be ready and the cria-launcher to be created
-            $(document).ready(function() {
-                // Use a slight delay to ensure the cria-launcher element is created by the embed script
-                setTimeout(addDisabledClass, 500);
-            });
-        }
+        $(document).ready(function() {
+            syncState();
+
+            var attempts = 0;
+            var intervalId = setInterval(function() {
+                attempts += 1;
+                syncState();
+                if ($(selector).length > 0 || attempts >= 50) {
+                    clearInterval(intervalId);
+                }
+            }, 200);
+
+            if (window.MutationObserver) {
+                var observer = new MutationObserver(function() {
+                    syncState();
+                });
+
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+        });
     };
 
     return {

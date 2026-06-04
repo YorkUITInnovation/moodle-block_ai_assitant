@@ -207,6 +207,7 @@ class block_ai_assistant extends block_base
         // Get the users grade
         // Get the grade item for the course
         $user_grade = 0;
+        cria::ensure_course_gradebook_integrity((int)$this->page->course->id);
         $grade_item = grade_item::fetch(array('itemtype' => 'course', 'courseid' => $this->page->course->id));
         if ($grade_item) {
             // Get the user's grade
@@ -234,6 +235,12 @@ class block_ai_assistant extends block_base
             $name = get_string('student_and_name', 'block_ai_assistant', fullname($USER));
         }
 
+        $launcherproxystate = ((int)($course_record->published ?? 0) === 1)
+            ? get_string('enabled', 'block_ai_assistant')
+            : get_string('disabled', 'block_ai_assistant');
+        $launcherproxytitle = get_string('ai_assistant', 'block_ai_assistant')
+            . ' - ' . get_string('access', 'block_ai_assistant') . ': ' . $launcherproxystate;
+
         // Set payload. The payload is used to modify the prompt so that the user can get personilized information
         $payload = array(
             'idNumber' => $USER->idnumber,
@@ -250,8 +257,17 @@ class block_ai_assistant extends block_base
 
         $embed_code_data = '<script>' . $embed_session_data . '</script>';
         $embed_code = '';
+        $embed_warning_message = '';
+        $embed_warning_details = '';
+        $has_embed_loader = trim((string)$embed_session_data) !== '';
+
+        if ($availability->exception == 'success' && !$has_embed_loader) {
+            $embed_warning_message = get_string('embed_loader_unavailable', 'block_ai_assistant');
+            $embed_warning_details = get_string('embed_loader_unavailable_help', 'block_ai_assistant');
+        }
+
         if ($availability->exception == 'success') {
-            if ($course_record->published == 1) {
+            if ($course_record->published == 1 && $has_embed_loader) {
                 $embed_code .= $embed_code_data;
             } else {
                 $embed_code = '';
@@ -273,6 +289,12 @@ class block_ai_assistant extends block_base
         $teacher_embed_code = '';
         $training_status_id = '';
         $training_status = '';
+
+        if ($availability->exception == 'success' && $has_embed_loader && $is_teacher) {
+            // Teachers should always see the launcher while managing the block,
+            // even if student publishing is disabled.
+            $teacher_embed_code = $embed_code_data;
+        }
 
         // Get training status
         $show_bot = false;
@@ -310,10 +332,6 @@ class block_ai_assistant extends block_base
             if ($modules > 0) {
                 $show_bot = true;
             }
-            // Display bot
-            if ($show_bot == true) {
-                $teacher_embed_code = $embed_code_data;
-            }
         } else {
             $training_status_id = 4;
             $training_status = '';
@@ -334,7 +352,6 @@ class block_ai_assistant extends block_base
                         $question_training_status_id = 1;
                         $question_training_status = '<div class="badge badge-success">'
                             . get_string('trained', 'block_ai_assistant') . '</div>';
-                        $teacher_embed_code = $embed_code_data;
                     } else {
                         $question_training_status_id = 0;
                         $question_training_status = '<div class="badge badge-warning">'
@@ -344,7 +361,6 @@ class block_ai_assistant extends block_base
                     $results = cria::get_content_training_status($question_file->cria_fileid);
                     $question_training_status_id = $results->training_status_id;
                     $question_training_status = $results->training_status;
-                    $teacher_embed_code = $embed_code_data;
                 } else {
                     $question_training_status_id = 0;
                     $question_training_status = '<div class="badge badge-warning">'
@@ -363,7 +379,7 @@ class block_ai_assistant extends block_base
             $error_message = $availability->message;
         }
 
-        if ($bot_api_key_exists == false) {
+        if ($bot_api_key_exists == false && !$has_embed_loader) {
             $localcfg = get_config('local_cria');
             $has_criabot = (!empty($config->criabot_url) || !empty($localcfg->criabot_url));
             if ($has_criabot) {
@@ -380,6 +396,14 @@ class block_ai_assistant extends block_base
         if ($question_file) {
            $question_file_id = $question_file->id;
         }
+
+          $teacherpositionraw = isset($config->embed_position_teacher) ? (int)$config->embed_position_teacher : 0;
+          $teacherposition = ($teacherpositionraw >= 1 && $teacherpositionraw <= 4) ? $teacherpositionraw : 1;
+          $teacherembedpositionstyle = self::build_embed_position_style($teacherposition);
+
+          $studentpositionraw = isset($course_record->embed_position) ? (int)$course_record->embed_position : (int)$config->embed_position;
+          $studentposition = ($studentpositionraw >= 1 && $studentpositionraw <= 4) ? $studentpositionraw : 1;
+          $studentembedpositionstyle = self::build_embed_position_style($studentposition);
 
         $tutorials = '';
         if (!property_exists($course_record, 'publish_tutorials')) {
@@ -412,13 +436,18 @@ class block_ai_assistant extends block_base
             'embed_code' => $embed_code,
             'teacher_embed_code' => $teacher_embed_code,
             'autotest_url' => $autotest_url,
-            'embed_offset' => $config->embed_position_teacher,
+            'teacher_embed_position_style' => $teacherembedpositionstyle,
+            'student_embed_position_style' => $studentembedpositionstyle,
+            'launcher_proxy_title' => $launcherproxytitle,
+            'launcher_proxy_color' => !empty($config->theme_color) ? (string)$config->theme_color : '#e31837',
             'training_status' => $training_status,
             'training_status_id' => $training_status_id,
             'question_training_status' => $question_training_status,
             'question_training_status_id' => $question_training_status_id,
             'error_code' => $error_code,
             'error_message' => $error_message,
+            'embed_warning_message' => $embed_warning_message,
+            'embed_warning_details' => $embed_warning_details,
             'is_admin' => has_capability('block/ai_assistant:view_autotest', $course_context),
             'tutorials' => $tutorials,
             'is_teacher' => $is_teacher,
@@ -449,6 +478,34 @@ class block_ai_assistant extends block_base
             'mod' => false,
             'tag' => false
         );
+    }
+
+    /**
+     * Convert embed position code to fixed launcher CSS.
+     * 1: bottom-left, 2: bottom-right, 3: top-right, 4: top-left.
+     *
+     * @param int $position
+     * @return string
+     */
+    private static function build_embed_position_style(int $position): string
+    {
+        $distance = 24;
+
+        switch ($position) {
+            case 2:
+                return 'left: auto !important; right: ' . $distance . 'px !important; bottom: ' . $distance
+                    . 'px !important; top: auto !important;';
+            case 3:
+                return 'left: auto !important; right: ' . $distance . 'px !important; top: ' . $distance
+                    . 'px !important; bottom: auto !important;';
+            case 4:
+                return 'left: ' . $distance . 'px !important; right: auto !important; top: ' . $distance
+                    . 'px !important; bottom: auto !important;';
+            case 1:
+            default:
+                return 'left: ' . $distance . 'px !important; right: auto !important; bottom: ' . $distance
+                    . 'px !important; top: auto !important;';
+        }
     }
 
     /**

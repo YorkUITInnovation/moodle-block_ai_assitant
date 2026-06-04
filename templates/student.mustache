@@ -1,5 +1,22 @@
 <input type="hidden" id="block-ai-assistant-course-id" value="{{courseid}}">
 {{^error_code}}
+    {{#student_embed_position_style}}
+        <style>
+            .cria-wrapper {
+                {{student_embed_position_style}}
+            }
+        </style>
+    {{/student_embed_position_style}}
+
+    {{#embed_warning_message}}
+        <div class="block-ai-assistant-embed-warning alert alert-warning" role="alert">
+            <strong>{{embed_warning_message}}</strong>
+            {{#embed_warning_details}}
+                <div class="small mt-1">{{embed_warning_details}}</div>
+            {{/embed_warning_details}}
+        </div>
+    {{/embed_warning_message}}
+
     {{{embed_code}}}
     {{#syllabus_url}}
         <div class="row">
@@ -21,7 +38,7 @@
     <div class="row">
         <div class="col-md-12">
             <div class="alert alert-danger">
-                <h3{{error_code}}</h3>
+                <h3>{{error_code}}</h3>
                 <p>{{error_message}}</p>
             </div>
         </div>

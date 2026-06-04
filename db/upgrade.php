@@ -255,6 +255,62 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2026052102, 'ai_assistant');
     }
 
+    if ($oldversion < 2026052503) {
+        $table = new xmldb_table('block_aia_gradebook_snapshots');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('session_id', XMLDB_TYPE_CHAR, '128', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('revision', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('snapshot_type', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, 'baseline');
+        $table->add_field('schema_version', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '1');
+        $table->add_field('checksum', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('payload_json', XMLDB_TYPE_TEXT, 'big', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('payload_compressed', XMLDB_TYPE_TEXT, 'big', null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_index('course_session_rev_uix', XMLDB_INDEX_UNIQUE, ['courseid', 'session_id', 'revision']);
+        $table->add_index('course_session_type_x', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'session_id', 'snapshot_type']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_block_savepoint(true, 2026052503, 'ai_assistant');
+    }
+
+    if ($oldversion < 2026052504) {
+        // Version bump to refresh plugin metadata (new gradebook revert webservice + UI strings).
+        upgrade_block_savepoint(true, 2026052504, 'ai_assistant');
+    }
+
+    if ($oldversion < 2026052505) {
+        $table = new xmldb_table('block_aia_gradebook_audit');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('session_id', XMLDB_TYPE_CHAR, '128', null, null, null, null);
+        $table->add_field('revision', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('correlation_id', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('event_name', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('outcome', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('details_json', XMLDB_TYPE_TEXT, 'big', null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_index('course_session_event_x', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'session_id', 'event_name']);
+        $table->add_index('correlation_x', XMLDB_INDEX_NOTUNIQUE, ['correlation_id']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_block_savepoint(true, 2026052505, 'ai_assistant');
+    }
+
     return true;
 
 }

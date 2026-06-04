@@ -348,6 +348,16 @@ class block_ai_assistant_course_modules_ws extends external_api
             case 'glossary':
                 $trained = $TRAINING->glossary();
                 break;
+            case 'assign':
+                error_log('block_ai_assistant: skipped module training for cmid=' . $cmid
+                    . ' type=assign (security policy: assignment content is excluded from AI training pipeline)');
+                $trained = false;
+                break;
+            case 'quiz':
+                error_log('block_ai_assistant: skipped module training for cmid=' . $cmid
+                    . ' type=quiz (security policy: quiz content is excluded from AI training pipeline)');
+                $trained = false;
+                break;
             default:
                 error_log('block_ai_assistant: unsupported module type for cmid=' . $cmid . ' type=' . $TRAINING->get_module_type());
                 $trained = false;

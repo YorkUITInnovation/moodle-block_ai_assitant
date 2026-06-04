@@ -64,6 +64,38 @@ function block_ai_assistant_course_module_deleted($event)
 }
 
 /**
+ * Callback when a grade item is deleted.
+ *
+ * @param \core\event\base $event
+ * @return void
+ */
+function block_ai_assistant_gradebook_item_deleted($event)
+{
+    $data = (object)$event->get_data();
+    cria::handle_gradebook_structure_deleted_event(
+        (int)($data->courseid ?? 0),
+        'grade_item_deleted',
+        (int)($data->objectid ?? 0)
+    );
+}
+
+/**
+ * Callback when a grade category is deleted.
+ *
+ * @param \core\event\base $event
+ * @return void
+ */
+function block_ai_assistant_gradebook_category_deleted($event)
+{
+    $data = (object)$event->get_data();
+    cria::handle_gradebook_structure_deleted_event(
+        (int)($data->courseid ?? 0),
+        'grade_category_deleted',
+        (int)($data->objectid ?? 0)
+    );
+}
+
+/**
  * Callback function for forum post created event
  */
 function block_ai_assistant_forum_retrain($event)
@@ -99,4 +131,26 @@ function block_ai_assistant_glossary_retrain($event)
     $data = (object)$event->get_data();
     $TRAINING = new course_module_training($data->objectid, true);
     $TRAINING->glossary();
+}
+
+/**
+ * Purge stale gradebook structural rows before core grade UI runs.
+ *
+ * @param \core\event\base $event
+ * @return void
+ */
+function block_ai_assistant_course_viewed($event)
+{
+    $data = $event->get_data();
+    $courseid = (int)($data['courseid'] ?? 0);
+    if ($courseid < 1) {
+        return;
+    }
+
+    $uri = (string)($_SERVER['REQUEST_URI'] ?? '');
+    if (strpos($uri, '/grade/') === false) {
+        return;
+    }
+
+    cria::ensure_course_gradebook_integrity($courseid);
 }
