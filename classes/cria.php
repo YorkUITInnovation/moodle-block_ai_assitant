@@ -5025,51 +5025,12 @@ class cria
         $sub_map = is_array($subcategory_by_parent[$category_key] ?? null) ? $subcategory_by_parent[$category_key] : [];
         $resolved_sub_id = self::resolve_subcategory_id_for_parent($subcategory_name, $sub_map);
         if ($resolved_sub_id !== null) {
-            // #region agent log
-            @file_put_contents(
-                '/Users/kiarash/Desktop/project/Prog/Cria/.cursor/debug-bc8bf1.log',
-                json_encode([
-                    'sessionId' => 'bc8bf1',
-                    'hypothesisId' => 'H1',
-                    'location' => 'cria.php:resolve_mapping_target_category_id',
-                    'message' => 'subcategory_resolved',
-                    'data' => [
-                        'category' => $category_name,
-                        'requested_subcategory' => $subcategory_name,
-                        'resolved_subcategory_id' => $resolved_sub_id,
-                        'item_label' => $item_label,
-                    ],
-                    'timestamp' => (int)round(microtime(true) * 1000),
-                ]) . "\n",
-                FILE_APPEND
-            );
-            // #endregion
             return $resolved_sub_id;
         }
 
         $warnings[] = '⚠ Subcategory "' . $subcategory_name . '" was not found under category "' . $category_name
             . ($item_label !== '' ? '" for item "' . $item_label : '')
             . '". Kept under parent category instead.';
-
-        // #region agent log
-        @file_put_contents(
-            '/Users/kiarash/Desktop/project/Prog/Cria/.cursor/debug-bc8bf1.log',
-            json_encode([
-                'sessionId' => 'bc8bf1',
-                'hypothesisId' => 'H1',
-                'location' => 'cria.php:resolve_mapping_target_category_id',
-                'message' => 'subcategory_unresolved_fallback_parent',
-                'data' => [
-                    'category' => $category_name,
-                    'requested_subcategory' => $subcategory_name,
-                    'available_subcategories' => array_keys($sub_map),
-                    'item_label' => $item_label,
-                ],
-                'timestamp' => (int)round(microtime(true) * 1000),
-            ]) . "\n",
-            FILE_APPEND
-        );
-        // #endregion
 
         return $target_category_id;
     }
@@ -5705,6 +5666,7 @@ class cria
         if (!empty($applywarnings)) {
             $warnings = array_merge($warnings, $applywarnings);
         }
+        self::repair_course_total_grade_item_categoryid($courseid);
 
         try {
             grade_regrade_final_grades($courseid);
@@ -6586,6 +6548,49 @@ class cria
     }
 
     /**
+     * Moodle expects course-total grade_items to have categoryid = NULL.
+     * A non-null value makes depends_on() include the course item itself and
+     * leaves needsupdate stuck (gradesneedregrading on export).
+     *
+     * @param int $courseid
+     * @return bool True when at least one row was corrected
+     */
+    private static function repair_course_total_grade_item_categoryid(int $courseid): bool
+    {
+        global $DB;
+
+        if ($courseid < 1) {
+            return false;
+        }
+
+        $root = \grade_category::fetch_course_category($courseid);
+        if (!$root) {
+            return false;
+        }
+
+        $items = $DB->get_records(
+            'grade_items',
+            [
+                'courseid' => $courseid,
+                'itemtype' => 'course',
+                'iteminstance' => (int)$root->id,
+            ],
+            '',
+            'id, categoryid'
+        );
+
+        $changed = false;
+        foreach (($items ?: []) as $item) {
+            if ($item->categoryid !== null && (int)$item->categoryid !== 0) {
+                $DB->set_field('grade_items', 'categoryid', null, ['id' => (int)$item->id]);
+                $changed = true;
+            }
+        }
+
+        return $changed;
+    }
+
+    /**
      * Clean up orphaned category grade items that may have been left behind
      * when the block was removed/re-added. These items can have NULL categoryid
      * which causes "Attempt to assign property 'sortorder' on null" errors.
@@ -6676,6 +6681,7 @@ class cria
 
         $removed = self::cleanup_orphaned_category_items($courseid);
         $fixed = self::ensure_gradebook_structural_items($courseid);
+        $coursecategoryrepaired = self::repair_course_total_grade_item_categoryid($courseid);
         self::normalize_null_sortorders($courseid);
 
         $root = \grade_category::fetch_course_category($courseid);
@@ -6690,9 +6696,27 @@ class cria
 
         $courseitems = (int)$DB->count_records('grade_items', ['courseid' => $courseid, 'itemtype' => 'course']);
 
+        require_once($CFG->libdir . '/gradelib.php');
+        if ($coursecategoryrepaired || grade_needs_regrade_final_grades($courseid)) {
+            try {
+                $courseitem = \grade_item::fetch_course_item($courseid);
+                $dependencies = $courseitem ? array_map('strval', array_values($courseitem->depends_on(true))) : [];
+                $selfdependency = $courseitem && in_array((string)$courseitem->id, $dependencies, true);
+                if ($coursecategoryrepaired || !$selfdependency) {
+                    grade_regrade_final_grades($courseid);
+                }
+            } catch (\Throwable $e) {
+                debugging(
+                    'grade_regrade_final_grades failed after gradebook integrity repair for course '
+                    . $courseid . ': ' . $e->getMessage(),
+                    DEBUG_DEVELOPER
+                );
+            }
+        }
+
         return [
             'removed' => $removed,
-            'fixed' => $fixed,
+            'fixed' => $fixed + ($coursecategoryrepaired ? 1 : 0),
             'course_items' => $courseitems,
         ];
     }
@@ -6762,14 +6786,12 @@ class cria
                 $shoulddelete = true;
             } else if (!$DB->record_exists('grade_categories', ['id' => $validrootid, 'courseid' => $cid])) {
                 $shoulddelete = true;
-            } else {
-                $actualcategoryid = (int)($item->categoryid ?? 0);
-                if ($actualcategoryid !== $validrootid) {
-                    $update = new \stdClass();
-                    $update->id = (int)$item->id;
-                    $update->categoryid = $validrootid;
-                    $DB->update_record('grade_items', $update);
-                }
+            } else if ($item->categoryid !== null && (int)$item->categoryid !== 0) {
+                // Course total must stay at categoryid NULL (not under the root category).
+                $update = new \stdClass();
+                $update->id = (int)$item->id;
+                $update->categoryid = null;
+                $DB->update_record('grade_items', $update);
             }
 
             if ($shoulddelete) {
@@ -6856,7 +6878,7 @@ class cria
                 $gi->courseid = $courseid;
                 $gi->itemtype = 'course';
                 $gi->iteminstance = (int)$coursecat->id;
-                $gi->categoryid = (int)$coursecat->id;
+                $gi->categoryid = null;
                 $gi->gradetype = defined('GRADE_TYPE_VALUE') ? GRADE_TYPE_VALUE : 1;
                 $gi->grademin = 0;
                 $gi->grademax = 100;
@@ -6866,6 +6888,9 @@ class cria
             } catch (\Throwable $e) {
                 debugging('Could not recreate course total grade_item for course ' . $courseid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
+        } else if ($courseitem->categoryid !== null && (int)$courseitem->categoryid !== 0) {
+            $DB->set_field('grade_items', 'categoryid', null, ['id' => (int)$courseitem->id]);
+            $fixed++;
         }
 
         $categories = $DB->get_records('grade_categories', ['courseid' => $courseid], 'id ASC', 'id,parent');
