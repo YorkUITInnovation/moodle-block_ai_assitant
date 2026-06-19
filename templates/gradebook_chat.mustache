@@ -87,6 +87,34 @@
         border-bottom-left-radius: 4px;
     }
 
+    .message-content code,
+    .message-content .gradebook-inline-code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 0.92em;
+        padding: 1px 5px;
+        border-radius: 4px;
+        background: var(--bs-tertiary-bg, #f1f3f5);
+        border: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.08));
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    .message-content pre.gradebook-proposal-tree {
+        margin: 12px 0 14px;
+        padding: 14px 16px;
+        line-height: 1.42;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        font-size: 13px;
+        white-space: pre;
+        background: var(--bs-tertiary-bg, #f8f9fa);
+        border: 1px solid var(--bs-border-color-translucent, rgba(0, 0, 0, 0.1));
+        border-radius: 10px;
+        overflow-x: auto;
+        color: var(--bs-body-color, #212529);
+        letter-spacing: 0.01em;
+        tab-size: 4;
+    }
+
     .human-message .message-content {
         background: var(--bs-primary, #0d6efd);
         color: var(--bs-white, #ffffff);

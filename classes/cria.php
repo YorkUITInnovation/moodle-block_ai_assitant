@@ -9,6 +9,7 @@ use Throwable;
 
 class cria
 {
+    private const NOT_GRADED_RESTORE_SETTING = 'block_ai_assistant_not_graded_restore';
 
     /**
      * Recursively serialize a gradebook tree node and collect summary stats.
@@ -318,21 +319,28 @@ class cria
             $created = json_decode($create_raw, true);
 
             if (is_array($created) && (int)($created['status'] ?? 0) === 409) {
-                $delete_url = $criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/delete';
-                $curl->post($delete_url, '', [
-                    'CURLOPT_TIMEOUT' => 60,
-                    'CURLOPT_CUSTOMREQUEST' => 'DELETE',
+                // Bot already exists: keep indexed training data instead of delete/recreate.
+                $about_raw = (string)$curl->get($criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/about', [], [
+                    'CURLOPT_TIMEOUT' => 30,
                     'CURLOPT_HTTPHEADER' => [
                         'Accept: application/json',
                         'X-API-Key: ' . $api_key,
                     ],
                 ]);
+                $about = json_decode($about_raw, true);
+                $existing_bot_api_key = '';
+                if (is_array($about)) {
+                    $existing_bot_api_key = (string)($about['about']['bot_api_key'] ?? $about['bot_api_key'] ?? '');
+                }
 
-                $create_raw = (string)$curl->post($create_url, json_encode($create_body), [
-                    'CURLOPT_TIMEOUT' => 60,
-                    'CURLOPT_HTTPHEADER' => $common_headers,
+                return json_encode([
+                    'name' => $bot_name,
+                    'bot_id' => (int)($about['about']['info']['id'] ?? 0),
+                    'bot_api_key' => $existing_bot_api_key,
+                    'status' => 409,
+                    'code' => 'ALREADY_EXISTS',
+                    'message' => 'Bot already exists; reused existing instance.',
                 ]);
-                $created = json_decode($create_raw, true);
             }
 
             $bot_api_key = is_array($created) ? (string)($created['bot_api_key'] ?? '') : '';
@@ -543,8 +551,9 @@ class cria
             'min_relevance' => $config->min_relevance,
             'max_context' => $config->max_context,
             'no_context_message' => $no_context_message,
-            'no_context_use_message' => $config->no_context_use_message,
-            'no_context_llm_guess' => $config->no_context_llm_guess,
+            'no_context_use_message' => true,
+            // Course assistants must rely on trained materials, not generic LLM guesses.
+            'no_context_llm_guess' => false,
             'email' => implode('; ', self::get_teacher_emails($course_id)),
             'available_child' => $config->available_child,
             'parse_strategy' => $parsing_strategy,
@@ -1228,6 +1237,210 @@ class cria
         // Replace the [course_title] with the fullname of the course
         $system_message = str_replace('[course_title]', $course_data->fullname, $system_message);
         return $system_message;
+    }
+
+    /**
+     * Keep course assistant bots grounded in trained materials instead of generic LLM guesses.
+     *
+     * @param int $course_id
+     * @return void
+     */
+    /**
+     * Return the number of indexed documents for a course bot.
+     *
+     * @param string $bot_name
+     * @return int
+     */
+    public static function get_bot_document_count(string $bot_name): int
+    {
+        global $CFG;
+        require_once($CFG->libdir . '/filelib.php');
+
+        $block = get_config('block_ai_assistant');
+        $local = get_config('local_cria');
+
+        $criabot_url = '';
+        if (is_object($local) && !empty($local->criabot_url)) {
+            $criabot_url = rtrim((string)$local->criabot_url, '/');
+        } else if (is_object($block) && !empty($block->criabot_url)) {
+            $criabot_url = rtrim((string)$block->criabot_url, '/');
+        }
+
+        $api_key = '';
+        if (is_object($local) && !empty($local->criadex_api_key)) {
+            $api_key = (string)$local->criadex_api_key;
+        } else if (is_object($block) && !empty($block->criadex_api_key)) {
+            $api_key = (string)$block->criadex_api_key;
+        }
+
+        if ($criabot_url === '' || $api_key === '' || trim($bot_name) === '') {
+            return 0;
+        }
+
+        $curl = new \curl();
+        $raw = (string)$curl->get(
+            $criabot_url . '/bots/' . rawurlencode($bot_name) . '/documents/list',
+            [],
+            [
+                'CURLOPT_TIMEOUT' => 20,
+                'CURLOPT_HTTPHEADER' => [
+                    'Accept: application/json',
+                    'X-API-Key: ' . $api_key,
+                ],
+            ]
+        );
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return 0;
+        }
+
+        $names = $decoded['document_names'] ?? [];
+        return is_array($names) ? count($names) : 0;
+    }
+
+    /**
+     * Retrain one tracked course module into the current course bot.
+     *
+     * @param int $cmid
+     * @return bool
+     */
+    public static function retrain_course_module(int $cmid): bool
+    {
+        $training = new course_module_training($cmid, true);
+        $trained = false;
+
+        switch ($training->get_module_type()) {
+            case 'forum':
+                $trained = $training->forum();
+                break;
+            case 'resource':
+                $trained = $training->resource();
+                break;
+            case 'page':
+                $trained = $training->page();
+                break;
+            case 'label':
+                $trained = $training->label();
+                break;
+            case 'folder':
+                $trained = $training->folder();
+                break;
+            case 'book':
+                $trained = $training->book();
+                break;
+            case 'glossary':
+                $trained = $training->glossary();
+                break;
+            default:
+                $trained = false;
+        }
+
+        return (bool)$trained;
+    }
+
+    /**
+     * Rebuild the bot document index when Moodle still marks content as trained
+     * but Criabot has no indexed documents (for example after accidental bot recreation).
+     *
+     * @param int $course_id
+     * @return void
+     */
+    public static function ensure_bot_training_index(int $course_id): void
+    {
+        global $DB;
+
+        $settings = $DB->get_record(
+            'block_aia_settings',
+            ['courseid' => $course_id],
+            'id, bot_name, syllabus_trained',
+            IGNORE_MISSING
+        );
+        if (!$settings || empty($settings->bot_name)) {
+            return;
+        }
+
+        $bot_name = (string)$settings->bot_name;
+        if (self::get_bot_document_count($bot_name) > 0) {
+            return;
+        }
+
+        $trained_modules = $DB->get_records(
+            'block_aia_course_modules',
+            ['courseid' => $course_id, 'trained' => 1],
+            'id ASC',
+            'id, cmid'
+        );
+
+        foreach ($trained_modules as $module) {
+            try {
+                self::retrain_course_module((int)$module->cmid);
+            } catch (\Throwable $e) {
+                error_log(
+                    'block_ai_assistant: ensure_bot_training_index failed retraining cmid='
+                    . (int)$module->cmid . ' course=' . (int)$course_id . ' error=' . $e->getMessage()
+                );
+            }
+        }
+    }
+
+    public static function sync_course_bot_retrieval_settings(int $course_id): void
+    {
+        global $CFG, $DB;
+
+        require_once($CFG->libdir . '/filelib.php');
+
+        $settings = $DB->get_record('block_aia_settings', ['courseid' => $course_id], 'bot_name, no_context_message');
+        if (!$settings || empty($settings->bot_name)) {
+            return;
+        }
+
+        $block = get_config('block_ai_assistant');
+        $local = get_config('local_cria');
+
+        $criabot_url = '';
+        if (is_object($local) && !empty($local->criabot_url)) {
+            $criabot_url = rtrim((string)$local->criabot_url, '/');
+        } else if (is_object($block) && !empty($block->criabot_url)) {
+            $criabot_url = rtrim((string)$block->criabot_url, '/');
+        }
+
+        $api_key = '';
+        if (is_object($local) && !empty($local->criadex_api_key)) {
+            $api_key = (string)$local->criadex_api_key;
+        } else if (is_object($block) && !empty($block->criadex_api_key)) {
+            $api_key = (string)$block->criadex_api_key;
+        }
+
+        if ($criabot_url === '' || $api_key === '') {
+            return;
+        }
+
+        $no_context_message = trim((string)($settings->no_context_message ?? ''));
+        if ($no_context_message === '') {
+            $no_context_message = (string)self::get_default_no_context_message();
+        }
+
+        $update_body = [
+            'no_context_message' => $no_context_message,
+            'no_context_use_message' => true,
+            'no_context_llm_guess' => false,
+            'system_message' => (string)self::get_default_system_message($course_id),
+        ];
+
+        $curl = new \curl();
+        $curl->post(
+            $criabot_url . '/bots/' . rawurlencode((string)$settings->bot_name) . '/manage/update',
+            json_encode($update_body),
+            [
+                'CURLOPT_TIMEOUT' => 30,
+                'CURLOPT_CUSTOMREQUEST' => 'PATCH',
+                'CURLOPT_HTTPHEADER' => [
+                    'Accept: application/json',
+                    'Content-Type: application/json',
+                    'X-API-Key: ' . $api_key,
+                ],
+            ]
+        );
     }
 
     /**
@@ -2487,6 +2700,24 @@ class cria
     }
 
     /**
+     * Attach Moodle-side revert availability flags to a Criabot gradebook JSON payload.
+     *
+     * @param int $courseid
+     * @param string $sessionid
+     * @param array $payload
+     * @return array
+     */
+    public static function enrich_gradebook_session_flags(int $courseid, string $sessionid, array $payload): array
+    {
+        $revertavailable = self::gradebook_revert_available($courseid, $sessionid, $payload);
+        $payload['revert_available'] = $revertavailable;
+        $data = is_array($payload['data'] ?? null) ? $payload['data'] : [];
+        $data['revert_available'] = $revertavailable;
+        $payload['data'] = $data;
+        return $payload;
+    }
+
+    /**
      * Restore category/item placement from snapshot ledger payload.
      *
      * @param int $courseid
@@ -3726,8 +3957,14 @@ class cria
             'cleaned' => false,
             'message' => 'No AI Assistant gradebook categories found to remove.',
         ];
+        $restorewarnings = [];
 
         try {
+            self::restore_tracked_not_graded_activities($courseid, [], $restorewarnings);
+            if (!empty($restorewarnings)) {
+                debugging('Restored not-graded activities during AI gradebook cleanup: ' . implode(' | ', $restorewarnings), DEBUG_DEVELOPER);
+            }
+
             $manualremoved = self::_remove_ai_owned_grade_items($courseid, $preserve_grade_item_ids);
 
             $roots = self::get_ai_gradebook_root_ids($courseid);
@@ -3741,7 +3978,7 @@ class cria
                             . ($manualremoved === 1 ? '' : 's') . '.',
                     ];
                 }
-                return $result;
+                return self::append_not_graded_restore_message($result, $restorewarnings);
             }
 
             $allcats = $DB->get_records('grade_categories', ['courseid' => $courseid]);
@@ -3759,7 +3996,7 @@ class cria
                 self::_clear_ai_ownership_ids($courseid);
                 self::_purge_orphan_category_grade_items($courseid);
                 $result['message'] = 'Could not resolve AI gradebook category tree IDs.';
-                return $result;
+                return self::append_not_graded_restore_message($result, $restorewarnings);
             }
 
             debugging('Removing AI gradebook tree (' . implode(',', $tree_ids) . ') from course ' . $courseid, DEBUG_DEVELOPER);
@@ -3779,12 +4016,12 @@ class cria
             $remaining_roots = self::count_ai_gradebook_roots($courseid);
             if ($remaining_roots > 0) {
                 $result['message'] = $remaining_roots . ' AI Assistant gradebook ' . ($remaining_roots === 1 ? 'category' : 'categories') . ' could not be removed. Check Moodle grade setup manually.';
-                return $result;
+                return self::append_not_graded_restore_message($result, $restorewarnings);
             }
 
             if (self::_repair_dangling_grade_items($courseid, $tree_ids) > 0) {
                 $result['message'] = 'Categories removed but some grade items still referenced deleted AI categories. Please re-run delete session once.';
-                return $result;
+                return self::append_not_graded_restore_message($result, $restorewarnings);
             }
 
             try {
@@ -3804,14 +4041,14 @@ class cria
                 'cleaned' => true,
                 'message' => implode(' ', $parts),
             ];
-            return $result;
+            return self::append_not_graded_restore_message($result, $restorewarnings);
         } catch (Throwable $e) {
             debugging('Error removing AI gradebook from course: ' . $e->getMessage(), DEBUG_DEVELOPER);
             $result = [
                 'cleaned' => false,
                 'message' => 'Error during cleanup: ' . $e->getMessage(),
             ];
-            return $result;
+            return self::append_not_graded_restore_message($result, $restorewarnings);
         } finally {
             if ($courseid > 0) {
                 self::_purge_orphan_category_grade_items($courseid);
@@ -4033,7 +4270,17 @@ class cria
         }
 
         $applywarnings = [];
-        $normalized_mapping = self::normalize_confirmed_mapping($courseid, $confirmed_mapping, $applywarnings);
+        $proposalfornormalize = null;
+        if (trim($session_id) !== '') {
+            $proposalpayload = json_decode(self::gradebook_proposal(trim($session_id)), true);
+            $proposalfornormalize = self::extract_finalize_proposal($proposalpayload);
+        }
+        $normalized_mapping = self::normalize_confirmed_mapping(
+            $courseid,
+            $confirmed_mapping,
+            $applywarnings,
+            $proposalfornormalize
+        );
         $mappingconstraints = self::extract_mapping_constraints($normalized_mapping);
 
         if ($courseid > 0 && !empty($confirmed_mapping) && empty($normalized_mapping)) {
@@ -4176,7 +4423,12 @@ class cria
                             $applywarnings[] = (string)$precleanup['message'];
                         }
 
-                        $localwarnings = self::apply_gradebook_to_course($courseid, $proposal, $normalized_mapping);
+                        $localwarnings = self::apply_gradebook_to_course(
+                            $courseid,
+                            $proposal,
+                            $normalized_mapping,
+                            $confirmed_mapping
+                        );
                         if (!empty($localwarnings)) {
                             $applywarnings = array_merge($applywarnings, $localwarnings);
                         }
@@ -4257,8 +4509,6 @@ class cria
                     }
 
                     if (!empty($applywarnings)) {
-                        $warningtext = implode(' ', $applywarnings);
-                        $response['message'] = trim((string)($response['message'] ?? 'Gradebook finalized.')) . ' ' . $warningtext;
                         $response['data'] = array_merge(
                             is_array($response['data'] ?? null) ? $response['data'] : [],
                             ['grade_setup_warnings' => $applywarnings]
@@ -4348,14 +4598,16 @@ class cria
         return $response_json;
     }
 
-    public static function gradebook_create_manual_item(int $courseid, string $itemname): array
+    public static function gradebook_create_manual_item(int $courseid, string $itemname, string $category = '', string $subcategory = ''): array
     {
-        global $CFG;
+        global $CFG, $DB;
         require_once($CFG->libdir . '/gradelib.php');
         require_once($CFG->libdir . '/grade/grade_item.php');
         require_once($CFG->libdir . '/grade/grade_category.php');
 
         $cleanname = trim($itemname);
+        $category = trim((string)$category);
+        $subcategory = trim((string)$subcategory);
         if ($courseid <= 0 || $cleanname === '') {
             return [
                 'success' => false,
@@ -4382,9 +4634,53 @@ class cria
                 ];
             }
 
+            // Default target is course root category
+            $target_category_id = (int)$coursecategory->id;
+
+            // If caller provided a category name, try to resolve it under this course.
+            if ($category !== '') {
+                $catrec = $DB->get_record('grade_categories', ['courseid' => $courseid, 'fullname' => $category], 'id', IGNORE_MISSING);
+                if ($catrec) {
+                    $target_category_id = (int)$catrec->id;
+                    // If subcategory requested, try to resolve existing subcategory under parent
+                    if ($subcategory !== '') {
+                        $children = $DB->get_records('grade_categories', ['parent' => $target_category_id], 'id ASC', 'id, fullname');
+                        $sub_map = [];
+                        foreach (($children ?: []) as $c) {
+                            $sub_map[strtolower((string)$c->fullname)] = (int)$c->id;
+                        }
+
+                        // Try exact match first, then normalized matching via helper
+                        $subkey = strtolower($subcategory);
+                        if (isset($sub_map[$subkey])) {
+                            $target_category_id = (int)$sub_map[$subkey];
+                        } else {
+                            $resolved = self::resolve_subcategory_id_for_parent($subcategory, $sub_map);
+                            if ($resolved !== null) {
+                                $target_category_id = $resolved;
+                            } else {
+                                // Create missing subcategory under parent with sane defaults
+                                $parentobj = \grade_category::fetch(['id' => $target_category_id]);
+                                $subobj = self::get_or_create_grade_category(
+                                    $courseid,
+                                    $subcategory,
+                                    (int)($parentobj->aggregation ?? 13),
+                                    $parentobj,
+                                    0.0,
+                                    ['droplow' => 0, 'keephigh' => 0, 'aggregateonlygraded' => 1, 'aggregateoutcomes' => 0, 'extra_credit' => false]
+                                );
+                                if ($subobj && isset($subobj->id)) {
+                                    $target_category_id = (int)$subobj->id;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             $gradeitem = new \grade_item();
             $gradeitem->courseid = $courseid;
-            $gradeitem->categoryid = (int)$coursecategory->id;
+            $gradeitem->categoryid = $target_category_id;
             $gradeitem->itemtype = 'manual';
             $gradeitem->itemname = $cleanname;
             $gradeitem->grademin = 0;
@@ -4392,7 +4688,7 @@ class cria
             if (defined('GRADE_TYPE_VALUE')) {
                 $gradeitem->gradetype = GRADE_TYPE_VALUE;
             }
-            $gradeitem->insert();
+            $gradeitem->insert('block_ai_assistant');
 
             if (empty($gradeitem->id)) {
                 throw new \moodle_exception('Manual grade item insert did not return an id.');
@@ -4760,10 +5056,15 @@ class cria
      * @param int $courseid
      * @param array $confirmed_mapping
      * @param array $warnings (output accumulator)
+     * @param array|null $proposal optional proposal for pending manual row detection
      * @return array normalized rows
      */
-    private static function normalize_confirmed_mapping(int $courseid, array $confirmed_mapping, array &$warnings = []): array
-    {
+    private static function normalize_confirmed_mapping(
+        int $courseid,
+        array $confirmed_mapping,
+        array &$warnings = [],
+        ?array $proposal = null
+    ): array {
         global $DB;
 
         $normalized = [];
@@ -4899,10 +5200,580 @@ class cria
                 continue;
             }
 
-            $warnings[] = '⚠ Skipped one mapping row because no valid Moodle CMID or grade item could be resolved for category ' . $category . '.';
+            $itemsource = strtolower(trim((string)($row['item_source'] ?? '')));
+            $itemtypehint = strtolower(trim((string)($row['grade_item_type'] ?? $row['itemtype'] ?? '')));
+            $mappingmethod = strtolower(trim((string)($row['mapping_method'] ?? '')));
+            $activitykey = strtolower(trim((string)($row['activity_key'] ?? '')));
+            $ismanuala = in_array($itemsource, ['manual', 'proposal_manual', 'proposal'], true)
+                || $itemtypehint === 'manual'
+                || in_array($mappingmethod, ['manual', 'proposal_manual', 'manual_ui'], true)
+                || str_starts_with($activitykey, 'manual:')
+                || str_starts_with($activitykey, 'proposal-manual:')
+                || self::is_proposal_manual_mapping_row($row, $proposal);
+            if ($ismanuala && $activityname !== '') {
+                $entry['grade_item_type'] = 'manual';
+                $entry['itemtype'] = 'manual';
+                if ($itemsource !== '') {
+                    $entry['item_source'] = $itemsource;
+                } else if ($mappingmethod !== '') {
+                    $entry['item_source'] = $mappingmethod === 'proposal_manual' ? 'proposal_manual' : 'manual';
+                }
+                $normalized[] = $entry;
+                continue;
+            }
+
+            $warnings[] = '⚠ Skipped one mapping row because no valid Moodle CMID or grade item could be resolved'
+                . ($activityname !== '' ? ' for "' . $activityname . '"' : '')
+                . ' in category ' . $category . '.';
         }
 
         return $normalized;
+    }
+
+    /**
+     * Resolve a Moodle grade item for an activity/manual label.
+     *
+     * @param int $courseid
+     * @param string $activityname
+     * @param int $gradeitemid
+     * @param int $cmid
+     * @return \grade_item|null
+     */
+    private static function resolve_grade_item_for_activity_label(
+        int $courseid,
+        string $activityname,
+        int $gradeitemid = 0,
+        int $cmid = 0
+    ): ?\grade_item {
+        global $DB;
+
+        $gi = null;
+        if ($gradeitemid > 0) {
+            $candidate = \grade_item::fetch(['id' => $gradeitemid]);
+            if ($candidate && (int)$candidate->courseid === $courseid) {
+                $gi = $candidate;
+            }
+        }
+
+        if (!$gi && $cmid > 0) {
+            try {
+                $modinfo = get_fast_modinfo($courseid);
+                $cm = $modinfo->get_cm($cmid);
+                if ($cm) {
+                    $found = \grade_item::fetch_all([
+                        'courseid' => $courseid,
+                        'iteminstance' => $cm->instance,
+                        'itemmodule' => $cm->modname,
+                        'itemtype' => 'mod',
+                    ]);
+                    if ($found) {
+                        $gi = reset($found);
+                    }
+                }
+            } catch (Throwable $e) {
+                debugging('Could not resolve not-graded CMID ' . $cmid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+        }
+
+        if (!$gi && $activityname !== '') {
+            $modrecords = $DB->get_records_select(
+                'grade_items',
+                "courseid = :courseid AND itemtype = 'mod'",
+                ['courseid' => $courseid],
+                'id ASC',
+                'id, courseid, itemtype, itemname, itemmodule, iteminstance'
+            );
+            foreach (($modrecords ?: []) as $modrecord) {
+                if (strcasecmp(trim((string)($modrecord->itemname ?? '')), $activityname) === 0) {
+                    $gi = \grade_item::fetch(['id' => (int)$modrecord->id]);
+                    if ($gi) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $gi;
+    }
+
+    /**
+     * Collect not-graded activity targets from proposal state and raw mapping rows.
+     *
+     * @param array $proposal
+     * @param array $rawconfirmedmapping
+     * @return array<int, array<string, mixed>>
+     */
+    private static function collect_not_graded_activity_targets(array $proposal, array $rawconfirmedmapping = []): array
+    {
+        $targets = [];
+        $seen = [];
+
+        foreach ((array)($proposal['not_graded_items'] ?? []) as $name) {
+            $label = trim((string)$name);
+            if ($label === '') {
+                continue;
+            }
+            $key = strtolower($label);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $targets[] = [
+                'activity_name' => $label,
+                'grade_item_id' => 0,
+                'moodle_cmid' => 0,
+            ];
+        }
+
+        foreach ($rawconfirmedmapping as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $category = strtolower(trim((string)($row['category'] ?? '')));
+            $isnotgraded = $category === '__not_graded__'
+                || $category === 'not graded'
+                || !empty($row['not_graded']);
+            if (!$isnotgraded) {
+                continue;
+            }
+
+            $label = trim((string)($row['activity_name'] ?? $row['grade_item_name'] ?? ''));
+            if ($label === '') {
+                continue;
+            }
+            $key = strtolower($label);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $targets[] = [
+                'activity_name' => $label,
+                'grade_item_id' => (int)($row['grade_item_id'] ?? 0),
+                'moodle_cmid' => (int)($row['moodle_cmid'] ?? 0),
+            ];
+        }
+
+        return $targets;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private static function load_not_graded_restore_map(int $courseid): array
+    {
+        global $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
+
+        $raw = grade_get_setting($courseid, self::NOT_GRADED_RESTORE_SETTING);
+        if (!is_string($raw) || trim($raw) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * @param array<string, array<string, mixed>> $map
+     */
+    private static function save_not_graded_restore_map(int $courseid, array $map): void
+    {
+        global $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
+
+        if (empty($map)) {
+            grade_set_setting($courseid, self::NOT_GRADED_RESTORE_SETTING, null);
+            return;
+        }
+
+        grade_set_setting($courseid, self::NOT_GRADED_RESTORE_SETTING, json_encode($map));
+    }
+
+    /**
+     * Infer the module point value to store for later restore.
+     */
+    private static function infer_module_grade_for_restore_capture(\grade_item $gi, float $modulegrade): float
+    {
+        if ($modulegrade > 0) {
+            return $modulegrade;
+        }
+
+        $grademax = (float)($gi->grademax ?? 0);
+        if ($grademax > 0) {
+            return $grademax;
+        }
+
+        return $modulegrade;
+    }
+
+    /**
+     * Resolve the module point value that should be restored.
+     */
+    private static function resolve_restore_module_grade(array $payload): float
+    {
+        $modulegrade = (float)($payload['module_grade'] ?? 0);
+        if ($modulegrade > 0) {
+            return $modulegrade;
+        }
+
+        $gradetype = (int)($payload['grade_item_gradetype'] ?? 0);
+        $grademax = (float)($payload['grade_item_grademax'] ?? 0);
+        if ($grademax > 0 && $gradetype === GRADE_TYPE_VALUE) {
+            return $grademax;
+        }
+        if ($grademax > 0) {
+            return $grademax;
+        }
+
+        return 0;
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private static function restore_not_graded_activity_from_payload(int $courseid, array $payload, array &$warnings): bool
+    {
+        global $DB, $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
+        require_once($CFG->libdir . '/grade/grade_item.php');
+
+        $module = trim((string)($payload['module'] ?? ''));
+        $instance = (int)($payload['instance'] ?? 0);
+        $activityname = trim((string)($payload['activity_name'] ?? ''));
+        if ($module === '' || $instance <= 0) {
+            return false;
+        }
+
+        $restored = false;
+        if ($module === 'assign' && array_key_exists('module_grade', $payload)) {
+            require_once($CFG->dirroot . '/mod/assign/lib.php');
+            $assign = $DB->get_record('assign', ['id' => $instance, 'course' => $courseid]);
+            $restoregrade = self::resolve_restore_module_grade($payload);
+            if ($assign && $restoregrade > 0) {
+                $assign->grade = $restoregrade;
+                $DB->set_field('assign', 'grade', $assign->grade, ['id' => $instance]);
+                $assign->courseid = $courseid;
+                assign_grade_item_update($assign);
+                $restored = true;
+            }
+        } else if ($module === 'quiz' && array_key_exists('module_grade', $payload)) {
+            require_once($CFG->dirroot . '/mod/quiz/lib.php');
+            $quiz = $DB->get_record('quiz', ['id' => $instance, 'course' => $courseid]);
+            $restoregrade = self::resolve_restore_module_grade($payload);
+            if ($quiz && $restoregrade > 0) {
+                $quiz->grade = $restoregrade;
+                $DB->set_field('quiz', 'grade', $quiz->grade, ['id' => $instance]);
+                quiz_grade_item_update($quiz);
+                $restored = true;
+            }
+        } else if (!empty($payload['grade_item_id'])) {
+            $gi = \grade_item::fetch(['id' => (int)$payload['grade_item_id']]);
+            if ($gi && (int)$gi->courseid === $courseid) {
+                if (array_key_exists('grade_item_gradetype', $payload)) {
+                    $gi->gradetype = (int)$payload['grade_item_gradetype'];
+                }
+                if (array_key_exists('grade_item_grademax', $payload)) {
+                    $gi->grademax = (float)$payload['grade_item_grademax'];
+                }
+                if (array_key_exists('grade_item_grademin', $payload)) {
+                    $gi->grademin = (float)$payload['grade_item_grademin'];
+                }
+                $gi->update('block_ai_assistant');
+                $restored = true;
+            }
+        }
+
+        if ($restored && !empty($payload['grade_item_id'])) {
+            $gi = \grade_item::fetch(['id' => (int)$payload['grade_item_id']]);
+            if ($gi && (int)$gi->courseid === $courseid) {
+                $gi->hidden = 0;
+                $gi->update('block_ai_assistant');
+            }
+        }
+
+        if ($restored && $activityname !== '') {
+            $warnings[] = 'ℹ Restored grading for activity "' . $activityname . '".';
+        } else if ($activityname !== '') {
+            $warnings[] = '⚠ Could not restore grading for activity "' . $activityname . '".';
+        }
+
+        return $restored;
+    }
+
+    /**
+     * Append not-graded restore notes to a cleanup result message.
+     *
+     * @param array{cleaned?:bool,message?:string} $result
+     * @param array<int, string> $restorewarnings
+     */
+    private static function append_not_graded_restore_message(array $result, array $restorewarnings): array
+    {
+        if (empty($restorewarnings)) {
+            return $result;
+        }
+
+        $restoremessage = implode(' ', array_values(array_unique($restorewarnings)));
+        $message = trim((string)($result['message'] ?? ''));
+        if ($message !== '') {
+            $result['message'] = $message . ' ' . $restoremessage;
+        } else {
+            $result['message'] = $restoremessage;
+        }
+        $result['cleaned'] = true;
+        return $result;
+    }
+
+    /**
+     * Restore activities that are no longer marked not graded.
+     *
+     * @param array<int, string> $activekeys lowercase activity names still marked not graded
+     */
+    private static function restore_tracked_not_graded_activities(int $courseid, array $activekeys, array &$warnings): void
+    {
+        $restoremap = self::load_not_graded_restore_map($courseid);
+        if (empty($restoremap)) {
+            return;
+        }
+
+        $active = [];
+        foreach ($activekeys as $key) {
+            $normalized = strtolower(trim((string)$key));
+            if ($normalized !== '') {
+                $active[$normalized] = true;
+            }
+        }
+
+        $changed = false;
+        foreach ($restoremap as $key => $payload) {
+            if (!is_array($payload)) {
+                unset($restoremap[$key]);
+                $changed = true;
+                continue;
+            }
+            if (!empty($active[$key])) {
+                continue;
+            }
+            if (self::restore_not_graded_activity_from_payload($courseid, $payload, $warnings)) {
+                unset($restoremap[$key]);
+                $changed = true;
+            }
+        }
+
+        if ($changed) {
+            self::save_not_graded_restore_map($courseid, $restoremap);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private static function disable_module_grading_for_grade_item(
+        int $courseid,
+        \grade_item $gi,
+        string $activityname,
+        array &$warnings
+    ): ?array {
+        global $DB, $CFG;
+        require_once($CFG->libdir . '/gradelib.php');
+
+        $module = trim((string)($gi->itemmodule ?? ''));
+        $instance = (int)($gi->iteminstance ?? 0);
+        if ($module === '' || $instance <= 0) {
+            return null;
+        }
+
+        $payload = [
+            'activity_name' => $activityname,
+            'module' => $module,
+            'instance' => $instance,
+            'grade_item_id' => (int)$gi->id,
+            'grade_item_hidden' => (int)($gi->hidden ?? 0),
+            'grade_item_gradetype' => (int)($gi->gradetype ?? GRADE_TYPE_VALUE),
+            'grade_item_grademax' => (float)($gi->grademax ?? 100),
+            'grade_item_grademin' => (float)($gi->grademin ?? 0),
+        ];
+
+        if ($module === 'assign') {
+            require_once($CFG->dirroot . '/mod/assign/lib.php');
+            $assign = $DB->get_record('assign', ['id' => $instance, 'course' => $courseid]);
+            if (!$assign) {
+                return null;
+            }
+            $payload['module_grade'] = self::infer_module_grade_for_restore_capture($gi, (float)$assign->grade);
+            if ((float)$assign->grade !== 0.0) {
+                $DB->set_field('assign', 'grade', 0, ['id' => $instance]);
+                $assign->grade = 0;
+            }
+            $assign->courseid = $courseid;
+            assign_grade_item_update($assign);
+            $warnings[] = 'ℹ Disabled grading for not-graded activity "' . $activityname . '".';
+            return $payload;
+        }
+
+        if ($module === 'quiz') {
+            require_once($CFG->dirroot . '/mod/quiz/lib.php');
+            $quiz = $DB->get_record('quiz', ['id' => $instance, 'course' => $courseid]);
+            if (!$quiz) {
+                return null;
+            }
+            $payload['module_grade'] = self::infer_module_grade_for_restore_capture($gi, (float)$quiz->grade);
+            if ((float)$quiz->grade !== 0.0) {
+                $DB->set_field('quiz', 'grade', 0, ['id' => $instance]);
+                $quiz->grade = 0;
+            }
+            quiz_grade_item_update($quiz);
+            $warnings[] = 'ℹ Disabled grading for not-graded activity "' . $activityname . '".';
+            return $payload;
+        }
+
+        if ((int)$gi->gradetype !== GRADE_TYPE_NONE) {
+            $gi->gradetype = GRADE_TYPE_NONE;
+            $gi->grademax = 0;
+            $gi->grademin = 0;
+            $gi->update('block_ai_assistant');
+            $warnings[] = 'ℹ Disabled grade item for not-graded activity "' . $activityname . '".';
+        }
+
+        return $payload;
+    }
+
+    /**
+     * Disable Moodle activity grading for items tracked as not graded.
+     *
+     * @param int $courseid
+     * @param array $proposal
+     * @param array $rawconfirmedmapping
+     * @param array $warnings
+     * @return void
+     */
+    private static function apply_not_graded_grade_items(
+        int $courseid,
+        array $proposal,
+        array $rawconfirmedmapping,
+        array &$warnings
+    ): void {
+        global $CFG;
+        require_once($CFG->libdir . '/grade/grade_item.php');
+
+        $targets = self::collect_not_graded_activity_targets($proposal, $rawconfirmedmapping);
+        $activekeys = [];
+        foreach ($targets as $target) {
+            $label = strtolower(trim((string)($target['activity_name'] ?? '')));
+            if ($label !== '') {
+                $activekeys[] = $label;
+            }
+        }
+
+        self::restore_tracked_not_graded_activities($courseid, $activekeys, $warnings);
+
+        if (empty($targets)) {
+            return;
+        }
+
+        $restoremap = self::load_not_graded_restore_map($courseid);
+        $applied = [];
+
+        foreach ($targets as $target) {
+            $activityname = trim((string)($target['activity_name'] ?? ''));
+            if ($activityname === '') {
+                continue;
+            }
+            $namekey = strtolower($activityname);
+
+            $gi = self::resolve_grade_item_for_activity_label(
+                $courseid,
+                $activityname,
+                (int)($target['grade_item_id'] ?? 0),
+                (int)($target['moodle_cmid'] ?? 0)
+            );
+            if (!$gi) {
+                $warnings[] = '⚠ Could not resolve Moodle grade item for not-graded activity "' . $activityname . '".';
+                continue;
+            }
+
+            $itemtype = (string)($gi->itemtype ?? '');
+            if ($itemtype === 'course' || $itemtype === 'category') {
+                continue;
+            }
+
+            $constraint = self::gradebook_item_mutation_constraint($gi);
+            if ($constraint !== null) {
+                $warnings[] = '⚠ Skipped disabling grading for not-graded activity "' . $activityname . '": ' . $constraint . '.';
+                continue;
+            }
+
+            if (!isset($restoremap[$namekey])) {
+                $payload = self::disable_module_grading_for_grade_item($courseid, $gi, $activityname, $warnings);
+                if ($payload !== null) {
+                    $restoremap[$namekey] = $payload;
+                }
+            } else if ((float)($restoremap[$namekey]['module_grade'] ?? 0) <= 0) {
+                $refreshed = self::disable_module_grading_for_grade_item($courseid, $gi, $activityname, $warnings);
+                if ($refreshed !== null && self::resolve_restore_module_grade($refreshed) > 0) {
+                    $restoremap[$namekey] = $refreshed;
+                }
+            }
+
+            $fresh = \grade_item::fetch(['id' => (int)$gi->id]);
+            $applied[] = [
+                'activity_name' => $activityname,
+                'grade_item_id' => (int)$gi->id,
+                'gradetype' => $fresh ? (int)$fresh->gradetype : null,
+                'hidden' => $fresh ? (int)$fresh->hidden : null,
+            ];
+        }
+
+        self::save_not_graded_restore_map($courseid, $restoremap);
+    }
+
+    /**
+     * True when a mapping row refers to a proposal-only manual item that has not
+     * been materialized in Moodle yet (no CMID / grade_item_id at finalize time).
+     *
+     * @param array $row
+     * @param array|null $proposal
+     * @return bool
+     */
+    private static function is_proposal_manual_mapping_row(array $row, ?array $proposal): bool
+    {
+        if (!is_array($proposal)) {
+            return false;
+        }
+
+        $activityname = strtolower(trim((string)($row['activity_name'] ?? $row['grade_item_name'] ?? '')));
+        $category = strtolower(trim((string)($row['category'] ?? '')));
+        if ($activityname === '' || $category === '') {
+            return false;
+        }
+
+        foreach (($proposal['categories'] ?? []) as $cat) {
+            if (!is_array($cat)) {
+                continue;
+            }
+            $catname = strtolower(trim((string)($cat['name'] ?? '')));
+            if ($catname !== $category) {
+                continue;
+            }
+
+            foreach (($cat['items'] ?? []) as $item) {
+                if (strtolower(trim((string)$item)) === $activityname) {
+                    return true;
+                }
+            }
+            foreach (($cat['subcategories'] ?? []) as $sub) {
+                if (!is_array($sub)) {
+                    continue;
+                }
+                foreach (($sub['items'] ?? []) as $item) {
+                    if (strtolower(trim((string)$item)) === $activityname) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -5040,7 +5911,12 @@ class cria
      * Creates grade categories with the chosen aggregation method, sets weights,
      * drop/keep rules, and moves grade items for mapped activities into their categories.
      */
-    private static function apply_gradebook_to_course(int $courseid, array $proposal, array $confirmed_mapping): array
+    private static function apply_gradebook_to_course(
+        int $courseid,
+        array $proposal,
+        array $confirmed_mapping,
+        array $raw_confirmed_mapping = []
+    ): array
     {
         global $CFG, $DB;
         require_once($CFG->libdir . '/gradelib.php');
@@ -5647,6 +6523,38 @@ class cria
             }
         }
 
+        foreach ($proposal['categories'] as $cat) {
+            $parent_name = trim((string)($cat['name'] ?? ''));
+            $subcategories = is_array($cat['subcategories'] ?? null) ? $cat['subcategories'] : [];
+            if ($parent_name === '' || empty($subcategories)) {
+                continue;
+            }
+
+            $category_key = strtolower($parent_name);
+            if (empty($category_id_map[$category_key])) {
+                continue;
+            }
+
+            $proposal_sub_names = [];
+            foreach ($subcategories as $sub) {
+                $sub_name = trim((string)($sub['name'] ?? ''));
+                if ($sub_name !== '') {
+                    $proposal_sub_names[] = $sub_name;
+                }
+            }
+            if (empty($proposal_sub_names)) {
+                continue;
+            }
+
+            self::prune_unproposed_child_categories(
+                $courseid,
+                (int)$category_id_map[$category_key],
+                $parent_name,
+                $proposal_sub_names,
+                $warnings
+            );
+        }
+
         // Apply category calculation formulas after category/item mapping is complete.
         if (!empty($category_formula_map)) {
             $formula_item_ref_map = self::build_formula_item_reference_map($courseid);
@@ -5660,6 +6568,13 @@ class cria
                 $warnings = array_merge($warnings, $formula_warnings);
             }
         }
+
+        self::apply_not_graded_grade_items(
+            $courseid,
+            $proposal,
+            $raw_confirmed_mapping,
+            $warnings
+        );
 
         // Clean up orphaned items and fix null sortorders before regrade to prevent null property errors.
         $applywarnings = self::gradebook_integrity_warnings($courseid, 'gradebook apply');
@@ -5676,6 +6591,81 @@ class cria
         }
 
         return $warnings;
+    }
+
+    /**
+     * Return true when a legacy subcategory label matches an accepted proposal subcategory.
+     */
+    private static function subcategory_label_matches_proposal(string $candidate_name, array $proposal_sub_names): bool
+    {
+        $candidate_key = strtolower(trim($candidate_name));
+        if ($candidate_key === '') {
+            return false;
+        }
+
+        foreach ($proposal_sub_names as $proposed_name) {
+            if (strtolower(trim((string)$proposed_name)) === $candidate_key) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Remove empty legacy child categories that are not part of the accepted proposal split.
+     */
+    private static function prune_unproposed_child_categories(
+        int $courseid,
+        int $parent_category_id,
+        string $parent_name,
+        array $proposal_sub_names,
+        array &$warnings
+    ): void {
+        global $DB;
+
+        if (empty($proposal_sub_names)) {
+            return;
+        }
+
+        $children = $DB->get_records(
+            'grade_categories',
+            ['courseid' => $courseid, 'parent' => $parent_category_id],
+            'fullname ASC',
+            'id,fullname'
+        );
+        foreach ($children ?: [] as $child) {
+            $child_id = (int)$child->id;
+            $child_name = (string)$child->fullname;
+
+            if (self::subcategory_label_matches_proposal($child_name, $proposal_sub_names)) {
+                continue;
+            }
+
+            if (self::category_has_non_structural_items($courseid, $child_id)) {
+                $warnings[] = '⚠ Kept legacy subcategory "' . $child_name . '" under "' . $parent_name
+                    . '" because it still contains grade items outside the accepted proposal.';
+                continue;
+            }
+
+            if (self::category_has_children($courseid, $child_id)) {
+                $warnings[] = '⚠ Kept legacy subcategory "' . $child_name . '" under "' . $parent_name
+                    . '" because it still contains nested categories.';
+                continue;
+            }
+
+            try {
+                self::_delete_category_total_item($courseid, $child_id);
+                $child_obj = \grade_category::fetch(['id' => $child_id]);
+                if ($child_obj) {
+                    $child_obj->delete('block_ai_assistant');
+                }
+                $warnings[] = 'ℹ Removed legacy subcategory "' . $child_name . '" under "' . $parent_name
+                    . '" that was replaced by the accepted proposal structure.';
+            } catch (\Throwable $e) {
+                $warnings[] = '⚠ Could not remove legacy subcategory "' . $child_name . '": ' . $e->getMessage();
+            }
+        }
     }
 
     /**
@@ -7380,6 +8370,21 @@ class cria
 
         if ($bot_identifier === '') {
             $bot_identifier = (string)((int)self::get_bot_id($course_id));
+        }
+
+        $sync_key = 'bot_retrieval_sync_v1_' . (int)$course_id;
+        if (!get_config('block_ai_assistant', $sync_key)) {
+            self::sync_course_bot_retrieval_settings((int)$course_id);
+            set_config($sync_key, 1, 'block_ai_assistant');
+        }
+
+        $settings = $DB->get_record('block_aia_settings', ['courseid' => (int)$course_id], 'bot_name', IGNORE_MISSING);
+        if ($settings && !empty($settings->bot_name)) {
+            $bot_name = (string)$settings->bot_name;
+            $doc_count = self::get_bot_document_count($bot_name);
+            if ($doc_count === 0) {
+                self::ensure_bot_training_index((int)$course_id);
+            }
         }
 
         $session = webservice::exec_embed(

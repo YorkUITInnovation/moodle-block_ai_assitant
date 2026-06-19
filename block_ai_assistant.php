@@ -241,13 +241,26 @@ class block_ai_assistant extends block_base
         $launcherproxytitle = get_string('ai_assistant', 'block_ai_assistant')
             . ' - ' . get_string('access', 'block_ai_assistant') . ': ' . $launcherproxystate;
 
-        // Set payload. The payload is used to modify the prompt so that the user can get personilized information
+        // Set payload. Embed chat uses this to scope answers to the current course and personalize prompts.
+        $course_title = trim((string)($this->page->course->fullname ?? ''));
+        $course_shortname = trim((string)($this->page->course->shortname ?? ''));
+        $course_number = trim((string)($this->page->course->idnumber ?? ''));
+        if ($course_number === '') {
+            $course_number = $course_shortname;
+        }
+
         $payload = array(
             'idNumber' => $USER->idnumber,
             'name' => $name,
             'ip' => $_SERVER['REMOTE_ADDR'],
             'grade' => $user_grade,
             'groups' => $groups,
+            'courseId' => (int)$this->page->course->id,
+            'courseName' => $course_title,
+            'courseTitle' => $course_title,
+            'courseShortName' => $course_shortname,
+            'courseNumber' => $course_number,
+            'currentDate' => userdate(time(), get_string('strftimedatefullshort', 'langconfig')),
         );
         // get embed code data
         $embed_session_data = cria::start_session(

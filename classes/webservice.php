@@ -494,7 +494,8 @@ class webservice
     public static function exec_embed($bot_id, $api_key, $payload)
     {
         $last_response = '';
-        foreach (self::get_embed_loader_candidates($bot_id) as $url) {
+        $candidates = self::get_embed_loader_candidates($bot_id);
+        foreach ($candidates as $url) {
             $post_result = self::execute_embed_request($url, (string)$api_key, $payload);
             if ($post_result['ok']) {
                 $last_response = $post_result['response'];

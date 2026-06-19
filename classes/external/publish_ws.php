@@ -61,6 +61,7 @@ class block_ai_assistant_publish_ws extends external_api
         } else {
             // Update record with publish 1
             $DB->set_field('block_aia_settings', 'published', 1, ['courseid' => $course_id]);
+            cria::sync_course_bot_retrieval_settings((int)$course_id);
             return true;
         }
     }

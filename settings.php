@@ -310,7 +310,7 @@ if ($hassiteconfig) {
         'block_ai_assistant/no_context_llm_guess',
         get_string('no_context_llm_guess', 'block_ai_assistant'),
         '',
-        1
+        0
     ));
 
     $settings->add(new admin_setting_configselect(

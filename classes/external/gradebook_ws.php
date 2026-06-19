@@ -66,7 +66,13 @@ class block_ai_assistant_gradebook_ws extends external_api
         $context = \context_course::instance($courseid);
         self::validate_context($context);
 
-        return cria::gradebook_chat($session_id, $prompt);
+        $raw = cria::gradebook_chat($session_id, $prompt);
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return $raw;
+        }
+
+        return json_encode(cria::enrich_gradebook_session_flags($courseid, $session_id, $decoded));
     }
 
     public static function chat_returns(): external_description
@@ -240,7 +246,13 @@ class block_ai_assistant_gradebook_ws extends external_api
         $context = \context_course::instance($courseid);
         self::validate_context($context);
 
-        return cria::gradebook_accept($session_id);
+        $raw = cria::gradebook_accept($session_id);
+        $decoded = json_decode($raw, true);
+        if (!is_array($decoded)) {
+            return $raw;
+        }
+
+        return json_encode(cria::enrich_gradebook_session_flags($courseid, $session_id, $decoded));
     }
 
     public static function accept_returns(): external_description
@@ -351,7 +363,7 @@ class block_ai_assistant_gradebook_ws extends external_api
             array(
                 'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
                 'session_id' => new external_value(PARAM_RAW, 'Gradebook session id', VALUE_REQUIRED),
-                'confirmed_mapping_json' => new external_value(PARAM_RAW, 'JSON array of mapping rows: {grade_item_id, activity_name, moodle_cmid, category}', VALUE_REQUIRED),
+                'confirmed_mapping_json' => new external_value(PARAM_RAW, 'JSON array of mapping rows: {grade_item_id, activity_name, moodle_cmid, category, subcategory}', VALUE_REQUIRED),
             )
         );
     }
@@ -375,7 +387,13 @@ class block_ai_assistant_gradebook_ws extends external_api
             throw new invalid_parameter_exception('confirmed_mapping_json must be a valid JSON array.');
         }
 
-        return cria::gradebook_finalize($courseid, $session_id, $decoded);
+        $raw = cria::gradebook_finalize($courseid, $session_id, $decoded);
+        $response = json_decode($raw, true);
+        if (!is_array($response)) {
+            return $raw;
+        }
+
+        return json_encode(cria::enrich_gradebook_session_flags($courseid, $session_id, $response));
     }
 
     public static function finalize_returns(): external_description
@@ -389,24 +407,28 @@ class block_ai_assistant_gradebook_ws extends external_api
             array(
                 'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
                 'item_name' => new external_value(PARAM_TEXT, 'Manual grade item name', VALUE_REQUIRED),
+                'category' => new external_value(PARAM_TEXT, 'Target category name', VALUE_DEFAULT, ''),
+                'subcategory' => new external_value(PARAM_TEXT, 'Target subcategory name', VALUE_DEFAULT, ''),
             )
         );
     }
 
-    public static function create_manual_item(int $courseid, string $item_name): array
+    public static function create_manual_item(int $courseid, string $item_name, string $category = '', string $subcategory = ''): array
     {
         self::validate_parameters(
             self::create_manual_item_parameters(),
             [
                 'courseid' => $courseid,
                 'item_name' => $item_name,
+                'category' => $category,
+                'subcategory' => $subcategory,
             ]
         );
 
         $context = \context_course::instance($courseid);
         self::validate_context($context);
 
-        return cria::gradebook_create_manual_item($courseid, $item_name);
+        return cria::gradebook_create_manual_item($courseid, $item_name, $category, $subcategory);
     }
 
     public static function create_manual_item_returns(): external_description
