@@ -6,10 +6,31 @@ import * as Str from 'core/str';
 import config from 'core/config';
 
 export const init = () => {
+    consumePendingNotification();
     initTutorialButtons();
     initSaveChatButton();
     initSummarizeChatButton();
 };
+
+function consumePendingNotification() {
+    const raw = sessionStorage.getItem('block_ai_assistant_notice');
+    if (!raw) {
+        return;
+    }
+
+    sessionStorage.removeItem('block_ai_assistant_notice');
+    try {
+        const payload = JSON.parse(raw);
+        if (payload && payload.message) {
+            notification.addNotification({
+                message: payload.message,
+                type: payload.type || 'success'
+            });
+        }
+    } catch (e) {
+        // Ignore malformed payloads.
+    }
+}
 
 /**
  * Initialize tutorial button click handlers

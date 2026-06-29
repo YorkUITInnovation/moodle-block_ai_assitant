@@ -321,7 +321,12 @@ $string['no_context_llm_guess_help'] = 'Permettre au LLM de retourner une répon
 $string['embed_position'] = 'Position d\'intégration';
 
 // Default Tutorials
-$string['tutorial_tutor_name'] = 'Mon tuteur';
+$string['tutorial_tutor_name'] = 'Tuteur d\'étude';
+$string['tutorial_chat_title_suffix'] = 'Discussion';
+$string['chat_delete_confirm_title'] = 'Supprimer la discussion';
+$string['chat_delete_confirm_body'] = 'Êtes-vous sûr de vouloir supprimer cette discussion ?';
+$string['chat_delete_success'] = 'Discussion supprimée avec succès.';
+$string['chat_delete_failed'] = 'Échec de la suppression de la discussion. Veuillez réessayer.';
 $string['tutorial_tutor_description'] = 'L\'invite est conçue pour guider un Tuteur-IA dans l\'aide aux étudiants universitaires'
     . ' à apprendre activement et comprendre un sujet en les engageant dans une conversation personnalisée, interactive et soutenante.';
 $string['tutorial_tutor_prompt'] = "- Commencez par vous présenter à l\'étudiant universitaire comme leur Tuteur-IA, qui est heureux de les aider avec toutes questions. 
@@ -341,7 +346,7 @@ $string['tutorial_tutor_prompt'] = "- Commencez par vous présenter à l\'étudi
 - Lorsqu\'un étudiant démontre qu\'il connaît le concept, vous pouvez terminer la conversation et lui dire que vous êtes là pour l\'aider s\'il a d\'autres questions. 
 - Si l\'étudiant dévie sur un autre sujet qui n\'a rien à voir avec ce sujet : [topic], alors demandez à l\'étudiant de rester sur le sujet car c\'est ce sur quoi il a demandé à être tutoré.";
 
-$string['tutorial_quiz_name'] = 'Quiz sur...';
+$string['tutorial_quiz_name'] = 'Coach quiz';
 $string['tutorial_quiz_description'] = 'Cette activité est conçue pour aider les étudiants à réviser et renforcer leur'
     . ' compréhension d\'un sujet spécifique à travers un quiz à choix multiples structuré. Le quiz consiste en 20 questions,'
     . ' chacune avec quatre options de réponse (A, B, C et D). Après chaque réponse, les étudiants reçoivent des commentaires immédiats pour'

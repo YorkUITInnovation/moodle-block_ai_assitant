@@ -327,7 +327,12 @@ $string['no_context_llm_guess_help'] = 'Allow the LLM to return an answer when n
 $string['embed_position'] = 'Embed Position';
 
 // Default Tutorials
-$string['tutorial_tutor_name'] = 'My Tutor';
+$string['tutorial_tutor_name'] = 'Study Tutor';
+$string['tutorial_chat_title_suffix'] = 'Chat';
+$string['chat_delete_confirm_title'] = 'Delete chat';
+$string['chat_delete_confirm_body'] = 'Are you sure you want to delete this chat?';
+$string['chat_delete_success'] = 'Chat deleted successfully.';
+$string['chat_delete_failed'] = 'Failed to delete chat. Please try again.';
 $string['tutorial_tutor_description'] = 'The prompt is designed to guide an AI-Tutor in helping university students'
     . ' actively learn and understand a topic by engaging them in a personalized, interactive, and supportive conversation.';
 $string['tutorial_tutor_prompt'] = "- Start by introducing yourself to the university student as their AI-Tutor, who is happy to help them with any questions. 
@@ -347,7 +352,7 @@ $string['tutorial_tutor_prompt'] = "- Start by introducing yourself to the unive
 - When a student demonstrates that they know the concept, you can move the conversation to a close and tell them you’re here to help if they have further questions. 
 - If the student diverts onto another topic that has nothing to do with this topic: [topic], then ask the student to remain on topic because this is what they asked to be tutored on.";
 
-$string['tutorial_quiz_name'] = 'Quiz Me ON...';
+$string['tutorial_quiz_name'] = 'Quiz Coach';
 $string['tutorial_quiz_description'] = 'This activity is designed to help students review and reinforce their'
     . ' understanding of a specific topic through a structured multiple-choice quiz. The quiz consists of 20 questions,'
     . ' each with four answer options (A, B, C, and D). After each response, students receive immediate feedback to'

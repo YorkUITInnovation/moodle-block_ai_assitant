@@ -9,6 +9,14 @@ const NOT_GRADED = '__not_graded__';
 const DEFAULT_CATEGORIES = ['Assignments', 'Quizzes', 'Labs', 'Exams', 'Projects', 'Participation'];
 const MAX_LOCAL_CHAT_MESSAGES = 300;
 const CONSTRAINED_MODULES = ['lti', 'tool', 'external'];
+const CHAT_LOADER_STAGES = [
+    'Connecting to retrieval engines...',
+    'Searching course knowledge base...',
+    'Retrieving relevant document chunks...',
+    'Synthesizing response draft...',
+    'Finalizing answer... almost there.'
+];
+const CHAT_LOADER_STEP_MS = 2200;
 let sessionInitPromise = null;
 let requestInFlight = false;
 let proposalCategories = [];
@@ -2071,8 +2079,53 @@ const setUiBusy = (isBusy) => {
 const clearBusyWaitIndicator = () => {
     const existing = document.getElementById('gradebook-busy-wait-indicator');
     if (existing) {
+        if (existing.dataset.loaderIntervalId) {
+            clearInterval(Number(existing.dataset.loaderIntervalId));
+        }
         existing.remove();
     }
+};
+
+const appendProgressiveLoader = (container, id, initialText) => {
+    if (!container) {
+        return null;
+    }
+    const existing = document.getElementById(id);
+    if (existing) {
+        if (existing.dataset.loaderIntervalId) {
+            clearInterval(Number(existing.dataset.loaderIntervalId));
+        }
+        existing.remove();
+    }
+
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'chat-message bot-message';
+    loadingDiv.id = id;
+    loadingDiv.innerHTML = `
+        <div class="message-content cria-loader">
+            <div class="cria-loader-stage">${initialText}</div>
+            <div class="cria-loader-skeleton" aria-hidden="true">
+                <span class="line w100"></span>
+                <span class="line w84"></span>
+                <span class="line w66"></span>
+            </div>
+        </div>`;
+    container.appendChild(loadingDiv);
+    container.scrollTop = container.scrollHeight;
+
+    const stageNode = loadingDiv.querySelector('.cria-loader-stage');
+    let stageIndex = 0;
+    const intervalId = setInterval(() => {
+        if (!loadingDiv.isConnected || !stageNode) {
+            clearInterval(intervalId);
+            return;
+        }
+        stageIndex = Math.min(stageIndex + 1, CHAT_LOADER_STAGES.length - 1);
+        stageNode.textContent = CHAT_LOADER_STAGES[stageIndex];
+        container.scrollTop = container.scrollHeight;
+    }, CHAT_LOADER_STEP_MS);
+    loadingDiv.dataset.loaderIntervalId = String(intervalId);
+    return loadingDiv;
 };
 
 const showBusyWaitIndicator = async () => {
@@ -2088,16 +2141,7 @@ const showBusyWaitIndicator = async () => {
         loadingText = await Str.get_string('gradebook_loading', 'block_ai_assistant');
     } catch (e) {
     }
-    const waitDiv = document.createElement('div');
-    waitDiv.className = 'chat-message bot-message';
-    waitDiv.id = 'gradebook-busy-wait-indicator';
-    waitDiv.innerHTML = `
-        <div class="message-content">
-            <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
-            <span>${loadingText}</span>
-        </div>`;
-    chat.appendChild(waitDiv);
-    chat.scrollTop = chat.scrollHeight;
+    appendProgressiveLoader(chat, 'gradebook-busy-wait-indicator', loadingText);
 };
 
 const isWeightGateBlocked = () => latestProposalWeightCheck.known && !latestProposalWeightCheck.valid;
@@ -3677,15 +3721,7 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
             loadingText = await Str.get_string('gradebook_loading', 'block_ai_assistant');
         } catch (e) {
         }
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'chat-message bot-message';
-        loadingDiv.id = 'gradebook-loading-indicator';
-        loadingDiv.innerHTML = `
-            <div class="message-content">
-                <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
-                <span class="sr-only">${loadingText}</span>
-            </div>`;
-        getChatMessages().appendChild(loadingDiv);
+        appendProgressiveLoader(getChatMessages(), 'gradebook-loading-indicator', loadingText);
 
         try {
             const previousPhase = String(loadJson(getStorageKey('phase'), '') || '').toUpperCase();
@@ -3759,6 +3795,9 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
         } finally {
             const indicator = document.getElementById('gradebook-loading-indicator');
             if (indicator) {
+                if (indicator.dataset.loaderIntervalId) {
+                    clearInterval(Number(indicator.dataset.loaderIntervalId));
+                }
                 indicator.remove();
             }
             focusPromptInput();

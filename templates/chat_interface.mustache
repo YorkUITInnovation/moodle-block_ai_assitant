@@ -114,6 +114,110 @@
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
 
+    .cria-loader {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        min-width: min(520px, 100%);
+    }
+
+    .cria-loader-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .cria-loader-title {
+        font-size: 13px;
+        color: #1f2937;
+        font-weight: 600;
+    }
+
+    .cria-loader-ring {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid rgba(0, 0, 0, 0.08);
+        border-top-color: #2563eb;
+        animation: ai-loader-spin 0.9s linear infinite;
+        flex-shrink: 0;
+    }
+
+    .cria-loader-stage {
+        font-size: 13px;
+        color: #374151;
+        font-weight: 500;
+        border-left: 2px solid #dbeafe;
+        padding-left: 8px;
+    }
+
+    .cria-loader-steps-wrap {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        background: #f9fafb;
+        padding: 8px 10px 6px;
+    }
+
+    .cria-loader-steps {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .cria-loader-steps li {
+        font-size: 12px;
+        color: #6b7280;
+        line-height: 1.35;
+    }
+
+    .cria-loader-steps li.current {
+        color: #1f2937;
+        font-weight: 600;
+    }
+
+    .cria-loader-steps li.done::before {
+        content: "✓ ";
+        color: #059669;
+        font-weight: 700;
+    }
+
+    .cria-loader-steps li.current::before {
+        content: "· ";
+        color: #2563eb;
+        font-weight: 700;
+    }
+
+    .cria-loader-skeleton {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .cria-loader-skeleton .line {
+        height: 7px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.1) 45%, rgba(0, 0, 0, 0.05) 100%);
+        background-size: 200% 100%;
+        animation: ai-loader-shimmer 1.5s ease-in-out infinite;
+    }
+
+    .cria-loader-skeleton .line.w100 { width: 100%; }
+    .cria-loader-skeleton .line.w84 { width: 84%; }
+    .cria-loader-skeleton .line.w66 { width: 66%; }
+
+    @keyframes ai-loader-shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+    }
+
+    @keyframes ai-loader-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
     .bot-message .message-content {
         background: #ffffff;
         color: #374151;
@@ -378,6 +482,72 @@
         40% {
             transform: scale(1);
         }
+    }
+
+    /* Claude-style inline step bar below bot replies */
+    .cria-steps-bar {
+        margin-top: 10px;
+        border-top: 1px solid #f3f4f6;
+        padding-top: 6px;
+    }
+
+    .cria-steps-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: none;
+        border: none;
+        padding: 2px 0;
+        cursor: pointer;
+        font-size: 11px;
+        color: #9ca3af;
+        transition: color 0.15s ease;
+        line-height: 1.4;
+    }
+
+    .cria-steps-toggle:hover {
+        color: #6b7280;
+    }
+
+    .cria-steps-chevron {
+        display: inline-flex;
+        opacity: 0;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .cria-steps-toggle:hover .cria-steps-chevron {
+        opacity: 1;
+    }
+
+    .cria-steps-toggle[aria-expanded="true"] .cria-steps-chevron {
+        transform: rotate(180deg);
+        opacity: 1;
+    }
+
+    .cria-steps-body {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-top: 6px;
+        padding-left: 2px;
+    }
+
+    .cria-steps-body[hidden] {
+        display: none;
+    }
+
+    .cria-step-item {
+        display: block;
+        font-size: 11px;
+        color: #9ca3af;
+        padding: 1px 0;
+    }
+
+    .cria-step-item::before {
+        content: '✓ ';
+        color: #10b981;
+        font-size: 10px;
     }
 </style>
 

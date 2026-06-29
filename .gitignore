@@ -8,4 +8,4 @@ Gruntfile.js
 package.json
 package-lock.json
 /stub/
-build_gradebook.js
+/amd/build_*.js

@@ -1,6 +1,17 @@
 import {get_string as getString} from 'core/str';
 import ajax from 'core/ajax';
 import config from 'core/config';
+import notification from 'core/notification';
+
+const CHAT_LOADER_STAGES = [
+    'Connecting to retrieval engines...',
+    'Searching course knowledge base...',
+    'Retrieving relevant document chunks...',
+    'Synthesizing response draft...',
+    'Finalizing answer... almost there.',
+];
+const CHAT_LOADER_STEP_MS = 2200;
+const CHAT_LOADER_FALLBACK = 'Thinking...';
 
 const normalizeChatResult = (result) => {
     if (typeof result === 'string') {
@@ -60,23 +71,90 @@ const normalizeAjaxError = (error) => {
     return 'Unable to get a response from AI Assistant.';
 };
 
+const startProgressiveLoader = (container, id, initialText) => {
+    const loader = document.createElement('div');
+    loader.id = id;
+    loader.className = 'chat-message bot-message';
+    loader.innerHTML = `
+        <div class="message-content cria-loader">
+            <div class="cria-loader-header">
+                <span class="cria-loader-ring" aria-hidden="true"></span>
+                <span class="cria-loader-title">Thinking</span>
+            </div>
+            <div class="cria-loader-stage">${initialText}</div>
+            <div class="cria-loader-steps-wrap">
+                <ul class="cria-loader-steps">
+                    <li class="current">${CHAT_LOADER_STAGES[0]}</li>
+                </ul>
+            </div>
+            <div class="cria-loader-skeleton" aria-hidden="true">
+                <span class="line w100"></span>
+                <span class="line w84"></span>
+                <span class="line w66"></span>
+            </div>
+        </div>`;
+    container.appendChild(loader);
+    container.scrollTop = container.scrollHeight;
+
+    const stageNode = loader.querySelector('.cria-loader-stage');
+    const stepsNode = loader.querySelector('.cria-loader-steps');
+    let stageIndex = 0;
+    // Track which stages were shown for the details panel.
+    const completedStages = [CHAT_LOADER_STAGES[0]];
+
+    const intervalId = setInterval(() => {
+        if (!loader.isConnected || !stageNode || !stepsNode) {
+            clearInterval(intervalId);
+            return;
+        }
+        const currentLi = stepsNode.querySelector('li.current');
+        if (currentLi) {
+            currentLi.classList.remove('current');
+            currentLi.classList.add('done');
+        }
+        stageIndex = Math.min(stageIndex + 1, CHAT_LOADER_STAGES.length - 1);
+        const currentStage = CHAT_LOADER_STAGES[stageIndex];
+        stageNode.textContent = currentStage;
+        const li = document.createElement('li');
+        li.className = 'current';
+        li.textContent = currentStage;
+        stepsNode.appendChild(li);
+        completedStages.push(currentStage);
+        if (stepsNode.children.length > 5) {
+            stepsNode.removeChild(stepsNode.children[0]);
+        }
+        container.scrollTop = container.scrollHeight;
+    }, CHAT_LOADER_STEP_MS);
+
+    return {
+        stop: () => {
+            clearInterval(intervalId);
+            if (loader.isConnected) {
+                loader.remove();
+            }
+        },
+        getStages: () => [...new Set(completedStages)],
+    };
+};
+
 export const sendMessage = async () => {
     const input = document.getElementById('block-ai-assistant-chat-input');
     const prompt = input.value;
     if (prompt) {
         const chatMessages = document.getElementById('chat-messages');
-        const loadingText = await getString('loading', 'block_learningassist');
+        let loadingText = CHAT_LOADER_FALLBACK;
+        try {
+            loadingText = await getString('gradebook_loading', 'block_ai_assistant');
+        } catch (e) {
+        }
+        const loaderId = 'block-ai-assistant-delete-me';
 
         const html = `<div class="chat-message human-message">
                         <div class="message-content">${prompt}</div>
-                     </div>
-                    <div id="block-ai-assistant-delete-me" class="chat-message bot-message">
-                        <div class="message-content">
-                        <i class="fa fa-spinner fa-pulse fa-3x fa-fw"></i>
-                        <span class="sr-only">${loadingText}</span></div>
                      </div>`;
         // Scroll down to the top of new message
         chatMessages.innerHTML += html;
+        const stopLoader = startProgressiveLoader(chatMessages, loaderId, loadingText);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         input.value = '';
 
@@ -84,6 +162,32 @@ export const sendMessage = async () => {
         const chatId = document.getElementById('block-ai-assistant-chatid').value;
         const botName = document.getElementById('block-ai-assistant-botname').value;
         const tutorialChatId = document.getElementById('block-ai-assistant-tutorialchatid').value;
+
+        const buildBotHtml = (message, stages) => {
+            // Claude-style inline step summary: "3 steps · Answered by BotName ▾"
+            const label = stages.length > 1
+                ? `${stages.length} steps · Answered by ${botName}`
+                : `Answered by ${botName}`;
+            const stepsHtml = stages
+                .map(s => `<span class="cria-step-item">${s.replace(/\.\.\.$/, '').replace(/\.$/, '').trim()}</span>`)
+                .join('');
+            return `<div class="chat-message bot-message">
+                <div class="message-content">
+                    ${message}
+                    <div class="cria-steps-bar">
+                        <button class="cria-steps-toggle" aria-expanded="false" type="button">
+                            <span class="cria-steps-label">${label}</span>
+                            <span class="cria-steps-chevron" aria-hidden="true">
+                                <svg width="12" height="12" viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M14.128 7.165a.502.502 0 0 1 .744.67l-4.5 5-.078.07a.5.5 0 0 1-.666-.07l-4.5-5-.06-.082a.501.501 0 0 1 .729-.656l.075.068L10 11.752z"/>
+                                </svg>
+                            </span>
+                        </button>
+                        <div class="cria-steps-body" hidden>${stepsHtml}</div>
+                    </div>
+                </div>
+            </div>`;
+        };
 
         if (prompt) {
             const response = await ajax.call([{
@@ -97,21 +201,13 @@ export const sendMessage = async () => {
                 },
             }]);
             response[0].done((result) => {
-                const deleteMe = document.getElementById('block-ai-assistant-delete-me');
-                if (deleteMe) {
-                    deleteMe.remove();
-                }
+                const stages = stopLoader.getStages();
+                stopLoader.stop();
                 const message = normalizeChatResult(result);
-                const bot_html = `<div class="chat-message bot-message">
-                            <div class="message-content">${message}</div>
-                         </div>`;
-                chatMessages.innerHTML += bot_html;
+                chatMessages.innerHTML += buildBotHtml(message, stages);
                 input.focus();
             }).fail((error) => {
-                const deleteMe = document.getElementById('block-ai-assistant-delete-me');
-                if (deleteMe) {
-                    deleteMe.remove();
-                }
+                stopLoader.stop();
                 const message = normalizeAjaxError(error);
                 const botHtml = `<div class="chat-message bot-message"><div class="message-content">${message}</div></div>`;
                 chatMessages.innerHTML += botHtml;
@@ -128,6 +224,16 @@ document.getElementById('block-ai-assistant-chat-input').addEventListener('keydo
         e.preventDefault();
         sendMessage();
     }
+});
+
+// Delegated toggle for step bars injected after each bot reply.
+document.getElementById('chat-messages').addEventListener('click', (e) => {
+    const btn = e.target.closest('.cria-steps-toggle');
+    if (!btn) return;
+    const expanded = btn.getAttribute('aria-expanded') === 'true';
+    const body = btn.closest('.cria-steps-bar').querySelector('.cria-steps-body');
+    btn.setAttribute('aria-expanded', String(!expanded));
+    body.hidden = expanded;
 });
 
 // Hamburger menu functionality
@@ -173,12 +279,17 @@ export const initChatMenu = () => {
 
 // Delete a chat
 const deleteChat = async (chatId, courseId) => {
-    if (!confirm('Are you sure you want to delete this chat?')) {
-        return;
-    }
+    const [confirmTitle, confirmBody, deleteLabel, cancelLabel, successMessage, failedMessage] = await Promise.all([
+        getString('chat_delete_confirm_title', 'block_ai_assistant'),
+        getString('chat_delete_confirm_body', 'block_ai_assistant'),
+        getString('delete', 'block_ai_assistant'),
+        getString('cancel', 'core'),
+        getString('chat_delete_success', 'block_ai_assistant'),
+        getString('chat_delete_failed', 'block_ai_assistant'),
+    ]);
 
-    try {
-        const response = await ajax.call([{
+    notification.confirm(confirmTitle, confirmBody, deleteLabel, cancelLabel, () => {
+        const response = ajax.call([{
             methodname: 'block_ai_assistant_chat_delete',
             args: {
                 chatid: chatId
@@ -186,13 +297,16 @@ const deleteChat = async (chatId, courseId) => {
         }]);
 
         response[0].done(() => {
-               // Redirect to course page after deletion
-                window.location.href = config.wwwroot + `/course/view.php?id=${courseId}`;
-
-        }).fail((error) => {
-            alert('Failed to delete chat. Please try again.' + error);
+            sessionStorage.setItem('block_ai_assistant_notice', JSON.stringify({
+                type: 'success',
+                message: successMessage
+            }));
+            window.location.href = config.wwwroot + `/course/view.php?id=${courseId}`;
+        }).fail(() => {
+            notification.addNotification({
+                message: failedMessage,
+                type: 'error'
+            });
         });
-    } catch (error) {
-        alert('Error deleting chat. Please try again. ' + error);
-    }
+    });
 };

@@ -10,6 +10,36 @@ use block_ai_assistant\course_modules;
 class block_ai_assistant_chat_ws extends external_api
 {
     /**
+     * Clean and normalize module/title text for user-facing chat headers.
+     * Removes noisy source tags and duplicate repeated labels.
+     */
+    private static function clean_chat_display_name(string $name): string
+    {
+        $value = trim($name);
+        if ($value === '') {
+            return '';
+        }
+
+        // Remove source suffixes like [doc:page_66_...html].
+        $value = preg_replace('/\s*\[doc:[^\]]+\]\s*/i', ' ', $value);
+        $value = preg_replace('/\s+/', ' ', trim($value));
+
+        // Collapse duplicated label patterns around ":" (A: A).
+        $parts = array_values(array_filter(array_map('trim', explode(':', $value)), function($part) {
+            return $part !== '';
+        }));
+        if (count($parts) >= 2) {
+            $first = core_text::strtolower($parts[0]);
+            $second = core_text::strtolower($parts[1]);
+            if ($first === $second) {
+                $value = $parts[0];
+            }
+        }
+
+        return $value;
+    }
+
+    /**
      * Returns description of method parameters
      * @return external_function_parameters
      */
@@ -159,6 +189,7 @@ class block_ai_assistant_chat_ws extends external_api
     ): array
     {
         global $CFG, $DB;
+        $name = self::clean_chat_display_name($name);
         // Curretnly not using as a webservice or ajax call, so we can skip the webservice validation.
 //        self::validate_parameters(
 //            self::start_parameters(),
@@ -214,6 +245,9 @@ class block_ai_assistant_chat_ws extends external_api
                     'userid' => $userid,
                 ]
             );
+            if (empty($name) && !empty($chat_exists->name)) {
+                $name = self::clean_chat_display_name((string)$chat_exists->name);
+            }
 
 
             // Store the original chatid to update the assets table later.
@@ -362,6 +396,7 @@ class block_ai_assistant_chat_ws extends external_api
     ): \stdClass
     {
         global $DB, $USER;
+        $name = self::clean_chat_display_name($name);
         // Get tutorial type.
         $tutorial = $DB->get_record('block_aia_tutorials', ['id' => $tutorialid], '*', MUST_EXIST);
 
@@ -382,7 +417,7 @@ class block_ai_assistant_chat_ws extends external_api
             'chatid' => $chat_id,
             'userid' => $userid,
             'cmid' => $cmid,
-            'name' => $tutorial->name . ': ' . $name,
+            'name' => $name,
             'timecreated' => time(),
         ]);
 
