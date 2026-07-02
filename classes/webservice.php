@@ -241,7 +241,6 @@ class webservice
         return [
             'criabot_url' => $get($local, 'criabot_url') ?: $get($block, 'criabot_url'),
             'criadex_url' => $get($local, 'criadex_url') ?: $get($block, 'criadex_url'),
-            'criaparse_url' => $get($local, 'criaparse_url') ?: $get($block, 'criaparse_url'),
             'criadex_api_key' => $get($local, 'criadex_api_key') ?: $get($block, 'criadex_api_key'),
 
             'legacy_cria_url' => $get($block, 'cria_url'),

@@ -674,14 +674,9 @@ class cria
         };
 
         $criabot_url = rtrim($get($local, 'criabot_url') ?: $get($block, 'criabot_url'), '/');
-        $criaparse_url = rtrim($get($local, 'criaparse_url') ?: $get($block, 'criaparse_url'), '/');
         $api_key = $get($local, 'criadex_api_key') ?: $get($block, 'criadex_api_key');
-        $llm_model_id = (int)($get($local, 'criadex_model_id') ?: $get($block, 'criadex_model_id'));
-        $embedding_model_id = (int)($get($local, 'criadex_embed_id') ?: $get($block, 'criadex_embed_id'));
-        $rerank_model_id = (int)($get($local, 'criadex_rerank_id') ?: $get($block, 'criadex_rerank_id'));
-        $criadex_url = rtrim($get($local, 'criadex_url') ?: $get($block, 'criadex_url'), '/');
 
-        if ($criabot_url !== '' && $criaparse_url !== '' && $api_key !== '') {
+        if ($criabot_url !== '' && $api_key !== '') {
             $bot_name = $DB->get_field('block_aia_settings', 'bot_name', ['courseid' => $course_id]);
             if (!$bot_name) {
                 error_log('block_ai_assistant: upload_content_to_bot failed, missing bot_name for course ' . (int)$course_id);
@@ -721,312 +716,69 @@ class cria
             file_put_contents($tmp_path, base64_decode($file_content));
 
             $strategy = $parsing_strategy ?: 'GENERIC';
-            // Keep parser dataset aligned with the bot document group used by Criabot
-            // so parser-side uploads do not target non-existent numeric groups.
-            $dataset_id = (string)$bot_name . '-document-index';
-
-            // Ensure the Criadex/Ragflow group exists before queuing parsing.
-            // CriaParse uploads parsed content into this group; if missing, the job fails with GROUP_NOT_FOUND.
-            if ($criadex_url !== '' && $llm_model_id > 0 && $embedding_model_id > 0) {
-                $curl = new \curl();
-
-                $group_name = rawurlencode($dataset_id);
-                $create_group_url = $criadex_url . '/groups/' . $group_name . '/create';
-                $create_group_body = [
-                    'type' => 'DOCUMENT',
-                    'llm_model_id' => $llm_model_id,
-                    'embedding_model_id' => $embedding_model_id,
-                    'rerank_model_id' => $rerank_model_id,
-                ];
-
-                $create_opts = [
-                    'CURLOPT_TIMEOUT' => 30,
-                    'CURLOPT_HTTPHEADER' => [
-                        'Accept: application/json',
-                        'Content-Type: application/json',
-                        'X-API-Key: ' . $api_key,
-                    ],
-                ];
-                try {
-                    $curl->post($create_group_url, json_encode($create_group_body), $create_opts);
-                    $info = $curl->get_info();
-                    $status = isset($info['http_code']) ? (int)$info['http_code'] : 0;
-                    if ($status !== 200 && $status !== 409) {
-                        // If group creation fails for reasons other than "already exists", stop early.
-                        error_log('block_ai_assistant: upload_content_to_bot failed creating dataset group ' . $dataset_id . ' status=' . $status);
-                        return '';
-                    }
-                } catch (\Throwable $e) {
-                    error_log('block_ai_assistant: upload_content_to_bot exception creating dataset group ' . $dataset_id . ' error=' . $e->getMessage());
-                    return '';
-                }
-
-                // Best-effort: authorize current API key against the created group.
-                // (If the key is master this is effectively redundant, but safe.)
-                $group_auth_url = $criadex_url . '/group_auth/' . $group_name . '/create?api_key=' . rawurlencode($api_key);
-                $auth_opts = [
-                    'CURLOPT_TIMEOUT' => 30,
-                    'CURLOPT_HTTPHEADER' => [
-                        'Accept: application/json',
-                        'Content-Type: application/json',
-                        'X-API-Key: ' . $api_key,
-                    ],
-                ];
-                try {
-                    $curl->post($group_auth_url, '', $auth_opts);
-                    $info = $curl->get_info();
-                    $status = isset($info['http_code']) ? (int)$info['http_code'] : 0;
-                    // Accept 200/409; ignore other failures.
-                    if ($status !== 200 && $status !== 409) {
-                        // Don't fail hard; parsing may still succeed if master key bypasses auth.
-                    }
-                } catch (\Throwable $e) {
-                    // ignore
-                }
+            // HTML files produce 0 chunks with Ragflow's native parser; use PARAGRAPH
+            // so Criadex strips tags and splits by paragraph before sending to Ragflow.
+            $ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+            if ($strategy === 'GENERIC' && ($ext === 'html' || $ext === 'htm')) {
+                $strategy = 'PARAGRAPH';
             }
-
-            $queue_url = $criaparse_url . '/parser/queue?strategy=' . rawurlencode($strategy) . '&dataset_id=' . rawurlencode($dataset_id);
-            if ($llm_model_id > 0) {
-                $queue_url .= '&llm_model_id=' . rawurlencode((string)$llm_model_id);
-            }
-            if ($embedding_model_id > 0) {
-                $queue_url .= '&embedding_model_id=' . rawurlencode((string)$embedding_model_id);
-            }
-
-            $curl = new \curl();
-            $queue_opts = [
-                'CURLOPT_TIMEOUT' => 120,
-                'CURLOPT_HTTPHEADER' => [
-                    'Accept: application/json',
-                    'x-api-key: ' . $api_key
-                ]
-            ];
-            $queue_params = [
-                'file' => new \CURLFile($tmp_path)
-            ];
-
-            $queue_raw = '';
-            $job_id = '';
-            for ($queue_attempt = 1; $queue_attempt <= 3; $queue_attempt++) {
-                $queue_raw = (string)$curl->post($queue_url, $queue_params, $queue_opts);
-                $queued = json_decode($queue_raw, true);
-                $job_id = is_array($queued) ? (string)($queued['job']['job_id'] ?? '') : '';
-                if ($job_id !== '') {
-                    break;
-                }
-                if ($queue_attempt < 3) {
-                    sleep($queue_attempt);
-                }
-            }
-            if ($job_id === '') {
-                error_log('block_ai_assistant: upload_content_to_bot failed queueing parser job for course ' . (int)$course_id . ' response=' . substr($queue_raw, 0, 500));
-                return '';
-            }
-
-            $poll_url = $criaparse_url . '/parser/poll?job_id=' . rawurlencode($job_id);
-            $poll_opts = [
-                'CURLOPT_TIMEOUT' => 30,
-                'CURLOPT_HTTPHEADER' => [
-                    'Accept: application/json',
-                    'x-api-key: ' . $api_key
-                ]
-            ];
-
-            $nodes = [];
-            $assets = [];
-            $deadline = time() + 180;
-            while (time() < $deadline) {
-                $poll_raw = (string)$curl->get($poll_url, [], $poll_opts);
-                $polled = json_decode($poll_raw, true);
-                $job = is_array($polled) ? ($polled['job'] ?? null) : null;
-                if (!is_array($job)) {
-                    // Back off when parser poll returns transient non-JSON/5xx payloads.
-                    sleep(2);
-                    continue;
-                }
-
-                if (!empty($job['finished'])) {
-                    $response = $job['response'] ?? null;
-                    if (is_array($response)) {
-                        $raw_elements = $response['elements'] ?? [];
-                        $raw_assets = $response['assets'] ?? [];
-                        $nodes = self::normalize_criaparse_elements($raw_elements);
-                        $assets = self::normalize_criaparse_assets($raw_assets);
-
-                        // Defensive fallback: if parser output is not structured as elements,
-                        // still push one minimal node to avoid hard 422 failures downstream.
-                        if (empty($nodes)) {
-                            $flat_text = trim((string)($response['text'] ?? $response['content'] ?? ''));
-                            if ($flat_text !== '') {
-                                $nodes = [[
-                                    'text' => $flat_text,
-                                    'metadata' => new \stdClass(),
-                                    'type' => 'text',
-                                ]];
-                            }
-                        }
-                    }
-                    break;
-                }
-                sleep(1);
-            }
-
-            if (empty($nodes) && empty($assets)) {
-                error_log('block_ai_assistant: upload_content_to_bot parser returned no nodes/assets for course ' . (int)$course_id . ' job_id=' . $job_id);
-                return '';
-            }
-
-            // Ensure bot-named group exists before uploading (required by Criabot)
-            // Criabot will upload to {bot_name}-document-index group in Criadex
-            if ($criadex_url !== '' && $llm_model_id > 0 && $embedding_model_id > 0) {
-                $curl = new \curl();
-                $bot_group_name = rawurlencode($bot_name . '-document-index');
-                $create_bot_group_url = $criadex_url . '/groups/' . $bot_group_name . '/create';
-                $create_bot_group_body = [
-                    'type' => 'DOCUMENT',
-                    'llm_model_id' => $llm_model_id,
-                    'embedding_model_id' => $embedding_model_id,
-                    'rerank_model_id' => $rerank_model_id,
-                ];
-
-                $create_bot_opts = [
-                    'CURLOPT_TIMEOUT' => 30,
-                    'CURLOPT_HTTPHEADER' => [
-                        'Accept: application/json',
-                        'Content-Type: application/json',
-                        'X-API-Key: ' . $api_key,
-                    ],
-                ];
-                try {
-                    $curl->post($create_bot_group_url, json_encode($create_bot_group_body), $create_bot_opts);
-                    $info = $curl->get_info();
-                    $status = isset($info['http_code']) ? (int)$info['http_code'] : 0;
-                    if ($status !== 200 && $status !== 409) {
-                        error_log('block_ai_assistant: upload_content_to_bot failed creating bot group ' . $bot_name . '-document-index status=' . $status);
-                        return '';
-                    }
-                } catch (\Throwable $e) {
-                    error_log('block_ai_assistant: upload_content_to_bot exception creating bot group ' . $bot_name . ' error=' . $e->getMessage());
-                    return '';
-                }
-            }
-
-            $upload_body = [
-                'file_name' => $file_name,
-                'file_contents' => [
-                    'nodes' => $nodes,
-                    'assets' => $assets
-                ],
-                'file_metadata' => new \stdClass()
-            ];
-
-            $upload_url = $criabot_url . '/bots/' . rawurlencode($bot_name) . '/documents/upload';
-            $update_url = $criabot_url . '/bots/' . rawurlencode($bot_name) . '/documents/update';
-            $upload_opts = [
-                'CURLOPT_TIMEOUT' => 120,
-                'CURLOPT_HTTPHEADER' => [
-                    'Accept: application/json',
-                    'Content-Type: application/json',
-                    'X-API-Key: ' . $api_key
-                ]
-            ];
 
             $upload_throttle_ms = (int)($get($local, 'training_upload_throttle_ms') ?: $get($block, 'training_upload_throttle_ms') ?: 250);
             if ($upload_throttle_ms > 0) {
                 usleep(max(0, min($upload_throttle_ms, 5000)) * 1000);
             }
 
-            $try_upload = static function () use ($curl, $upload_url, $upload_body, $upload_opts): array {
-                $upload_raw = (string)$curl->post($upload_url, json_encode($upload_body), $upload_opts);
-                $uploaded = json_decode((string)$upload_raw, true);
-                $status = is_array($uploaded) ? (int)($uploaded['status'] ?? 0) : 0;
-                $is_duplicate = false;
-                if (is_string($upload_raw) && (
-                    strpos($upload_raw, '"code":"DUPLICATE"') !== false
-                    || strpos($upload_raw, 'Requested content already exists') !== false
-                    || strpos($upload_raw, 'already exists in the database') !== false
-                )) {
-                    $is_duplicate = true;
-                }
-                return [
-                    'raw' => $upload_raw,
-                    'uploaded' => $uploaded,
-                    'status' => $status,
-                    'duplicate' => $is_duplicate,
-                ];
-            };
+            // Native Ragflow upload: send raw file to Criabot; Criadex handles parsing + Ragflow sync.
+            $upload_url = $criabot_url . '/bots/' . rawurlencode($bot_name) . '/documents/upload/file';
+            $upload_opts = [
+                'CURLOPT_TIMEOUT' => 120,
+                'CURLOPT_HTTPHEADER' => [
+                    'Accept: application/json',
+                    'X-API-Key: ' . $api_key,
+                ],
+            ];
+            $upload_params = [
+                'file'     => new \CURLFile($tmp_path, 'application/octet-stream', $file_name),
+                'strategy' => $strategy,
+            ];
 
-            $try_update = static function () use ($curl, $update_url, $upload_body, $upload_opts): array {
-                $update_opts = $upload_opts;
-                $update_opts['CURLOPT_CUSTOMREQUEST'] = 'PATCH';
-                $update_raw = (string)$curl->post($update_url, json_encode($upload_body), $update_opts);
-                $updated = json_decode((string)$update_raw, true);
-                $status = is_array($updated) ? (int)($updated['status'] ?? 0) : 0;
-                return [
-                    'raw' => $update_raw,
-                    'updated' => $updated,
-                    'status' => $status,
-                ];
-            };
+            $curl = new \curl();
+            $upload_raw = '';
+            $upload_status = 0;
+            $uploaded = null;
 
-            $attempt = $try_upload();
-            $uploaded = $attempt['uploaded'];
-            $upload_raw = $attempt['raw'];
-            $is_duplicate = (bool)$attempt['duplicate'];
-            $upload_status = (int)$attempt['status'];
+            for ($attempt = 1; $attempt <= 2; $attempt++) {
+                $upload_raw = (string)$curl->post($upload_url, $upload_params, $upload_opts);
+                $uploaded = json_decode($upload_raw, true);
+                $upload_status = is_array($uploaded) ? (int)($uploaded['status'] ?? 0) : 0;
 
-            // If document already exists, update in place instead of delete-then-reupload.
-            // This prevents data loss if the operation fails mid-flight.
-            if ($is_duplicate) {
-                $update_attempt = $try_update();
-                $updated = $update_attempt['updated'];
-                $update_status = (int)$update_attempt['status'];
-                if (is_array($updated) && $update_status === 200) {
-                    $uploaded = $updated;
-                    $upload_raw = (string)$update_attempt['raw'];
+                // 409 = document already indexed — treat as success.
+                if ($upload_status === 409 || strpos($upload_raw, '"code":"DUPLICATE"') !== false) {
                     $upload_status = 200;
-                    $is_duplicate = false;
-                } else {
-                    error_log('block_ai_assistant: upload_content_to_bot failed updating existing document for bot ' . $bot_name . ' status=' . $update_status . ' response=' . substr((string)$update_attempt['raw'], 0, 500));
-                    return '';
+                    $uploaded = ['status' => 200, 'document_name' => $file_name];
+                    break;
                 }
+
+                if ($upload_status === 200) {
+                    break;
+                }
+
+                // Retry once on transient 422/5xx.
+                if ($attempt < 2 && ($upload_status === 422 || $upload_status >= 500)) {
+                    sleep(1);
+                    continue;
+                }
+                break;
             }
 
-            // Retry once for transient validation/network race failures.
-            if ($upload_status !== 200 && ($upload_status === 422 || $upload_status >= 500)) {
-                $attempt = $try_upload();
-                $uploaded = $attempt['uploaded'];
-                $upload_raw = $attempt['raw'];
-                $is_duplicate = (bool)$attempt['duplicate'];
-                $upload_status = (int)$attempt['status'];
-
-                if ($is_duplicate) {
-                    $update_attempt = $try_update();
-                    $updated = $update_attempt['updated'];
-                    $update_status = (int)$update_attempt['status'];
-                    if (is_array($updated) && $update_status === 200) {
-                        $uploaded = $updated;
-                        $upload_raw = (string)$update_attempt['raw'];
-                        $upload_status = 200;
-                        $is_duplicate = false;
-                    }
-                }
-            }
-
-            if ((!is_array($uploaded) || $upload_status !== 200) && !$is_duplicate) {
-                error_log('block_ai_assistant: upload_content_to_bot failed Criabot upload for bot ' . $bot_name . ' status=' . $upload_status . ' response=' . substr((string)$upload_raw, 0, 500));
+            if ($upload_status !== 200) {
+                error_log('block_ai_assistant: upload_content_to_bot failed native upload for bot ' . $bot_name . ' status=' . $upload_status . ' response=' . substr($upload_raw, 0, 500));
+                @flock($lock_handle, LOCK_UN);
+                @fclose($lock_handle);
                 return '';
             }
 
-            $document_name = (string)($uploaded['document_name'] ?? '');
-            if ($document_name === '' && is_array($uploaded) && (($uploaded['status'] ?? null) === 200)) {
-                // Some Criabot deployments omit document_name in success payloads.
-                $document_name = (string)$file_name;
-            }
-            if ($document_name === '' && $is_duplicate) {
-                // Duplicate means the same document is already indexed; keep deterministic name.
-                $document_name = (string)$file_name;
-            }
+            $document_name = (string)(is_array($uploaded) ? ($uploaded['document_name'] ?? $file_name) : $file_name);
             if ($document_name !== '' && $persist_syllabus_metadata) {
                 $DB->set_field('block_aia_settings', 'syllabus_document_name', $document_name, ['courseid' => $course_id]);
                 $DB->set_field('block_aia_settings', 'syllabus_trained', 1, ['courseid' => $course_id]);
@@ -1046,79 +798,6 @@ class cria
             "parsingstrategy" => $parsing_strategy
         ];
         return webservice::exec($method, $data);
-    }
-
-    /**
-     * Normalize parser elements into the document schema expected by Criabot.
-     *
-     * @param array $elements
-     * @return array
-     */
-    private static function normalize_criaparse_elements(array $elements): array
-    {
-        $nodes = [];
-        foreach ($elements as $element) {
-            if (is_object($element)) {
-                $element = (array)$element;
-            }
-            if (!is_array($element)) {
-                continue;
-            }
-
-            $text = '';
-            foreach (['text', 'content', 'page_content', 'chunk', 'value'] as $candidate) {
-                if (isset($element[$candidate]) && is_scalar($element[$candidate])) {
-                    $text = trim((string)$element[$candidate]);
-                    if ($text !== '') {
-                        break;
-                    }
-                }
-            }
-            if ($text === '') {
-                continue;
-            }
-
-            $metadata = [];
-            if (isset($element['metadata']) && is_array($element['metadata'])) {
-                $metadata = $element['metadata'];
-            }
-            if (isset($element['page']) && !isset($metadata['page'])) {
-                $metadata['page'] = $element['page'];
-            }
-
-            $node = [
-                'text' => $text,
-                'metadata' => empty($metadata) ? new \stdClass() : $metadata,
-            ];
-
-            if (isset($element['type']) && is_scalar($element['type'])) {
-                $node['type'] = (string)$element['type'];
-            } else {
-                $node['type'] = 'text';
-            }
-
-            $nodes[] = $node;
-        }
-        return $nodes;
-    }
-
-    /**
-     * Normalize parser assets payload to a plain array.
-     *
-     * @param array $assets
-     * @return array
-     */
-    private static function normalize_criaparse_assets(array $assets): array
-    {
-        $out = [];
-        foreach ($assets as $asset) {
-            if (is_object($asset)) {
-                $out[] = (array)$asset;
-            } else if (is_array($asset)) {
-                $out[] = $asset;
-            }
-        }
-        return $out;
     }
 
     /**
