@@ -369,6 +369,7 @@ class webservice
                         'prompt' => (string)($data['prompt'] ?? ''),
                         'bot_name' => (string)($data['bot_name'] ?? ''),
                         'extra_bots' => [],
+                        'disable_faq_fallback' => (bool)($data['disable_faq_fallback'] ?? false),
                     ];
                     $resp = self::request_json('POST', $criabot_url . '/bots/chats/' . rawurlencode($chat_id) . '/query', $headers, $body, 60);
                     return $resp['raw'];

@@ -94,8 +94,15 @@ class block_ai_assistant_chat_ws extends external_api
             'timecreated' => time(),
         ];
         $DB->insert_record('block_aia_chat_history', $params);
+
+        // Tutorial/quiz personas are free-form conversations, not Moodle-support
+        // Q&A - FAQ fallback on a low-confidence short reply (e.g. a quiz answer
+        // like "c") would otherwise inject unrelated FAQ content and derail them.
+        $tutorialid = $DB->get_field('block_aia_tutorial_chats', 'tutorialid', ['id' => $tutorialchatid]);
+        $is_tutorial_chat = !empty($tutorialid);
+
         // Get chat response
-        $response = cria::chat_send($chatid, $prompt, $bot_name);
+        $response = cria::chat_send($chatid, $prompt, $bot_name, $is_tutorial_chat);
 
         // The response is in HTML format. Get all images into an array. You must capture the id attribute and teh src attribute.
         $dom = new DOMDocument();
@@ -404,7 +411,7 @@ class block_ai_assistant_chat_ws extends external_api
 
         $curent_lang = current_language();
         $topic_prompt = 'Give me oly a topic title for ' . $name . ' in ' . $curent_lang . ' language. Nothing else!';
-        $topic_title = cria::chat_send($chat_id, $topic_prompt, $bot_name);
+        $topic_title = cria::chat_send($chat_id, $topic_prompt, $bot_name, true);
         $initial_prompt = str_replace(
             '[topic]',
             $topic_title,
@@ -432,7 +439,7 @@ class block_ai_assistant_chat_ws extends external_api
 
         $DB->insert_record('block_aia_chat_history', $params);
         // Get message from Cria
-        $message = cria::chat_send($chat_id, $initial_prompt, $bot_name);
+        $message = cria::chat_send($chat_id, $initial_prompt, $bot_name, true);
         // INsert new message to chat history.
         $new_message_params = [
             'tutorialchatid' => $tutorialchatid,

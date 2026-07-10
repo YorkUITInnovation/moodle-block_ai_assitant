@@ -477,6 +477,82 @@ class cria
     }
 
     /**
+     * Resolve the current chat/embedding/rerank model ids from criabot's live
+     * Ragflow-backed model list (GET /models/list, `is_default` per category),
+     * instead of the numeric ids cached once in admin settings.
+     *
+     * The cached settings are only ever used as a network-failure fallback, not
+     * as the primary source - a model-registry change on the backend (e.g. a
+     * Ragflow resync) used to silently break every course's bot creation until
+     * an admin manually updated three numbers; this makes it self-healing.
+     *
+     * @param object $config block_ai_assistant admin config (cached ids as fallback)
+     * @return array ['model_id' => int, 'embedding_id' => int, 'rerank_model_id' => int]
+     */
+    private static function resolve_default_model_ids($config): array
+    {
+        $block = get_config('block_ai_assistant');
+        $local = get_config('local_cria');
+        $get = static function ($obj, string $key): string {
+            if (is_object($obj) && isset($obj->{$key}) && (string)$obj->{$key} !== '') {
+                return (string)$obj->{$key};
+            }
+            return '';
+        };
+        $criabot_url = rtrim($get($local, 'criabot_url') ?: $get($block, 'criabot_url'), '/');
+        $api_key = $get($local, 'criadex_api_key') ?: $get($block, 'criadex_api_key');
+
+        $fallback = [
+            'model_id' => (int)($config->criadex_model_id ?? 0),
+            'embedding_id' => (int)($config->criadex_embed_id ?? 0),
+            'rerank_model_id' => (int)($config->criadex_rerank_id ?? 0),
+        ];
+
+        if ($criabot_url === '' || $api_key === '') {
+            return $fallback;
+        }
+
+        try {
+            $curl = new \curl();
+            $raw = (string)$curl->get($criabot_url . '/models/list', [], [
+                'CURLOPT_TIMEOUT' => 15,
+                'CURLOPT_HTTPHEADER' => [
+                    'Accept: application/json',
+                    'X-API-Key: ' . $api_key,
+                ],
+            ]);
+            $response = json_decode($raw, true);
+            $models = is_array($response) ? (array)($response['models'] ?? []) : [];
+
+            $default_id_by_type = [];
+            foreach ($models as $model) {
+                if (!is_array($model) || empty($model['is_default'])) {
+                    continue;
+                }
+                $type = (string)($model['model_type'] ?? '');
+                if ($type !== '') {
+                    $default_id_by_type[$type] = (int)($model['id'] ?? 0);
+                }
+            }
+
+            if (empty($models)) {
+                // Lookup effectively failed (empty/malformed response) - use cached ids.
+                return $fallback;
+            }
+
+            return [
+                'model_id' => $default_id_by_type['chat'] ?? $fallback['model_id'],
+                'embedding_id' => $default_id_by_type['embedding'] ?? $fallback['embedding_id'],
+                // No rerank default is a legitimate live state ("no reranker"), not a
+                // failure - only the cached id falls back to something non-zero.
+                'rerank_model_id' => $default_id_by_type['rerank'] ?? 0,
+            ];
+        } catch (\Throwable $e) {
+            return $fallback;
+        }
+    }
+
+    /**
      * Returns the config for creating bot instance
      * @param int $course_id
      * @param bool $is_syllabus
@@ -490,6 +566,7 @@ class cria
         // Set parameters
         $context = \context_course::instance($course_id);
         $config = get_config('block_ai_assistant');
+        $model_ids = self::resolve_default_model_ids($config);
         $course_data = $DB->get_record('course', array('id' => $course_id));
         if (!$block_settings = $DB->get_record('block_aia_settings', array('courseid' => $course_id))) {
             // Set variables
@@ -534,9 +611,9 @@ class cria
             'description' => $config->description,
             'bot_type' => $config->bot_type,
             'bot_system_message' => $system_message,
-            'model_id' => $config->criadex_model_id,
-            'embedding_id' => $config->criadex_embed_id,
-            'rerank_model_id' => $config->criadex_rerank_id,
+            'model_id' => $model_ids['model_id'],
+            'embedding_id' => $model_ids['embedding_id'],
+            'rerank_model_id' => $model_ids['rerank_model_id'],
             'requires_content_prompt' => $config->requires_content_prompt,
             'requires_user_prompt' => $config->requires_user_prompt,
             'user_prompt' => $config->user_prompt,
@@ -1653,15 +1730,17 @@ class cria
      * @param string $chat_id
      * @param string $prompt
      * @param string $bot_name
+     * @param bool $disable_faq_fallback Skip FAQ fallback (persona-driven tutorial/quiz chats, not Moodle-support Q&A)
      * @return mixed
      */
-    public static function chat_send(string $chat_id, string $prompt, string $bot_name)
+    public static function chat_send(string $chat_id, string $prompt, string $bot_name, bool $disable_faq_fallback = false)
     {
         $method = 'cria_chat_send';
         $data = array(
             'bot_name' => $bot_name,
             'chat_id' => trim($chat_id),
-            'prompt' => $prompt
+            'prompt' => $prompt,
+            'disable_faq_fallback' => $disable_faq_fallback
         );
         $response = webservice::exec($method, $data);
         $decoded = json_decode($response, true);
