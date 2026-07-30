@@ -302,6 +302,7 @@ class cria
                 'embedding_model_id' => (int)($data['embedding_id'] ?? 0),
                 'rerank_model_id' => (int)($data['rerank_model_id'] ?? 0),
                 'parent_bot_names' => array_values(array_filter(array_map('trim', explode(',', (string)($data['child_bots'] ?? ''))))),
+                'publish' => (bool)($data['publish'] ?? true),
             ];
 
             $curl = new \curl();
@@ -361,6 +362,7 @@ class cria
                 'no_context_use_message' => (bool)($data['no_context_use_message'] ?? false),
                 'no_context_llm_guess' => (bool)($data['no_context_llm_guess'] ?? false),
                 'system_message' => (string)($data['bot_system_message'] ?? ''),
+                'publish' => (bool)($data['publish'] ?? true),
             ];
 
             $curl->post($criabot_url . '/bots/' . rawurlencode($bot_name) . '/manage/update', json_encode($update_body), [
@@ -642,7 +644,7 @@ class cria
             'icon_file_content' => $image->filecontent,
             'bot_locale' => $config->bot_locale,
             'child_bots' => $config->child_bots,
-            'publish' => 0,
+            'publish' => 1,
             'bot_contact' => $bot_contact,
             'bot_help_text' => $bot_help_text
         );

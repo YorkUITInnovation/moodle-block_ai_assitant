@@ -33,7 +33,9 @@ defined('MOODLE_INTERNAL') || die();
  */
 function xmldb_block_ai_assistant_upgrade($oldversion)
 {
-    global $DB;
+    global $DB, $CFG;
+
+    require_once($CFG->dirroot . '/blocks/ai_assistant/classes/webservice.php');
 
     $dbman = $DB->get_manager();
 
@@ -309,6 +311,18 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         }
 
         upgrade_block_savepoint(true, 2026052505, 'ai_assistant');
+    }
+
+    if ($oldversion < 2026073001) {
+        $table = new xmldb_table('block_aia_settings');
+        $field = new xmldb_field('publish', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'published');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $DB->set_field('block_aia_settings', 'publish', 1, []);
+        \block_ai_assistant\webservice::exec('cria_sync_publish', []);
+        upgrade_block_savepoint(true, 2026073001, 'ai_assistant');
     }
 
     return true;

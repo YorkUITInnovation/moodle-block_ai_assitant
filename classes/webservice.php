@@ -462,6 +462,11 @@ class webservice
                     $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/upload', $headers, $body, 120);
                     return $resp['raw'];
                 }
+
+                case 'cria_sync_publish': {
+                    $resp = self::request_json('POST', $criabot_url . '/bots/manage/publish/sync', $headers, [], 60);
+                    return $resp['raw'];
+                }
             }
         }
 
@@ -518,6 +523,5 @@ class webservice
         }
 
         return self::is_invalid_embed_loader_response($last_response) ? '' : $last_response;
-
     }
 }
