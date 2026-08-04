@@ -383,7 +383,7 @@ class webservice
 
                 case 'cria_gradebook_start': {
                     $body = $data;
-                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/start', $headers, $body, 60);
+                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/start', $headers, $body, 120);
                     return $resp['raw'];
                 }
 

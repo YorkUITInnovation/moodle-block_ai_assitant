@@ -1051,9 +1051,18 @@ const convertMarkdownToHtml = (text) => {
     return html;
 };
 
-const appendMessage = (container, text, isHuman, skipPersist) => {
+const appendMessage = (container, text, isHuman, skipPersist, quickReplies) => {
     if (!container) {
         return;
+    }
+
+    if (isHuman) {
+        document.querySelectorAll('.gradebook-quick-replies:not(.is-spent)').forEach((node) => {
+            node.classList.add('is-spent');
+            node.querySelectorAll('button').forEach((btn) => {
+                btn.disabled = true;
+            });
+        });
     }
 
     const div = document.createElement('div');
@@ -1062,6 +1071,14 @@ const appendMessage = (container, text, isHuman, skipPersist) => {
     const content = document.createElement('div');
     content.className = 'message-content';
     content.innerHTML = convertMarkdownToHtml(text || '');
+
+    if (!isHuman) {
+        const replies = Array.isArray(quickReplies) ? quickReplies : [];
+        const actions = buildQuickReplyActions(replies);
+        if (actions) {
+            content.appendChild(actions);
+        }
+    }
 
     div.appendChild(content);
     container.appendChild(div);
@@ -1080,6 +1097,83 @@ const appendMessage = (container, text, isHuman, skipPersist) => {
         }
         scheduleServerSave();
     }
+};
+
+const buildQuickReplyActions = (quickReplies) => {
+    const replies = (Array.isArray(quickReplies) ? quickReplies : [])
+        .map((item) => {
+            if (!item || typeof item !== 'object') {
+                return null;
+            }
+            const prompt = String(item.prompt || '').trim();
+            const label = String(item.label || item.prompt || '').trim();
+            if (!prompt || !label) {
+                return null;
+            }
+            return {prompt, label};
+        })
+        .filter(Boolean);
+
+    if (!replies.length) {
+        return null;
+    }
+
+    // Only the newest set of action buttons should stay interactive.
+    document.querySelectorAll('.gradebook-quick-replies').forEach((node) => {
+        node.classList.add('is-spent');
+        node.querySelectorAll('button').forEach((btn) => {
+            btn.disabled = true;
+        });
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'gradebook-quick-replies';
+    actions.setAttribute('role', 'group');
+    actions.setAttribute('aria-label', 'Quick replies');
+
+    replies.forEach((item) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'gradebook-quick-reply-btn';
+        btn.textContent = item.label;
+        btn.dataset.prompt = item.prompt;
+        btn.addEventListener('click', () => {
+            void handleQuickReplyClick(actions, item.prompt, item.label);
+        });
+        actions.appendChild(btn);
+    });
+
+    return actions;
+};
+
+const handleQuickReplyClick = async (actionsNode, prompt, label) => {
+    const normalized = String(prompt || '').trim();
+    if (!normalized) {
+        return;
+    }
+
+    if (requestInFlight) {
+        await showBusyWaitIndicator();
+        focusPromptInput();
+        return;
+    }
+
+    if (actionsNode) {
+        actionsNode.classList.add('is-spent');
+        actionsNode.querySelectorAll('button').forEach((btn) => {
+            btn.disabled = true;
+        });
+    }
+
+    const displayText = String(label || normalized).trim() || normalized;
+    await sendPreparedPrompt({
+        typed: normalized,
+        prepared: {
+            prompt: normalized,
+            displayText,
+            usedFormulaInput: false
+        }
+    });
 };
 
 const appendSystemMessage = (text) => {
@@ -3331,6 +3425,10 @@ const doStartSession = async (importMode = '') => {
     const initial = parsed.initial_message || parsed.message || 'Gradebook session started.';
     appendSystemMessage(initial);
 
+    if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
+        applyProposalFromPayload(parsed);
+    }
+
     serverSaveState();
 
     return sessionId;
@@ -3771,7 +3869,7 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                     renderResultPanel(null);
                 }
 
-                appendMessage(getChatMessages(), replyText, false, backendAlreadyHasReply);
+                appendMessage(getChatMessages(), replyText, false, backendAlreadyHasReply, parsed.quick_replies);
                 if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
                     const cats = extractProposalCategories(parsed.proposal);
                     const catsWithItems = extractProposalCategoriesWithItems(parsed.proposal);

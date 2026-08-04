@@ -157,6 +157,59 @@
         margin-left: auto;
     }
 
+    .gradebook-quick-replies {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+        white-space: normal;
+    }
+
+    .gradebook-quick-reply-btn {
+        appearance: none;
+        border: 1px solid var(--bs-info-border-subtle, #9eeaf9);
+        background: var(--bs-info-bg-subtle, #cff4fc);
+        color: var(--bs-info-text-emphasis, #055160);
+        border-radius: 999px;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.2;
+        cursor: pointer;
+        transition:
+            transform 140ms ease,
+            box-shadow 140ms ease,
+            background-color 140ms ease,
+            border-color 140ms ease,
+            opacity 140ms ease;
+        box-shadow: 0 1px 2px rgba(5, 81, 96, 0.08);
+    }
+
+    .gradebook-quick-reply-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        background: #b6ebf7;
+        border-color: #6edff2;
+        box-shadow: 0 4px 10px rgba(5, 81, 96, 0.14);
+    }
+
+    .gradebook-quick-reply-btn:active:not(:disabled) {
+        transform: translateY(0) scale(0.97);
+        box-shadow: 0 1px 2px rgba(5, 81, 96, 0.1);
+    }
+
+    .gradebook-quick-reply-btn:focus-visible {
+        outline: 2px solid var(--bs-info, #0dcaf0);
+        outline-offset: 2px;
+    }
+
+    .gradebook-quick-reply-btn:disabled,
+    .gradebook-quick-replies.is-spent .gradebook-quick-reply-btn {
+        cursor: default;
+        opacity: 0.55;
+        transform: none;
+        box-shadow: none;
+    }
+
     /* Mapping preview drawer — collapsible, compact, its own scroll. */
     .gradebook-mapping-drawer {
         border-top: 1px solid var(--bs-border-color, #dee2e6);
