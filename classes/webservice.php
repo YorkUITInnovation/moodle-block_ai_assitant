@@ -448,7 +448,16 @@ class webservice
                     if (array_key_exists('confirmed_mapping', $data)) {
                         $body['confirmed_mapping'] = $data['confirmed_mapping'];
                     }
-                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/sync', $headers, $body, 5);
+                    if (array_key_exists('refresh_proposal_candidates', $data)) {
+                        $body['refresh_proposal_candidates'] = (bool)$data['refresh_proposal_candidates'];
+                    }
+                    if (array_key_exists('moodle_resources', $data)) {
+                        $body['moodle_resources'] = $data['moodle_resources'];
+                    }
+                    if (array_key_exists('syllabus_documents', $data)) {
+                        $body['syllabus_documents'] = $data['syllabus_documents'];
+                    }
+                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/sync', $headers, $body, 120);
                     return $resp['raw'];
                 }
 

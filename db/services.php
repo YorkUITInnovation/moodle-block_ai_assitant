@@ -234,6 +234,24 @@ $functions = array(
         'capabilities' => '',
         'ajax' => true
     ),
+    'block_ai_assistant_gradebook_create_assignment_activity' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'create_assignment_activity',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Create or reuse an Assignment activity during missing-item resolution.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_sync_context' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'sync_context',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Sync latest Moodle course activities into criabot gradebook session context.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
     'block_ai_assistant_gradebook_upload' => array(
         'classname' => 'block_ai_assistant_gradebook_ws',
         'methodname' => 'upload',

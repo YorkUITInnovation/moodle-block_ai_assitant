@@ -66,6 +66,8 @@ class block_ai_assistant_gradebook_ws extends external_api
         $context = \context_course::instance($courseid);
         self::validate_context($context);
 
+        cria::gradebook_sync_context_for_chat($courseid, $session_id, $prompt);
+
         $raw = cria::gradebook_chat($session_id, $prompt);
         $decoded = json_decode($raw, true);
         if (!is_array($decoded)) {
@@ -442,6 +444,97 @@ class block_ai_assistant_gradebook_ws extends external_api
                 'moodle_cmid' => new external_value(PARAM_INT, 'CMID for the item, 0 for manual rows.'),
                 'itemtype' => new external_value(PARAM_ALPHA, 'Grade item type.'),
                 'module' => new external_value(PARAM_RAW, 'Module name, empty for manual rows.'),
+            )
+        );
+    }
+
+    public static function create_assignment_activity_parameters(): external_function_parameters
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'activity_name' => new external_value(PARAM_TEXT, 'Assignment activity name', VALUE_REQUIRED),
+                'section_num' => new external_value(PARAM_INT, 'Course section number (default 0)', VALUE_DEFAULT, 0),
+            )
+        );
+    }
+
+    public static function create_assignment_activity(int $courseid, string $activity_name, int $section_num = 0): array
+    {
+        self::validate_parameters(
+            self::create_assignment_activity_parameters(),
+            [
+                'courseid' => $courseid,
+                'activity_name' => $activity_name,
+                'section_num' => $section_num,
+            ]
+        );
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        return cria::gradebook_create_assignment_activity($courseid, $activity_name, $section_num);
+    }
+
+    public static function create_assignment_activity_returns(): external_description
+    {
+        return new external_single_structure(
+            array(
+                'success' => new external_value(PARAM_BOOL, 'Whether the assignment activity was created or reused.'),
+                'message' => new external_value(PARAM_TEXT, 'Result message.'),
+                'activity_name' => new external_value(PARAM_TEXT, 'Assignment activity display name.'),
+                'moodle_cmid' => new external_value(PARAM_INT, 'CMID for the assignment activity.'),
+                'module' => new external_value(PARAM_ALPHA, 'Module type, assign.'),
+                'grade_item_id' => new external_value(PARAM_INT, 'Grade item id if available.'),
+                'reused' => new external_value(PARAM_BOOL, 'True when an existing activity with the same name was reused.'),
+            )
+        );
+    }
+
+    public static function sync_context_parameters(): external_function_parameters
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'session_id' => new external_value(PARAM_RAW, 'Gradebook session id', VALUE_REQUIRED),
+                'refresh_proposal_candidates' => new external_value(
+                    PARAM_BOOL,
+                    'Whether to force proposal candidate refresh during sync.',
+                    VALUE_DEFAULT,
+                    false
+                ),
+            )
+        );
+    }
+
+    public static function sync_context(int $courseid, string $session_id, bool $refresh_proposal_candidates = false): array
+    {
+        self::validate_parameters(
+            self::sync_context_parameters(),
+            [
+                'courseid' => $courseid,
+                'session_id' => $session_id,
+                'refresh_proposal_candidates' => $refresh_proposal_candidates,
+            ]
+        );
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        cria::gradebook_sync_context($courseid, $session_id, $refresh_proposal_candidates);
+
+        return [
+            'success' => true,
+            'message' => 'Context synced.',
+        ];
+    }
+
+    public static function sync_context_returns(): external_description
+    {
+        return new external_single_structure(
+            array(
+                'success' => new external_value(PARAM_BOOL, 'Whether sync call completed.'),
+                'message' => new external_value(PARAM_TEXT, 'Sync result message.'),
             )
         );
     }

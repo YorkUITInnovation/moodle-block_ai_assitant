@@ -1975,12 +1975,103 @@ class cria
     }
 
     /**
+     * Collect syllabus file bytes for criabot text extraction (AI Assistant area + syllabus-like course files).
+     *
+     * @return array<int, array{filename:string,filetype:string,base64:string}>
+     */
+    private static function build_gradebook_syllabus_documents(int $courseid): array
+    {
+        $documents = [];
+        $seen = [];
+        $maxbytes = 5 * 1024 * 1024;
+
+        $add_file = static function ($file) use (&$documents, &$seen, $maxbytes): void {
+            if (!$file || $file->is_directory() || $file->get_filesize() <= 0) {
+                return;
+            }
+            if ((int)$file->get_filesize() > $maxbytes) {
+                return;
+            }
+            $filename = (string)$file->get_filename();
+            $key = \core_text::strtolower(trim($filename));
+            if ($key === '' || isset($seen[$key])) {
+                return;
+            }
+            $content = $file->get_content();
+            if ($content === '' || $content === false) {
+                return;
+            }
+            $seen[$key] = true;
+            $documents[] = [
+                'filename' => $filename,
+                'filetype' => (string)$file->get_mimetype(),
+                'base64' => base64_encode($content),
+            ];
+        };
+
+        try {
+            $context = \context_course::instance($courseid);
+            $fs = get_file_storage();
+
+            // AI Assistant syllabus uploads.
+            $files = $fs->get_area_files($context->id, 'block_ai_assistant', 'syllabus', $courseid, 'itemid', false);
+            foreach ($files as $file) {
+                $add_file($file);
+            }
+
+            // Section 0 course files that look like a syllabus.
+            $sectionfiles = $fs->get_area_files($context->id, 'course', 'section', 0, 'filename', false);
+            foreach ($sectionfiles as $file) {
+                $filename = (string)$file->get_filename();
+                if (!self::is_syllabus_like_filename($filename)) {
+                    continue;
+                }
+                $add_file($file);
+            }
+
+            // Resource module files with syllabus-like names.
+            $modinfo = get_fast_modinfo($courseid);
+            foreach ($modinfo->get_cms() as $cm) {
+                if (!$cm->uservisible || (string)$cm->modname !== 'resource') {
+                    continue;
+                }
+                $issectionzero = (string)($cm->sectionnum ?? '') === '0';
+                if (!self::is_syllabus_like_filename((string)$cm->name) && !$issectionzero) {
+                    // Still include section-0 resources even when name is generic.
+                    continue;
+                }
+                $cmcontext = \context_module::instance($cm->id);
+                $resfiles = $fs->get_area_files($cmcontext->id, 'mod_resource', 'content', 0, 'filename', false);
+                $addedsectionzerogeneric = false;
+                foreach ($resfiles as $file) {
+                    $filelookssyllabus = self::is_syllabus_like_filename((string)$file->get_filename());
+                    $cmlookssyllabus = self::is_syllabus_like_filename((string)$cm->name);
+                    if (!$filelookssyllabus && !$cmlookssyllabus) {
+                        if ($issectionzero && !$addedsectionzerogeneric) {
+                            // For section 0 fallback, include only the first content file.
+                            $add_file($file);
+                            $addedsectionzerogeneric = true;
+                        }
+                        continue;
+                    }
+                    $add_file($file);
+                }
+            }
+        } catch (\Throwable $e) {
+            debugging('Gradebook syllabus document collect failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+
+        return $documents;
+    }
+
+    /**
      * Push current Moodle activities (and optional mapping) into the Criabot session.
      */
     private static function sync_gradebook_session_context(
         int $courseid,
         string $session_id,
-        ?array $confirmed_mapping = null
+        ?array $confirmed_mapping = null,
+        bool $refresh_proposal_candidates = false
     ): void {
         $session_id = trim($session_id);
         if ($courseid < 1 || $session_id === '') {
@@ -1994,12 +2085,75 @@ class cria
         if ($confirmed_mapping !== null) {
             $payload['confirmed_mapping'] = $confirmed_mapping;
         }
+        if ($refresh_proposal_candidates) {
+            $payload['refresh_proposal_candidates'] = true;
+            $payload['syllabus_documents'] = self::build_gradebook_syllabus_documents($courseid);
+        }
 
         try {
             webservice::exec('cria_gradebook_sync', $payload);
         } catch (\Throwable $e) {
             debugging('Gradebook session sync failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
         }
+    }
+
+    /**
+     * Determine whether a chat prompt should force-refresh activity context before proposal reveal.
+     */
+    private static function gradebook_prompt_requires_activity_refresh(string $prompt): bool
+    {
+        $text = \core_text::strtolower(trim($prompt));
+        if ($text === '') {
+            return false;
+        }
+
+        $markers = [
+            'continue',
+            'show proposal',
+            'yes start now',
+            'start now',
+            'use syllabus',
+            'yorku buckets',
+            'generate proposal',
+            'give me a proposal',
+            'proceed',
+            'go ahead',
+        ];
+        foreach ($markers as $marker) {
+            if (strpos($text, $marker) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Refresh current Moodle activities into Criabot session before chat prompts that may reveal proposals.
+     */
+    public static function gradebook_sync_context_for_chat(int $courseid, string $session_id, string $prompt): void
+    {
+        $session_id = trim($session_id);
+        if ($courseid < 1 || $session_id === '') {
+            return;
+        }
+        self::sync_gradebook_session_context(
+            $courseid,
+            $session_id,
+            null,
+            self::gradebook_prompt_requires_activity_refresh($prompt)
+        );
+    }
+
+    /**
+     * Explicitly sync current Moodle activities into Criabot session.
+     */
+    public static function gradebook_sync_context(int $courseid, string $session_id, bool $refresh_proposal_candidates = false): void
+    {
+        $session_id = trim($session_id);
+        if ($courseid < 1 || $session_id === '') {
+            return;
+        }
+        self::sync_gradebook_session_context($courseid, $session_id, null, $refresh_proposal_candidates);
     }
 
     public static function gradebook_start(int $courseid, int $professorid, string $import_mode = ''): string
@@ -2161,6 +2315,7 @@ class cria
             'course_activities' => $activities,
             'baseline_snapshot' => $baseline_snapshot,
             'import_mode' => $normalized_import_mode,
+            'syllabus_documents' => self::build_gradebook_syllabus_documents($courseid),
         );
         $response_json = webservice::exec($method, $data);
         $response = json_decode($response_json, true);
@@ -4475,6 +4630,117 @@ class cria
                 'moodle_cmid' => 0,
                 'itemtype' => 'manual',
                 'module' => '',
+            ];
+        }
+    }
+
+    public static function gradebook_create_assignment_activity(int $courseid, string $activityname, int $sectionnum = 0): array
+    {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/course/lib.php');
+        require_once($CFG->dirroot . '/course/modlib.php');
+
+        $cleanname = trim($activityname);
+        if ($courseid <= 0 || $cleanname === '') {
+            return [
+                'success' => false,
+                'message' => 'Assignment activity name is required.',
+                'activity_name' => '',
+                'moodle_cmid' => 0,
+                'module' => 'assign',
+                'grade_item_id' => 0,
+                'reused' => false,
+            ];
+        }
+
+        try {
+            $modinfo = get_fast_modinfo($courseid);
+            foreach ($modinfo->get_cms() as $cm) {
+                if ((string)$cm->modname !== 'assign') {
+                    continue;
+                }
+                if (\core_text::strtolower(trim((string)$cm->name)) !== \core_text::strtolower($cleanname)) {
+                    continue;
+                }
+
+                $gradeitemid = (int)$DB->get_field(
+                    'grade_items',
+                    'id',
+                    [
+                        'courseid' => $courseid,
+                        'itemtype' => 'mod',
+                        'itemmodule' => 'assign',
+                        'iteminstance' => (int)$cm->instance,
+                    ]
+                );
+
+                return [
+                    'success' => true,
+                    'message' => 'Assignment activity already exists.',
+                    'activity_name' => $cleanname,
+                    'moodle_cmid' => (int)$cm->id,
+                    'module' => 'assign',
+                    'grade_item_id' => $gradeitemid > 0 ? $gradeitemid : 0,
+                    'reused' => true,
+                ];
+            }
+
+            $course = get_course($courseid);
+            if (!$course) {
+                throw new \moodle_exception('Course not found.');
+            }
+
+            $module = $DB->get_record('modules', ['name' => 'assign'], 'id', MUST_EXIST);
+            $moddata = new \stdClass();
+            $moddata->course = $courseid;
+            $moddata->module = (int)$module->id;
+            $moddata->modulename = 'assign';
+            $moddata->name = $cleanname;
+            $moddata->intro = '';
+            $moddata->introformat = FORMAT_HTML;
+            $moddata->section = max(0, (int)$sectionnum);
+            $moddata->visible = 1;
+            $moddata->cmidnumber = '';
+            $moddata->groupmode = NOGROUPS;
+            $moddata->groupingid = 0;
+
+            $created = add_moduleinfo($moddata, $course);
+            $cmid = (int)($created->coursemodule ?? 0);
+            $instanceid = (int)($created->instance ?? 0);
+            if ($cmid <= 0 || $instanceid <= 0) {
+                throw new \moodle_exception('Assignment creation did not return valid module identifiers.');
+            }
+
+            $gradeitemid = (int)$DB->get_field(
+                'grade_items',
+                'id',
+                [
+                    'courseid' => $courseid,
+                    'itemtype' => 'mod',
+                    'itemmodule' => 'assign',
+                    'iteminstance' => $instanceid,
+                ]
+            );
+
+            return [
+                'success' => true,
+                'message' => 'Assignment activity created.',
+                'activity_name' => $cleanname,
+                'moodle_cmid' => $cmid,
+                'module' => 'assign',
+                'grade_item_id' => $gradeitemid > 0 ? $gradeitemid : 0,
+                'reused' => false,
+            ];
+        } catch (\Throwable $e) {
+            debugging('Could not create assignment activity: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            return [
+                'success' => false,
+                'message' => 'Could not create assignment activity.',
+                'activity_name' => '',
+                'moodle_cmid' => 0,
+                'module' => 'assign',
+                'grade_item_id' => 0,
+                'reused' => false,
             ];
         }
     }

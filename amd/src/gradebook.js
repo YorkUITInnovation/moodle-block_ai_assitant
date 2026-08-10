@@ -41,6 +41,14 @@ let addManualItemPromptLabel = 'Name for the manual grade item in {$a}';
 let addManualItemDefaultNameLabel = '{$a} Manual Item';
 let addManualItemFailedLabel = 'Could not create the manual grade item. Try again.';
 let addManualItemCreatedLabel = 'Added manual grade item "{$a}".';
+let missingItemsAssessmentLabel = 'Assessment';
+let missingItemsActionLabel = 'Action';
+let missingItemsActivityLabel = 'Activity';
+let missingItemsGradeItemLabel = 'Grade item';
+let missingItemsSkipLabel = 'Skip';
+let missingItemsSubmitLabel = 'Submit';
+let missingItemsPartialFailedLabel = 'Created some items, but these failed. Resolve the remaining rows and submit again:';
+let lastMissingItemDecisions = [];
 let noSubcategoryLabel = '— None (Parent Category) —';
 let subcategorySelectTitle = 'Optional: choose a subcategory, or keep None to stay in the parent category.';
 
@@ -814,12 +822,22 @@ const askBaselineModeChoice = async () => {
     );
     const yesLabel = await getStringSafe('gradebook_baseline_prompt_yes', 'Use baseline');
     const noLabel = await getStringSafe('gradebook_baseline_prompt_no', 'Start fresh');
+    const yesTitle = await getStringSafe(
+        'gradebook_baseline_prompt_yes_tooltip',
+        'Use your existing course gradebook structure as the baseline.'
+    );
+    const noTitle = await getStringSafe(
+        'gradebook_baseline_prompt_no_tooltip',
+        'Discard baseline import and regenerate from syllabus context.'
+    );
 
     return moodleConfirm({
         title,
         message,
         yesLabel,
-        noLabel
+        noLabel,
+        yesTitle,
+        noTitle
     });
 };
 
@@ -1051,7 +1069,7 @@ const convertMarkdownToHtml = (text) => {
     return html;
 };
 
-const appendMessage = (container, text, isHuman, skipPersist, quickReplies) => {
+const appendMessage = (container, text, isHuman, skipPersist, quickReplies, uiPayload) => {
     if (!container) {
         return;
     }
@@ -1072,6 +1090,13 @@ const appendMessage = (container, text, isHuman, skipPersist, quickReplies) => {
     content.className = 'message-content';
     content.innerHTML = convertMarkdownToHtml(text || '');
 
+    if (!isHuman && uiPayload && typeof uiPayload === 'object') {
+        const panel = buildStructuredChatPanel(uiPayload);
+        if (panel) {
+            content.appendChild(panel);
+        }
+    }
+
     if (!isHuman) {
         const replies = Array.isArray(quickReplies) ? quickReplies : [];
         const actions = buildQuickReplyActions(replies);
@@ -1086,7 +1111,14 @@ const appendMessage = (container, text, isHuman, skipPersist, quickReplies) => {
 
     if (!skipPersist) {
         const history = loadJson(getStorageKey('chat_history'), []);
-        history.push({role: isHuman ? 'human' : 'bot', text: text || ''});
+        const entry = {role: isHuman ? 'human' : 'bot', text: text || ''};
+        if (!isHuman && Array.isArray(quickReplies) && quickReplies.length > 0) {
+            entry.quick_replies = quickReplies;
+        }
+        if (!isHuman && uiPayload && typeof uiPayload === 'object') {
+            entry.ui = uiPayload;
+        }
+        history.push(entry);
         persistChatHistoryLocal(history);
         const normalizedHistory = normalizeChatHistoryEntries(history);
         const currentSessionId = getSessionId();
@@ -1107,10 +1139,15 @@ const buildQuickReplyActions = (quickReplies) => {
             }
             const prompt = String(item.prompt || '').trim();
             const label = String(item.label || item.prompt || '').trim();
-            if (!prompt || !label) {
+            const action = String(item.action || '').trim();
+            const url = String(item.url || '').trim();
+            if (!label) {
                 return null;
             }
-            return {prompt, label};
+            if (!prompt && !(action === 'open_url' && url)) {
+                return null;
+            }
+            return {prompt, label, action, url};
         })
         .filter(Boolean);
 
@@ -1137,8 +1174,14 @@ const buildQuickReplyActions = (quickReplies) => {
         btn.className = 'gradebook-quick-reply-btn';
         btn.textContent = item.label;
         btn.dataset.prompt = item.prompt;
+        if (item.action) {
+            btn.dataset.action = item.action;
+        }
+        if (item.url) {
+            btn.dataset.url = item.url;
+        }
         btn.addEventListener('click', () => {
-            void handleQuickReplyClick(actions, item.prompt, item.label);
+            void handleQuickReplyClick(actions, item.prompt, item.label, item.action, item.url);
         });
         actions.appendChild(btn);
     });
@@ -1146,7 +1189,248 @@ const buildQuickReplyActions = (quickReplies) => {
     return actions;
 };
 
-const handleQuickReplyClick = async (actionsNode, prompt, label) => {
+const buildStructuredChatPanel = (uiPayload) => {
+    const type = String((uiPayload && uiPayload.type) || '').trim();
+    if (type === 'missing_items_table') {
+        return buildMissingItemsTablePanel(uiPayload);
+    }
+    return null;
+};
+
+const setMissingItemDecisions = (decisions) => {
+    lastMissingItemDecisions = Array.isArray(decisions)
+        ? decisions.filter((item) => item && typeof item === 'object')
+        : [];
+};
+
+const getSkippedMissingItemNames = () => new Set(
+    lastMissingItemDecisions
+        .filter((item) => String(item.action || '').trim().toLowerCase() === 'skip')
+        .map((item) => String(item.name || '').trim().toLowerCase())
+        .filter(Boolean)
+);
+
+const getDecidedMissingItemNames = () => new Set(
+    lastMissingItemDecisions
+        .map((item) => String(item.name || '').trim().toLowerCase())
+        .filter(Boolean)
+);
+
+const createMissingItemActivity = async (row) => {
+    return callWs('block_ai_assistant_gradebook_create_assignment_activity', {
+        courseid: getCourseId(),
+        activity_name: String((row && row.name) || '').trim(),
+        section_num: 0
+    });
+};
+
+const createMissingItemManualGrade = async (row) => {
+    return callWs('block_ai_assistant_gradebook_create_manual_item', {
+        courseid: getCourseId(),
+        item_name: String((row && row.name) || '').trim(),
+        category: String((row && row.category) || '').trim(),
+        subcategory: String((row && row.subcategory) || '').trim()
+    });
+};
+
+const syncMissingItemsContext = async () => {
+    await ensureSession();
+    return callWs('block_ai_assistant_gradebook_sync_context', {
+        courseid: getCourseId(),
+        session_id: getSessionId(),
+        refresh_proposal_candidates: true
+    });
+};
+
+const buildMissingItemsTablePanel = (uiPayload) => {
+    const rows = Array.isArray(uiPayload.rows) ? uiPayload.rows : [];
+    if (rows.length < 1) {
+        return null;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'mt-2 p-2 border rounded bg-white';
+
+    const table = document.createElement('table');
+    table.className = 'table table-sm mb-2';
+    const head = document.createElement('thead');
+    head.innerHTML = `<tr><th>${missingItemsAssessmentLabel}</th><th>${missingItemsActionLabel}</th></tr>`;
+    table.appendChild(head);
+
+    const body = document.createElement('tbody');
+    const optionKeys = ['activity', 'grade_item', 'skip'];
+    const optionLabels = {
+        activity: missingItemsActivityLabel,
+        grade_item: missingItemsGradeItemLabel,
+        skip: missingItemsSkipLabel
+    };
+
+    rows.forEach((row, index) => {
+        const name = String((row && row.name) || '').trim();
+        if (!name) {
+            return;
+        }
+
+        const tr = document.createElement('tr');
+        const nameTd = document.createElement('td');
+        nameTd.textContent = name;
+        tr.appendChild(nameTd);
+
+        const actionTd = document.createElement('td');
+        const radioName = `missing-item-action-${Date.now()}-${index}`;
+        optionKeys.forEach((actionKey) => {
+            const label = document.createElement('label');
+            label.className = 'mr-2 mb-0';
+
+            const input = document.createElement('input');
+            input.type = 'radio';
+            input.name = radioName;
+            input.value = actionKey;
+            input.dataset.assessmentName = name;
+            input.dataset.category = String((row && row.category) || '').trim();
+            input.dataset.subcategory = String((row && row.subcategory) || '').trim();
+            input.className = 'mr-1';
+
+            label.appendChild(input);
+            label.appendChild(document.createTextNode(optionLabels[actionKey]));
+            actionTd.appendChild(label);
+        });
+
+        tr.appendChild(actionTd);
+        body.appendChild(tr);
+    });
+
+    table.appendChild(body);
+    wrapper.appendChild(table);
+
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'button';
+    submitBtn.className = 'btn btn-sm btn-primary';
+    submitBtn.textContent = missingItemsSubmitLabel;
+    submitBtn.disabled = true;
+    wrapper.appendChild(submitBtn);
+
+    const refreshSubmitEnabled = () => {
+        const groups = Array.from(body.querySelectorAll('tr')).map((tr) => tr.querySelectorAll('input[type="radio"]'));
+        const allSelected = groups.every((group) => Array.from(group).some((input) => input.checked));
+        submitBtn.disabled = !allSelected;
+    };
+
+    body.addEventListener('change', refreshSubmitEnabled);
+
+    submitBtn.addEventListener('click', async () => {
+        if (submitBtn.disabled) {
+            return;
+        }
+
+        const decisions = [];
+        body.querySelectorAll('tr').forEach((tr) => {
+            const selected = tr.querySelector('input[type="radio"]:checked');
+            if (!selected) {
+                return;
+            }
+            decisions.push({
+                name: String(selected.dataset.assessmentName || '').trim(),
+                action: String(selected.value || '').trim(),
+                category: String(selected.dataset.category || '').trim(),
+                subcategory: String(selected.dataset.subcategory || '').trim()
+            });
+        });
+
+        submitBtn.disabled = true;
+        try {
+            const createErrors = [];
+            const succeeded = [];
+            let hasCreateActions = false;
+
+            for (const decision of decisions) {
+                const action = String(decision.action || '').trim();
+                if (action === 'skip') {
+                    succeeded.push(decision);
+                    continue;
+                }
+                if (action !== 'activity' && action !== 'grade_item') {
+                    continue;
+                }
+
+                hasCreateActions = true;
+                try {
+                    if (action === 'activity') {
+                        const response = await createMissingItemActivity(decision);
+                        if (!response || response.success !== true) {
+                            const msg = String((response && response.message) || '').trim() || 'Could not create assignment activity.';
+                            createErrors.push(`${decision.name}: ${msg}`);
+                            continue;
+                        }
+                    } else {
+                        const response = await createMissingItemManualGrade(decision);
+                        if (!response || response.success !== true || !response.grade_item_id) {
+                            const msg = String((response && response.message) || '').trim() || 'Could not create manual grade item.';
+                            createErrors.push(`${decision.name}: ${msg}`);
+                            continue;
+                        }
+                    }
+                    succeeded.push(decision);
+                } catch (e) {
+                    const msg = String((e && e.message) || e || '').trim() || 'Creation request failed.';
+                    createErrors.push(`${decision.name}: ${msg}`);
+                }
+            }
+
+            if (succeeded.length < 1) {
+                appendSystemMessage(`Could not complete create actions:\n- ${createErrors.join('\n- ')}`);
+                submitBtn.disabled = false;
+                return;
+            }
+
+            if (hasCreateActions && succeeded.some((item) => item.action !== 'skip')) {
+                try {
+                    await syncMissingItemsContext();
+                } catch (e) {
+                    const msg = String((e && e.message) || e || '').trim() || 'Context sync failed.';
+                    appendSystemMessage(`Created items, but session sync failed: ${msg}. Retry submit.`);
+                    submitBtn.disabled = false;
+                    return;
+                }
+            }
+
+            if (createErrors.length > 0) {
+                appendSystemMessage(`${missingItemsPartialFailedLabel}\n- ${createErrors.join('\n- ')}`);
+            }
+
+            const prefix = String(uiPayload.submit_prompt_prefix || 'missing_items_submit:').trim() || 'missing_items_submit:';
+            const prompt = `${prefix} ${JSON.stringify(succeeded)}`;
+            await sendPreparedPrompt({
+                typed: prompt,
+                prepared: {
+                    prompt,
+                    displayText: 'Submitted missing-item decisions.',
+                    usedFormulaInput: false
+                }
+            });
+        } catch (e) {
+            const msg = String((e && e.message) || e || '').trim() || 'Submit failed.';
+            appendSystemMessage(`Missing-item submit failed: ${msg}`);
+            submitBtn.disabled = false;
+        }
+    });
+
+    return wrapper;
+};
+
+const handleQuickReplyClick = async (actionsNode, prompt, label, action, url) => {
+    if (String(action || '').trim() === 'open_url') {
+        const targetUrl = String(url || '').trim();
+        if (targetUrl) {
+            try {
+                window.open(targetUrl, '_blank', 'noopener,noreferrer');
+            } catch (e) {
+            }
+            focusPromptInput();
+        }
+        return;
+    }
+
     const normalized = String(prompt || '').trim();
     if (!normalized) {
         return;
@@ -1178,6 +1462,142 @@ const handleQuickReplyClick = async (actionsNode, prompt, label) => {
 
 const appendSystemMessage = (text) => {
     appendMessage(getChatMessages(), text, false, false);
+};
+
+const inferAnalysisQuickRepliesFromText = (text, phase) => {
+    const body = String(text || '');
+    const phaseUpper = String(phase || '').toUpperCase();
+    if (phaseUpper !== 'ANALYSIS') {
+        return [];
+    }
+
+    const lowered = body.toLowerCase();
+    if (
+        lowered.includes('use the syllabus as-is')
+        || (lowered.includes('syllabus as-is') && lowered.includes('yorku'))
+        || (lowered.includes('yorku buckets') && lowered.includes('choose an option below'))
+    ) {
+        return [
+            {label: 'Use syllabus as-is', prompt: 'use syllabus'},
+            {label: 'YorkU buckets', prompt: 'yorku buckets'}
+        ];
+    }
+
+    if (
+        lowered.includes('show proposal')
+        || lowered.includes('start generating your proposal now')
+        || lowered.includes('do you want me to start generating your proposal now')
+    ) {
+        return [
+            {label: 'Yes, start now', prompt: 'yes start now'},
+            {label: 'Not yet', prompt: 'not yet'}
+        ];
+    }
+
+    return [];
+};
+
+const appendSystemMessageWithQuickReplies = (text, quickReplies) => {
+    appendMessage(getChatMessages(), text, false, false, quickReplies || []);
+};
+
+const isSyllabusPrepGateText = (text) => {
+    const lowered = String(text || '').toLowerCase();
+    if (!lowered.includes('syllabus')) {
+        return false;
+    }
+    const needsUpload = lowered.includes('upload')
+        || lowered.includes("couldn't find")
+        || lowered.includes('still couldn')
+        || lowered.includes('still need the document');
+    return needsUpload && (
+        lowered.includes('continue')
+        || lowered.includes('upload button')
+        || lowered.includes('ai assistant block')
+        || lowered.includes('syllabus-like file')
+        || lowered.includes('syllabus file')
+    );
+};
+
+const replaceBotMessageContent = (botNode, text, quickReplies) => {
+    if (!botNode) {
+        return false;
+    }
+    let content = botNode.querySelector('.message-content');
+    if (!content) {
+        content = document.createElement('div');
+        content.className = 'message-content';
+        botNode.appendChild(content);
+    }
+    content.innerHTML = convertMarkdownToHtml(text || '');
+    const replies = Array.isArray(quickReplies) ? quickReplies : [];
+    const actions = buildQuickReplyActions(replies);
+    if (actions) {
+        content.appendChild(actions);
+    }
+    return true;
+};
+
+const findLastSyllabusPrepBotMessage = (container) => {
+    if (!container) {
+        return null;
+    }
+    const bots = Array.from(container.querySelectorAll('.chat-message.bot-message'));
+    for (let i = bots.length - 1; i >= 0; i -= 1) {
+        const node = bots[i];
+        const text = String(node.textContent || '');
+        if (isSyllabusPrepGateText(text)) {
+            return node;
+        }
+    }
+    return null;
+};
+
+const updateChatHistoryBotTextInPlace = (previousText, nextText, quickReplies) => {
+    const history = loadJson(getStorageKey('chat_history'), []);
+    if (!Array.isArray(history) || history.length < 1) {
+        return;
+    }
+    for (let i = history.length - 1; i >= 0; i -= 1) {
+        const entry = history[i];
+        if (!entry || entry.role !== 'bot') {
+            continue;
+        }
+        const entryText = String(entry.text || '');
+        if (entryText === previousText || isSyllabusPrepGateText(entryText)) {
+            entry.text = nextText || '';
+            if (Array.isArray(quickReplies) && quickReplies.length > 0) {
+                entry.quick_replies = quickReplies;
+            } else {
+                delete entry.quick_replies;
+            }
+            persistChatHistoryLocal(history);
+            const normalizedHistory = normalizeChatHistoryEntries(history);
+            persistStarterChatHistory(normalizedHistory, getSessionId());
+            scheduleServerSave();
+            return;
+        }
+    }
+};
+
+/**
+ * Soften Continue-without-syllabus UX: refresh the existing gate bubble instead of
+ * stacking a near-duplicate bot message (avoids the chat jump/shake).
+ */
+const updateSyllabusPrepGateInPlace = (container, text, quickReplies) => {
+    const target = findLastSyllabusPrepBotMessage(container);
+    if (!target) {
+        return false;
+    }
+    const previousText = String(target.textContent || '').trim();
+    const scrollTop = container.scrollTop;
+    if (!replaceBotMessageContent(target, text, quickReplies)) {
+        return false;
+    }
+    updateChatHistoryBotTextInPlace(previousText, text, quickReplies);
+    // Keep viewport steady — do not force scroll to bottom.
+    container.scrollTop = scrollTop;
+    return true;
 };
 
 const waitForDomSettle = () => new Promise((resolve) => {
@@ -1300,7 +1720,14 @@ const renderHistory = (history) => {
     }
     chatMessages.innerHTML = '';
     history.forEach((item) => {
-        appendMessage(chatMessages, String(item.text || ''), item.role === 'human', true);
+        appendMessage(
+            chatMessages,
+            String(item.text || ''),
+            item.role === 'human',
+            true,
+            item.role === 'bot' ? item.quick_replies : [],
+            item.role === 'bot' ? item.ui : null
+        );
     });
     return true;
 };
@@ -1378,16 +1805,250 @@ const ensureChatRenderedFromAnySource = (parsedStatus, serverState) => {
 };
 
 const normalizeChatHistoryEntries = (raw) => {
+    const normalizeQuickReplies = (rawReplies) => {
+        if (!Array.isArray(rawReplies)) {
+            return [];
+        }
+        return rawReplies
+            .filter((item) => item && typeof item === 'object')
+            .map((item) => {
+                const prompt = String(item.prompt || '').trim();
+                const label = String(item.label || item.prompt || '').trim();
+                const action = String(item.action || '').trim();
+                const url = String(item.url || '').trim();
+                if (!label) {
+                    return null;
+                }
+                if (!prompt && !(action === 'open_url' && url)) {
+                    return null;
+                }
+                const entry = {label};
+                if (prompt) {
+                    entry.prompt = prompt;
+                }
+                if (action) {
+                    entry.action = action;
+                }
+                if (url) {
+                    entry.url = url;
+                }
+                return entry;
+            })
+            .filter(Boolean);
+    };
+
+    const normalizeUiPayload = (rawUi) => {
+        if (!rawUi || typeof rawUi !== 'object' || Array.isArray(rawUi)) {
+            return null;
+        }
+        const type = String(rawUi.type || '').trim();
+        if (!type) {
+            return null;
+        }
+        try {
+            const cloned = JSON.parse(JSON.stringify(rawUi));
+            cloned.type = type;
+            return cloned;
+        } catch (e) {
+            return null;
+        }
+    };
+
     if (!Array.isArray(raw)) {
         return [];
     }
     return raw
         .filter((item) => item && typeof item === 'object')
-        .map((item) => ({
-            role: item.role === 'human' ? 'human' : (item.role === 'bot' ? 'bot' : ''),
-            text: String(item.text || ''),
-        }))
+        .map((item) => {
+            const role = item.role === 'human' ? 'human' : (item.role === 'bot' ? 'bot' : '');
+            const text = String(item.text || '');
+            const normalized = {role, text};
+            if (role === 'bot') {
+                const quickReplies = normalizeQuickReplies(item.quick_replies || item.quickReplies || []);
+                if (quickReplies.length > 0) {
+                    normalized.quick_replies = quickReplies;
+                }
+                const uiPayload = normalizeUiPayload(item.ui);
+                if (uiPayload) {
+                    normalized.ui = uiPayload;
+                }
+            }
+            return normalized;
+        })
         .filter((item) => item.role && item.text !== '');
+};
+
+const mergeBackendWithLocalExtras = (backendHistory, localHistory) => {
+    const backend = Array.isArray(backendHistory) ? backendHistory : [];
+    const local = Array.isArray(localHistory) ? localHistory : [];
+    if (backend.length < 1 || local.length < 1) {
+        return backend;
+    }
+
+    return backend.map((entry) => {
+        if (!entry || entry.role !== 'bot') {
+            return entry;
+        }
+        const hasQuickReplies = Array.isArray(entry.quick_replies) && entry.quick_replies.length > 0;
+        const hasUi = Boolean(entry.ui && typeof entry.ui === 'object');
+        if (hasQuickReplies && hasUi) {
+            return entry;
+        }
+
+        const fallback = local.find((candidate) => candidate
+            && candidate.role === entry.role
+            && String(candidate.text || '') === String(entry.text || '')
+            && (
+                (Array.isArray(candidate.quick_replies) && candidate.quick_replies.length > 0)
+                || (candidate.ui && typeof candidate.ui === 'object')
+            ));
+        if (!fallback) {
+            return entry;
+        }
+
+        const merged = {...entry};
+        if (!hasQuickReplies && Array.isArray(fallback.quick_replies) && fallback.quick_replies.length > 0) {
+            merged.quick_replies = fallback.quick_replies;
+        }
+        if (!hasUi && fallback.ui && typeof fallback.ui === 'object') {
+            merged.ui = fallback.ui;
+        }
+        return merged;
+    });
+};
+
+const buildCourseOpenUrl = () => {
+    const courseId = String(getCourseId() || '').trim();
+    const path = courseId ? `/course/view.php?id=${encodeURIComponent(courseId)}` : '/course/view.php';
+    const root = (typeof M !== 'undefined' && M.cfg && M.cfg.wwwroot) ? String(M.cfg.wwwroot).replace(/\/$/, '') : '';
+    return root ? `${root}${path}` : path;
+};
+
+const stickyGateExtrasFromExtraction = (statusPayload) => {
+    const payload = (statusPayload && typeof statusPayload === 'object') ? statusPayload : {};
+    const extraction = (payload.extraction && typeof payload.extraction === 'object') ? payload.extraction : {};
+    const phase = String(payload.phase || '').trim().toUpperCase();
+
+    if (Boolean(extraction.missing_items_pending)) {
+        const rows = Array.isArray(extraction.missing_items_rows) ? extraction.missing_items_rows : [];
+        const normalizedRows = rows
+            .filter((row) => row && typeof row === 'object')
+            .map((row) => {
+                const name = String(row.name || '').trim();
+                if (!name) {
+                    return null;
+                }
+                return {
+                    name,
+                    category: String(row.category || '').trim(),
+                    subcategory: String(row.subcategory || '').trim(),
+                };
+            })
+            .filter(Boolean);
+        if (normalizedRows.length < 1) {
+            return {quick_replies: [], ui: null};
+        }
+        return {
+            quick_replies: [],
+            ui: {
+                type: 'missing_items_table',
+                rows: normalizedRows,
+                submit_prompt_prefix: 'missing_items_submit:',
+                actions: ['activity', 'grade_item', 'skip'],
+            },
+        };
+    }
+
+    const activityPrepPending = String(extraction.activity_prep_status || '').trim().toLowerCase() === 'pending';
+    const syllabusPrepPending = String(extraction.syllabus_prep_status || '').trim().toLowerCase() === 'pending';
+    if (syllabusPrepPending && (phase === 'INTAKE' || phase === 'ANALYSIS')) {
+        return {
+            quick_replies: [
+                {label: 'Continue', prompt: 'continue'},
+            ],
+            ui: null,
+        };
+    }
+    if (activityPrepPending && (phase === 'INTAKE' || phase === 'ANALYSIS')) {
+        return {
+            quick_replies: [
+                {label: 'Open course to add activities', action: 'open_url', url: buildCourseOpenUrl()},
+                {label: 'Continue', prompt: 'continue'},
+            ],
+            ui: null,
+        };
+    }
+
+    const modePending = String(extraction.proposal_mode_pending || '').trim();
+    if (phase === 'ANALYSIS' && modePending === 'ask') {
+        return {
+            quick_replies: [
+                {label: 'Use syllabus as-is', prompt: 'use syllabus'},
+                {label: 'YorkU buckets', prompt: 'yorku buckets'},
+            ],
+            ui: null,
+        };
+    }
+
+    return {quick_replies: [], ui: null};
+};
+
+const reattachStickyGateUiFromExtraction = (statusPayload, options = {}) => {
+    const forceRender = Boolean(options && options.forceRender);
+    const history = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history'), []));
+    if (history.length < 1) {
+        return false;
+    }
+
+    let lastBotIndex = -1;
+    for (let i = history.length - 1; i >= 0; i -= 1) {
+        if (history[i] && history[i].role === 'bot') {
+            lastBotIndex = i;
+            break;
+        }
+    }
+    if (lastBotIndex < 0) {
+        return false;
+    }
+
+    const extras = stickyGateExtrasFromExtraction(statusPayload);
+    const expectedReplies = Array.isArray(extras.quick_replies) ? extras.quick_replies : [];
+    const expectedUi = extras.ui && typeof extras.ui === 'object' ? extras.ui : null;
+    if (expectedReplies.length < 1 && !expectedUi) {
+        return false;
+    }
+
+    const lastBot = history[lastBotIndex];
+    const hasQuickReplies = Array.isArray(lastBot.quick_replies) && lastBot.quick_replies.length > 0;
+    const hasUi = Boolean(lastBot.ui && typeof lastBot.ui === 'object');
+    let changed = false;
+    const patched = {...lastBot};
+
+    if (!hasQuickReplies && expectedReplies.length > 0) {
+        patched.quick_replies = expectedReplies;
+        changed = true;
+    }
+    if (!hasUi && expectedUi) {
+        patched.ui = expectedUi;
+        changed = true;
+    }
+    if (!changed) {
+        return false;
+    }
+
+    const nextHistory = history.slice();
+    nextHistory[lastBotIndex] = patched;
+    persistChatHistoryLocal(nextHistory);
+    saveJson(getStorageKey('chat_history_backend'), nextHistory);
+    if (forceRender || renderedChatLength() > 0) {
+        renderHistory(nextHistory);
+    }
+    gradebookDebug('reattachStickyGateUiFromExtraction', {
+        lastBotIndex,
+        attachedQuickReplies: Boolean(patched.quick_replies && patched.quick_replies.length),
+        attachedUi: Boolean(patched.ui && patched.ui.type),
+    });
+    return true;
 };
 
 const chatHistoryTailMatches = (localHistory, backendHistory) => {
@@ -1404,21 +2065,22 @@ const ingestBackendChatHistory = (history, renderIfFresh) => {
     if (normalizedBackend.length < 1) {
         return false;
     }
-
-    saveJson(getStorageKey('chat_history_backend'), normalizedBackend);
-
     const normalizedLocal = normalizeChatHistoryEntries(loadJson(getStorageKey('chat_history'), []));
+    const mergedBackend = mergeBackendWithLocalExtras(normalizedBackend, normalizedLocal);
+
+    saveJson(getStorageKey('chat_history_backend'), mergedBackend);
+
     const shouldReplaceLocal = normalizedLocal.length < 1
-        || normalizedBackend.length > normalizedLocal.length
-        || !chatHistoryTailMatches(normalizedLocal, normalizedBackend);
+        || mergedBackend.length > normalizedLocal.length
+        || !chatHistoryTailMatches(normalizedLocal, mergedBackend);
 
     if (!shouldReplaceLocal) {
         return false;
     }
 
-    persistChatHistoryLocal(normalizedBackend);
+    persistChatHistoryLocal(mergedBackend);
     if (renderIfFresh) {
-        renderHistory(normalizedBackend);
+        renderHistory(mergedBackend);
     }
     return true;
 };
@@ -1762,7 +2424,21 @@ const renderEmptyCategoryHelper = (confirmed) => {
         existing.remove();
     }
 
-    const emptyCats = findEmptyCategories(confirmed);
+    const emptyCats = findEmptyCategories(confirmed).filter((categoryName) => {
+        const skipped = getSkippedMissingItemNames();
+        const decided = getDecidedMissingItemNames();
+        if (skipped.size < 1 && decided.size < 1) {
+            return true;
+        }
+        // Avoid re-nagging when Part C already skipped every known leaf for this category.
+        const decisionCats = lastMissingItemDecisions
+            .filter((item) => String(item.category || '').trim().toLowerCase() === String(categoryName || '').trim().toLowerCase())
+            .map((item) => String(item.action || '').trim().toLowerCase());
+        if (decisionCats.length > 0 && decisionCats.every((action) => action === 'skip')) {
+            return false;
+        }
+        return true;
+    });
     if (emptyCats.length < 1) {
         return;
     }
@@ -2835,6 +3511,11 @@ const hydrateFromStatusPayload = (parsed, serverState = null) => {
     const phaseUpper = String(effectivePhase || '-').toUpperCase();
 
     ingestBackendChatHistory(statusPayload.chat_history || parsed.chat_history || [], true);
+    reattachStickyGateUiFromExtraction(statusPayload, {forceRender: renderedChatLength() > 0});
+    const extraction = (statusPayload.extraction && typeof statusPayload.extraction === 'object')
+        ? statusPayload.extraction
+        : {};
+    setMissingItemDecisions(extraction.missing_item_decisions || []);
 
     const statusProposal = statusPayload.proposal || null;
     const cats = extractProposalCategories(statusProposal);
@@ -3415,15 +4096,41 @@ const doStartSession = async (importMode = '') => {
                 'Using your existing gradebook as baseline.'
             ));
         } else {
-            appendSystemMessage(await getStringSafe(
-                'gradebook_baseline_not_found',
-                'No existing gradebook baseline found. Starting from syllabus/context analysis.'
-            ));
+            // Prefer backend initial_message (includes syllabus found / upload gate / Part B).
+            // Only show a short note when backend did not already explain syllabus state.
+            const backendInitial = String(parsed.initial_message || parsed.message || '');
+            const backendLower = backendInitial.toLowerCase();
+            const backendCoversSyllabus = backendLower.includes('syllabus')
+                || backendLower.includes('upload')
+                || backendLower.includes('add your course activities');
+            if (!backendCoversSyllabus) {
+                appendSystemMessage(await getStringSafe(
+                    'gradebook_baseline_not_found',
+                    'No existing gradebook baseline found. Starting from syllabus/context analysis.'
+                ));
+            }
         }
     }
 
-    const initial = parsed.initial_message || parsed.message || 'Gradebook session started.';
-    appendSystemMessage(initial);
+    const initial = String(parsed.initial_message || parsed.message || 'Gradebook session started.');
+    const phaseForInitial = parsed.phase || parsed.state || '-';
+    const backendReplies = Array.isArray(parsed.quick_replies) ? parsed.quick_replies : [];
+    const initialReplies = backendReplies.length > 0
+        ? backendReplies
+        : inferAnalysisQuickRepliesFromText(initial, phaseForInitial);
+
+    if (initialReplies.length > 0) {
+        const lowered = initial.toLowerCase();
+        const isActivityPrep = lowered.includes('add your course activities')
+            || lowered.includes('open course to add activities');
+        const isSyllabusPrep = lowered.includes('upload your') && lowered.includes('syllabus');
+        const normalizedInitial = (!isActivityPrep && !isSyllabusPrep && lowered.includes('show proposal'))
+            ? "I've found syllabus-like content and started analysis. Do you want me to start generating your proposal now?"
+            : initial;
+        appendSystemMessageWithQuickReplies(normalizedInitial, initialReplies);
+    } else {
+        appendSystemMessage(initial);
+    }
 
     if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
         applyProposalFromPayload(parsed);
@@ -3631,7 +4338,27 @@ const revertSessionAndRestart = async () => {
     return doStartSession('baseline');
 };
 
-const moodleConfirm = async ({title, message, yesLabel, noLabel}) => {
+const moodleConfirm = async ({title, message, yesLabel, noLabel, yesTitle, noTitle}) => {
+    const applyButtonTitles = () => {
+        const modal = document.querySelector('.modal.show');
+        if (!modal) {
+            return;
+        }
+        const footerButtons = modal.querySelectorAll('.modal-footer button');
+        if (!footerButtons || footerButtons.length < 2) {
+            return;
+        }
+        // Moodle's confirm footer order is cancel/no then continue/yes.
+        const noButton = footerButtons[0];
+        const yesButton = footerButtons[1];
+        if (yesButton && yesTitle) {
+            yesButton.setAttribute('title', String(yesTitle));
+        }
+        if (noButton && noTitle) {
+            noButton.setAttribute('title', String(noTitle));
+        }
+    };
+
     return new Promise((resolve) => {
         notification.confirm(
             title,
@@ -3641,6 +4368,7 @@ const moodleConfirm = async ({title, message, yesLabel, noLabel}) => {
             () => resolve(true),
             () => resolve(false)
         );
+        setTimeout(applyButtonTitles, 0);
     });
 };
 
@@ -3687,6 +4415,10 @@ const restoreOrStartSession = async () => {
             setSessionId(candidateSession);
             hydrateFromStatusPayload(parsed, serverState);
             ensureChatRenderedFromAnySource(parsed, serverState);
+            const statusPayload = (parsed && parsed.session && typeof parsed.session === 'object')
+                ? parsed.session
+                : parsed;
+            reattachStickyGateUiFromExtraction(statusPayload, {forceRender: true});
             rehydrateBaselineDeleteWarningState(serverState);
             if (!serverState) {
                 serverSaveState();
@@ -3792,7 +4524,22 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
     await ensureSession();
 
     await withRequestLock(async () => {
-        appendMessage(getChatMessages(), prepared.displayText, true, false);
+        const chatContainer = getChatMessages();
+        const continueLikePrompt = /^(continue|go on|next|ok|okay)$/i.test(String(normalized || '').trim());
+        const hadSyllabusGateBeforeSend = Boolean(findLastSyllabusPrepBotMessage(chatContainer));
+        // Avoid stacking a human "Continue" bubble when we may only refresh the gate in place.
+        const suppressHumanContinue = continueLikePrompt && hadSyllabusGateBeforeSend;
+        if (!suppressHumanContinue) {
+            appendMessage(chatContainer, prepared.displayText, true, false);
+        } else {
+            // Mark prior Continue buttons spent without adding a jump-causing human row.
+            document.querySelectorAll('.gradebook-quick-replies:not(.is-spent)').forEach((node) => {
+                node.classList.add('is-spent');
+                node.querySelectorAll('button').forEach((btn) => {
+                    btn.disabled = true;
+                });
+            });
+        }
         rememberPrompt(typed);
         input.value = '';
         if (prepared.usedFormulaInput) {
@@ -3819,7 +4566,7 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
             loadingText = await Str.get_string('gradebook_loading', 'block_ai_assistant');
         } catch (e) {
         }
-        appendProgressiveLoader(getChatMessages(), 'gradebook-loading-indicator', loadingText);
+        appendProgressiveLoader(chatContainer, 'gradebook-loading-indicator', loadingText);
 
         try {
             const previousPhase = String(loadJson(getStorageKey('phase'), '') || '').toUpperCase();
@@ -3832,6 +4579,17 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                 return parseResponse(raw);
             });
             const replyText = String(parsed.reply || parsed.message || 'Updated.');
+            const replyUiPayload = (parsed.ui && typeof parsed.ui === 'object') ? parsed.ui : null;
+            const effectiveQuickReplies = (() => {
+                const direct = Array.isArray(parsed.quick_replies) ? parsed.quick_replies : [];
+                if (direct.length > 0) {
+                    return direct;
+                }
+                if (isSyllabusPrepGateText(replyText)) {
+                    return [{label: 'Continue', prompt: 'continue'}];
+                }
+                return inferAnalysisQuickRepliesFromText(replyText, parsed.phase || parsed.state || '');
+            })();
             const backendAlreadyHasReply = backendHistoryContainsReply(parsed.chat_history || [], replyText);
             ingestBackendChatHistory(parsed.chat_history || [], false);
             await runWithinProposalPanelSync(async () => {
@@ -3869,7 +4627,18 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                     renderResultPanel(null);
                 }
 
-                appendMessage(getChatMessages(), replyText, false, backendAlreadyHasReply, parsed.quick_replies);
+                const updatedGateInPlace = isSyllabusPrepGateText(replyText)
+                    && updateSyllabusPrepGateInPlace(chatContainer, replyText, effectiveQuickReplies);
+                if (!updatedGateInPlace) {
+                    appendMessage(
+                        chatContainer,
+                        replyText,
+                        false,
+                        backendAlreadyHasReply,
+                        effectiveQuickReplies,
+                        replyUiPayload
+                    );
+                }
                 if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
                     const cats = extractProposalCategories(parsed.proposal);
                     const catsWithItems = extractProposalCategoriesWithItems(parsed.proposal);
@@ -4388,13 +5157,30 @@ const handleFileUpload = async () => {
                     }
                 });
 
-                appendSystemMessage(`✓ Uploaded "${file.name}". I'm analyzing the grading structure...`);
-                
                 if (parsed.phase) {
                     setPhase(parsed.phase);
                 }
-                if (parsed.reply) {
-                    appendSystemMessage(parsed.reply);
+
+                const replyText = String(parsed.reply || '').trim();
+                const autoAdvanced = parsed.auto_advanced === true;
+                const uploadQuickReplies = (() => {
+                    const direct = Array.isArray(parsed.quick_replies) ? parsed.quick_replies : [];
+                    if (direct.length > 0) {
+                        return direct;
+                    }
+                    return inferAnalysisQuickRepliesFromText(replyText, parsed.phase || '');
+                })();
+
+                // Auto-advance already embeds "Syllabus found" + next ask; skip duplicate analyzing line.
+                if (!autoAdvanced || !replyText) {
+                    appendSystemMessage(`✓ Uploaded "${file.name}". I'm analyzing the grading structure...`);
+                }
+                if (replyText) {
+                    if (uploadQuickReplies.length > 0) {
+                        appendSystemMessageWithQuickReplies(replyText, uploadQuickReplies);
+                    } else {
+                        appendSystemMessage(replyText);
+                    }
                 }
 
                 await serverSaveState();
@@ -4665,6 +5451,48 @@ export const init = (courseId) => {
     Str.get_string('gradebook_add_manual_item_created', 'block_ai_assistant').then((label) => {
         if (label) {
             addManualItemCreatedLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_missing_items_assessment', 'block_ai_assistant').then((label) => {
+        if (label) {
+            missingItemsAssessmentLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_missing_items_action', 'block_ai_assistant').then((label) => {
+        if (label) {
+            missingItemsActionLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_missing_items_activity', 'block_ai_assistant').then((label) => {
+        if (label) {
+            missingItemsActivityLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_missing_items_grade_item', 'block_ai_assistant').then((label) => {
+        if (label) {
+            missingItemsGradeItemLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_missing_items_skip', 'block_ai_assistant').then((label) => {
+        if (label) {
+            missingItemsSkipLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_missing_items_submit', 'block_ai_assistant').then((label) => {
+        if (label) {
+            missingItemsSubmitLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_missing_items_partial_failed', 'block_ai_assistant').then((label) => {
+        if (label) {
+            missingItemsPartialFailedLabel = label;
         }
     }).catch(() => {
     });
