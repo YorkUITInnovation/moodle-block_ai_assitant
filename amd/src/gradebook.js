@@ -48,6 +48,7 @@ let missingItemsGradeItemLabel = 'Grade item';
 let missingItemsSkipLabel = 'Skip';
 let missingItemsSubmitLabel = 'Submit';
 let missingItemsPartialFailedLabel = 'Created some items, but these failed. Resolve the remaining rows and submit again:';
+let missingItemsSuggestedSuffixLabel = ' (suggested)';
 let lastMissingItemDecisions = [];
 let noSubcategoryLabel = '— None (Parent Category) —';
 let subcategorySelectTitle = 'Optional: choose a subcategory, or keep None to stay in the parent category.';
@@ -1267,6 +1268,7 @@ const buildMissingItemsTablePanel = (uiPayload) => {
 
     rows.forEach((row, index) => {
         const name = String((row && row.name) || '').trim();
+        const suggested = String((row && row.suggested_action) || '').trim().toLowerCase();
         if (!name) {
             return;
         }
@@ -1290,9 +1292,13 @@ const buildMissingItemsTablePanel = (uiPayload) => {
             input.dataset.category = String((row && row.category) || '').trim();
             input.dataset.subcategory = String((row && row.subcategory) || '').trim();
             input.className = 'mr-1';
+            if (suggested && suggested === actionKey) {
+                input.checked = true;
+            }
 
             label.appendChild(input);
-            label.appendChild(document.createTextNode(optionLabels[actionKey]));
+            const suffix = suggested && suggested === actionKey ? missingItemsSuggestedSuffixLabel : '';
+            label.appendChild(document.createTextNode(`${optionLabels[actionKey]}${suffix}`));
             actionTd.appendChild(label);
         });
 
@@ -1317,6 +1323,7 @@ const buildMissingItemsTablePanel = (uiPayload) => {
     };
 
     body.addEventListener('change', refreshSubmitEnabled);
+    refreshSubmitEnabled();
 
     submitBtn.addEventListener('click', async () => {
         if (submitBtn.disabled) {
@@ -1965,6 +1972,7 @@ const stickyGateExtrasFromExtraction = (statusPayload) => {
         return {
             quick_replies: [
                 {label: 'Continue', prompt: 'continue'},
+                {label: 'Continue without syllabus', prompt: 'continue without syllabus'},
             ],
             ui: null,
         };
@@ -4120,14 +4128,7 @@ const doStartSession = async (importMode = '') => {
         : inferAnalysisQuickRepliesFromText(initial, phaseForInitial);
 
     if (initialReplies.length > 0) {
-        const lowered = initial.toLowerCase();
-        const isActivityPrep = lowered.includes('add your course activities')
-            || lowered.includes('open course to add activities');
-        const isSyllabusPrep = lowered.includes('upload your') && lowered.includes('syllabus');
-        const normalizedInitial = (!isActivityPrep && !isSyllabusPrep && lowered.includes('show proposal'))
-            ? "I've found syllabus-like content and started analysis. Do you want me to start generating your proposal now?"
-            : initial;
-        appendSystemMessageWithQuickReplies(normalizedInitial, initialReplies);
+        appendSystemMessageWithQuickReplies(initial, initialReplies);
     } else {
         appendSystemMessage(initial);
     }
@@ -4586,7 +4587,10 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                     return direct;
                 }
                 if (isSyllabusPrepGateText(replyText)) {
-                    return [{label: 'Continue', prompt: 'continue'}];
+                    return [
+                        {label: 'Continue', prompt: 'continue'},
+                        {label: 'Continue without syllabus', prompt: 'continue without syllabus'},
+                    ];
                 }
                 return inferAnalysisQuickRepliesFromText(replyText, parsed.phase || parsed.state || '');
             })();
@@ -5493,6 +5497,12 @@ export const init = (courseId) => {
     Str.get_string('gradebook_missing_items_partial_failed', 'block_ai_assistant').then((label) => {
         if (label) {
             missingItemsPartialFailedLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_missing_items_suggested_suffix', 'block_ai_assistant').then((label) => {
+        if (label) {
+            missingItemsSuggestedSuffixLabel = label;
         }
     }).catch(() => {
     });

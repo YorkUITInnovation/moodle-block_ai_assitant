@@ -6065,13 +6065,13 @@ class cria
                 $sub_weight = floatval($sub['weight'] ?? 0);
                 $sub_weight_fraction = $sub_weight / 100.0;
                 $sub_settings = [
-                    'droplow' => 0,
-                    'keephigh' => 0,
+                    'droplow' => (int)($sub['drop_lowest'] ?? 0),
+                    'keephigh' => (int)($sub['keep_highest'] ?? 0),
                     'aggregateonlygraded' => 1,
                     'aggregateoutcomes' => 0,
                     'extra_credit' => false,
                     'grade_min' => null,
-                    'grade_max' => 100.0,
+                    'grade_max' => isset($sub['grade_max']) ? (float)$sub['grade_max'] : 100.0,
                     'grade_pass' => null,
                     'hidden' => (bool)($sub['hidden'] ?? false),
                     'hidden_until' => isset($sub['hidden_until']) && $sub['hidden_until'] !== null ? (int)$sub['hidden_until'] : null,

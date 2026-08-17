@@ -112,9 +112,16 @@ class gradebook_export
             $subcategories = [];
             if (isset($cat['subcategories']) && is_array($cat['subcategories'])) {
                 foreach ($cat['subcategories'] as $sub) {
+                    $sub_hidden_until = isset($sub['hidden_until']) && $sub['hidden_until'] > 0
+                        ? date('Y-m-d', (int)$sub['hidden_until']) : null;
                     $subcategories[] = [
                         'name' => isset($sub['name']) ? (string)$sub['name'] : '',
                         'weight' => isset($sub['weight']) ? (float)$sub['weight'] : 0.0,
+                        'drop_lowest' => isset($sub['drop_lowest']) ? (int)$sub['drop_lowest'] : 0,
+                        'keep_highest' => isset($sub['keep_highest']) ? (int)$sub['keep_highest'] : 0,
+                        'grade_max' => isset($sub['grade_max']) ? (float)$sub['grade_max'] : 100.0,
+                        'hidden' => !empty($sub['hidden']),
+                        'hidden_until' => $sub_hidden_until,
                     ];
                 }
             }
@@ -397,6 +404,29 @@ class gradebook_export
     }
 
     /**
+     * Build the "Name (weight%) [settings]" label for a subcategory row, including
+     * drop-lowest/keep-highest/hidden settings when set (shared by PDF + Word export).
+     */
+    protected static function subcategory_label_html(array $sub, callable $h): string
+    {
+        $sub_settings = [];
+        if (!empty($sub['drop_lowest'])) {
+            $sub_settings[] = 'drop lowest ' . (int)$sub['drop_lowest'];
+        }
+        if (!empty($sub['keep_highest'])) {
+            $sub_settings[] = 'keep top ' . (int)$sub['keep_highest'];
+        }
+        if (isset($sub['grade_max']) && (float)$sub['grade_max'] !== 100.0) {
+            $sub_settings[] = 'max ' . number_format((float)$sub['grade_max'], 0) . ' pts';
+        }
+        if (!empty($sub['hidden'])) {
+            $sub_settings[] = !empty($sub['hidden_until']) ? 'hidden until ' . $h($sub['hidden_until']) : 'hidden';
+        }
+        $sub_settings_str = $sub_settings ? ' [' . implode(', ', $sub_settings) . ']' : '';
+        return $h($sub['name']) . ' (' . number_format((float)$sub['weight'], 1) . '%)' . $sub_settings_str;
+    }
+
+    /**
      * Remove common Markdown syntax (``**``, ``__``, leading ``-``/``*``, backticks, ``•``)
      * from a chat message so it reads as clean prose in the PDF/Word.
      */
@@ -591,7 +621,7 @@ class gradebook_export
                 if (!empty($c['subcategories'])) {
                     $sub_parts = [];
                     foreach ($c['subcategories'] as $sub) {
-                        $sub_parts[] = $h($sub['name']) . ' (' . number_format((float)$sub['weight'], 1) . '%)';
+                        $sub_parts[] = self::subcategory_label_html($sub, $h);
                     }
                     $subs_html = '<i>Subcategories:</i> ' . implode(', ', $sub_parts);
                     if ($items) {
@@ -821,7 +851,7 @@ class gradebook_export
                 if (!empty($c['subcategories'])) {
                     $sub_parts = [];
                     foreach ($c['subcategories'] as $sub) {
-                        $sub_parts[] = $h($sub['name']) . ' (' . number_format((float)$sub['weight'], 1) . '%)';
+                        $sub_parts[] = self::subcategory_label_html($sub, $h);
                     }
                     $subs_html = '<i>Subcategories:</i> ' . implode(', ', $sub_parts);
                     if ($items) {
