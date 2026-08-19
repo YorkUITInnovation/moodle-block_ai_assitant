@@ -2118,6 +2118,9 @@ class cria
             'give me a proposal',
             'proceed',
             'go ahead',
+            'missing_items_submit:',
+            'looks good show proposal',
+            'looks good, continue',
         ];
         foreach ($markers as $marker) {
             if (strpos($text, $marker) !== false) {
@@ -2342,6 +2345,130 @@ class cria
         return $response_json;
     }
 
+    /**
+     * Convert internal missing-item submit prompts into instructor-facing chat text.
+     */
+    private static function friendly_missing_items_submit_text(string $text): string
+    {
+        $trimmed = trim($text);
+        $marker = 'missing_items_submit:';
+        if ($trimmed === '' || stripos($trimmed, $marker) !== 0) {
+            return $text;
+        }
+
+        $raw = trim(substr($trimmed, strlen($marker)));
+        $labels = [
+            'activity' => 'Activity',
+            'grade_item' => 'Grade item',
+            'skip' => 'Skip (not included)',
+        ];
+        $rows = json_decode($raw, true);
+        if (!is_array($rows) || $rows === []) {
+            return 'Submitted missing-item decisions.';
+        }
+
+        $lines = ['Submitted missing-item decisions:'];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $name = trim((string)($row['name'] ?? ''));
+            $action = strtolower(trim((string)($row['action'] ?? '')));
+            if ($name === '') {
+                continue;
+            }
+            $lines[] = '- ' . $name . ': ' . ($labels[$action] ?? $action);
+        }
+        if (count($lines) < 2) {
+            return 'Submitted missing-item decisions.';
+        }
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Hide internal submit JSON and completed missing-item forms from chat history.
+     */
+    private static function sanitize_gradebook_chat_history($history): array
+    {
+        if (!is_array($history)) {
+            return [];
+        }
+
+        $cleaned = [];
+        foreach ($history as $entry) {
+            if (!is_array($entry)) {
+                continue;
+            }
+            $role = strtolower(trim((string)($entry['role'] ?? '')));
+            $text = (string)($entry['text'] ?? '');
+            if (!in_array($role, ['human', 'bot'], true) || $text === '') {
+                continue;
+            }
+            if ($role === 'human') {
+                $text = self::friendly_missing_items_submit_text($text);
+            }
+            $normalized = [
+                'role' => $role,
+                'text' => $text,
+            ];
+            if ($role === 'bot') {
+                if (!empty($entry['quick_replies']) && is_array($entry['quick_replies'])) {
+                    $normalized['quick_replies'] = $entry['quick_replies'];
+                }
+                if (!empty($entry['ui']) && is_array($entry['ui'])) {
+                    $normalized['ui'] = $entry['ui'];
+                }
+            }
+            $cleaned[] = $normalized;
+        }
+
+        $lastbot = -1;
+        foreach ($cleaned as $index => $entry) {
+            if (($entry['role'] ?? '') === 'bot') {
+                $lastbot = $index;
+            }
+        }
+        foreach ($cleaned as $index => $entry) {
+            $uitype = strtolower(trim((string)(($entry['ui']['type'] ?? ''))));
+            if ($uitype === 'missing_items_table' && $index !== $lastbot) {
+                unset($cleaned[$index]['ui']);
+            }
+        }
+
+        return array_values($cleaned);
+    }
+
+    private static function sanitize_gradebook_chat_history_json(?string $json): ?string
+    {
+        if ($json === null) {
+            return null;
+        }
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded)) {
+            return $json;
+        }
+        return json_encode(self::sanitize_gradebook_chat_history($decoded));
+    }
+
+    /**
+     * Rewrite chat_history fields in a Criabot JSON payload before it reaches the browser.
+     */
+    private static function decorate_gradebook_json_response(string $json): string
+    {
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded)) {
+            return $json;
+        }
+        if (isset($decoded['chat_history'])) {
+            $decoded['chat_history'] = self::sanitize_gradebook_chat_history($decoded['chat_history']);
+        }
+        if (isset($decoded['session']) && is_array($decoded['session']) && isset($decoded['session']['chat_history'])) {
+            $decoded['session']['chat_history'] = self::sanitize_gradebook_chat_history($decoded['session']['chat_history']);
+        }
+        $encoded = json_encode($decoded);
+        return is_string($encoded) ? $encoded : $json;
+    }
+
     public static function gradebook_chat(string $session_id, string $prompt): string
     {
         $method = 'cria_gradebook_chat';
@@ -2349,7 +2476,7 @@ class cria
             'session_id' => trim($session_id),
             'prompt' => $prompt,
         );
-        return webservice::exec($method, $data);
+        return self::decorate_gradebook_json_response(webservice::exec($method, $data));
     }
 
     public static function gradebook_proposal(string $session_id): string
@@ -2367,7 +2494,7 @@ class cria
         $data = array(
             'session_id' => trim($session_id),
         );
-        return webservice::exec($method, $data);
+        return self::decorate_gradebook_json_response(webservice::exec($method, $data));
     }
 
     public static function gradebook_accept(string $session_id): string
@@ -3666,6 +3793,83 @@ class cria
         return $removed;
     }
 
+    private static function _get_ai_owned_activity_cmids(int $courseid): array
+    {
+        $raw = get_config('block_ai_assistant', 'ai_gb_cmids_' . $courseid);
+        if (!$raw) {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? array_values(array_unique(array_map('intval', $decoded))) : [];
+    }
+
+    private static function _register_ai_owned_activity(int $courseid, int $cmid): void
+    {
+        if ($courseid < 1 || $cmid < 1) {
+            return;
+        }
+        $existing = self::_get_ai_owned_activity_cmids($courseid);
+        $existing[] = $cmid;
+        set_config('ai_gb_cmids_' . $courseid, json_encode(array_values(array_unique($existing))), 'block_ai_assistant');
+    }
+
+    private static function _clear_ai_owned_activity_cmids(int $courseid): void
+    {
+        unset_config('ai_gb_cmids_' . $courseid, 'block_ai_assistant');
+    }
+
+    /**
+     * Remove assignment/course modules created during missing-item chat actions.
+     *
+     * @return int number of course modules removed
+     */
+    private static function _remove_ai_owned_activities(int $courseid): int
+    {
+        global $CFG, $DB;
+
+        if ($courseid < 1) {
+            return 0;
+        }
+
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $removed = 0;
+        $remaining = [];
+        foreach (self::_get_ai_owned_activity_cmids($courseid) as $cmid) {
+            $cmid = (int)$cmid;
+            if ($cmid < 1) {
+                continue;
+            }
+            $cm = $DB->get_record('course_modules', ['id' => $cmid, 'course' => $courseid], 'id', IGNORE_MISSING);
+            if (!$cm) {
+                continue;
+            }
+            try {
+                course_delete_module($cmid, false);
+                $removed++;
+            } catch (\Throwable $e) {
+                debugging('Could not delete AI-created activity cmid ' . $cmid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                $remaining[] = $cmid;
+            }
+        }
+
+        if (empty($remaining)) {
+            self::_clear_ai_owned_activity_cmids($courseid);
+        } else {
+            set_config(
+                'ai_gb_cmids_' . $courseid,
+                json_encode(array_values(array_unique($remaining))),
+                'block_ai_assistant'
+            );
+        }
+
+        if ($removed > 0) {
+            rebuild_course_cache($courseid, true);
+        }
+
+        return $removed;
+    }
+
     private static function _delete_grade_item_by_id(int $itemid): void
     {
         global $DB;
@@ -3739,7 +3943,8 @@ class cria
 
         return self::course_has_ai_gradebook($courseid)
             || !empty(self::_get_ai_ownership_ids($courseid))
-            || !empty(self::_get_ai_owned_grade_item_ids($courseid));
+            || !empty(self::_get_ai_owned_grade_item_ids($courseid))
+            || !empty(self::_get_ai_owned_activity_cmids($courseid));
     }
 
     private static function gradebook_tree_missing_config_key(int $courseid): string
@@ -3781,9 +3986,15 @@ class cria
         }
 
         try {
+            $registered = self::_get_ai_ownership_ids($courseid);
             $hasaitree = self::course_has_ai_gradebook($courseid);
             if ($hasaitree) {
                 self::clear_gradebook_tree_missing($courseid);
+                return;
+            }
+            // Creating/removing activities can fire grade_item_deleted before any AI tree exists.
+            // Only treat this as an external wipe if we previously applied an AI gradebook.
+            if (empty($registered)) {
                 return;
             }
 
@@ -3880,17 +4091,26 @@ class cria
                 debugging('Restored not-graded activities during AI gradebook cleanup: ' . implode(' | ', $restorewarnings), DEBUG_DEVELOPER);
             }
 
+            $activitiesremoved = self::_remove_ai_owned_activities($courseid);
             $manualremoved = self::_remove_ai_owned_grade_items($courseid, $preserve_grade_item_ids);
 
             $roots = self::get_ai_gradebook_root_ids($courseid);
             if (empty($roots)) {
                 self::_clear_ai_ownership_ids($courseid);
                 self::_purge_orphan_category_grade_items($courseid);
+                $parts = [];
+                if ($activitiesremoved > 0) {
+                    $parts[] = 'Removed ' . $activitiesremoved . ' AI-created course '
+                        . ($activitiesremoved === 1 ? 'activity' : 'activities') . '.';
+                }
                 if ($manualremoved > 0) {
+                    $parts[] = 'Removed ' . $manualremoved . ' AI-created manual grade item'
+                        . ($manualremoved === 1 ? '' : 's') . '.';
+                }
+                if (!empty($parts)) {
                     $result = [
                         'cleaned' => true,
-                        'message' => 'Removed ' . $manualremoved . ' AI-created manual grade item'
-                            . ($manualremoved === 1 ? '' : 's') . '.',
+                        'message' => implode(' ', $parts),
                     ];
                 }
                 return self::append_not_graded_restore_message($result, $restorewarnings);
@@ -3949,6 +4169,10 @@ class cria
 
             $rootcount = count($roots);
             $parts = ['Removed ' . $rootcount . ' AI Assistant gradebook ' . ($rootcount === 1 ? 'category' : 'categories') . '.'];
+            if ($activitiesremoved > 0) {
+                $parts[] = 'Removed ' . $activitiesremoved . ' AI-created course '
+                    . ($activitiesremoved === 1 ? 'activity' : 'activities') . '.';
+            }
             if ($manualremoved > 0) {
                 $parts[] = 'Removed ' . $manualremoved . ' AI-created manual grade item' . ($manualremoved === 1 ? '' : 's') . '.';
             }
@@ -4634,6 +4858,64 @@ class cria
         }
     }
 
+    /**
+     * Fill required assign instance fields so add_moduleinfo can insert without NULL columns.
+     *
+     * Moodle's assignment add_instance copies form fields as-is. Creating via AJAX without the
+     * mod_form leaves NOT NULL columns (submissiondrafts, dates, grade, etc.) as NULL.
+     */
+    private static function apply_assign_activity_defaults(\stdClass $moddata): \stdClass
+    {
+        $adminconfig = get_config('assign');
+        $defaults = [
+            'alwaysshowdescription' => 1,
+            'submissiondrafts' => 0,
+            'requiresubmissionstatement' => 0,
+            'sendnotifications' => 0,
+            'sendlatenotifications' => 0,
+            'sendstudentnotifications' => 1,
+            'duedate' => 0,
+            'allowsubmissionsfromdate' => 0,
+            'cutoffdate' => 0,
+            'gradingduedate' => 0,
+            'grade' => 100,
+            'completionsubmit' => 0,
+            'teamsubmission' => 0,
+            'requireallteammemberssubmit' => 0,
+            'teamsubmissiongroupingid' => 0,
+            'blindmarking' => 0,
+            'hidegrader' => 0,
+            'maxattempts' => 1,
+            'attemptreopenmethod' => 'untilpass',
+            'preventsubmissionnotingroup' => 0,
+            'markingworkflow' => 0,
+            'markingallocation' => 0,
+            'markinganonymous' => 0,
+            'gradepenalty' => 0,
+            'timelimit' => 0,
+            'submissionattachments' => 0,
+            'activityformat' => 0,
+        ];
+
+        foreach ($defaults as $name => $fallback) {
+            $fromadmin = is_object($adminconfig) && isset($adminconfig->{$name}) && $adminconfig->{$name} !== '';
+            // Site assign date settings are relative durations, not timestamps. Keep 0 (disabled).
+            $usedatefallback = in_array($name, ['duedate', 'allowsubmissionsfromdate', 'cutoffdate', 'gradingduedate'], true);
+            if (!isset($moddata->{$name}) || $moddata->{$name} === '' || $moddata->{$name} === null) {
+                $moddata->{$name} = (!$usedatefallback && $fromadmin) ? $adminconfig->{$name} : $fallback;
+            }
+        }
+
+        if (!isset($moddata->intro) || $moddata->intro === null) {
+            $moddata->intro = '';
+        }
+        if (!isset($moddata->introformat) || $moddata->introformat === null) {
+            $moddata->introformat = FORMAT_HTML;
+        }
+
+        return $moddata;
+    }
+
     public static function gradebook_create_assignment_activity(int $courseid, string $activityname, int $sectionnum = 0): array
     {
         global $CFG, $DB;
@@ -4703,6 +4985,7 @@ class cria
             $moddata->cmidnumber = '';
             $moddata->groupmode = NOGROUPS;
             $moddata->groupingid = 0;
+            $moddata = self::apply_assign_activity_defaults($moddata);
 
             $created = add_moduleinfo($moddata, $course);
             $cmid = (int)($created->coursemodule ?? 0);
@@ -4722,6 +5005,8 @@ class cria
                 ]
             );
 
+            self::_register_ai_owned_activity($courseid, $cmid);
+
             return [
                 'success' => true,
                 'message' => 'Assignment activity created.',
@@ -4732,10 +5017,16 @@ class cria
                 'reused' => false,
             ];
         } catch (\Throwable $e) {
+            if ($DB->is_transaction_started()) {
+                $DB->force_transaction_rollback();
+            }
             debugging('Could not create assignment activity: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            $detail = trim((string)$e->getMessage());
             return [
                 'success' => false,
-                'message' => 'Could not create assignment activity.',
+                'message' => $detail !== ''
+                    ? 'Could not create assignment activity: ' . $detail
+                    : 'Could not create assignment activity.',
                 'activity_name' => '',
                 'moodle_cmid' => 0,
                 'module' => 'assign',
@@ -8118,6 +8409,10 @@ class cria
     ): array {
         global $DB;
 
+        if ($chat_history_json !== null) {
+            $chat_history_json = self::sanitize_gradebook_chat_history_json($chat_history_json);
+        }
+
         $now = time();
         $existing = $DB->get_record(
             'block_aia_gradebook_state',
@@ -8204,7 +8499,7 @@ class cria
             'conflict' => $conflict,
             'session_id' => (string)($record->session_id ?? ''),
             'phase' => (string)($record->phase ?? ''),
-            'chat_history_json' => (string)($record->chat_history_json ?? ''),
+            'chat_history_json' => (string)(self::sanitize_gradebook_chat_history_json((string)($record->chat_history_json ?? '')) ?? ''),
             'confirmed_mapping_json' => (string)($record->confirmed_mapping_json ?? ''),
             'result_json' => (string)($record->result_json ?? ''),
             'timemodified' => (int)($record->timemodified ?? 0),
@@ -8268,7 +8563,7 @@ class cria
             'found' => true,
             'session_id' => (string)($record->session_id ?? ''),
             'phase' => (string)($record->phase ?? ''),
-            'chat_history_json' => (string)($record->chat_history_json ?? ''),
+            'chat_history_json' => (string)(self::sanitize_gradebook_chat_history_json((string)($record->chat_history_json ?? '')) ?? ''),
             'confirmed_mapping_json' => (string)($record->confirmed_mapping_json ?? ''),
             'result_json' => (string)($record->result_json ?? ''),
             'timemodified' => (int)($record->timemodified ?? 0),

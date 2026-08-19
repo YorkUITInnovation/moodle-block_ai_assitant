@@ -25,6 +25,7 @@ let proposalSubcategoriesByCategory = {};
 let proposalPanelSyncPromise = null;
 let queuedSystemMessages = [];
 let latestProposalWeightCheck = {known: false, total: null, valid: true};
+let proposalActionsUnlocked = false;
 let lastKnownStateTimemodified = 0;
 let pendingServerSave = null;
 let saveInFlight = Promise.resolve();
@@ -45,7 +46,7 @@ let missingItemsAssessmentLabel = 'Assessment';
 let missingItemsActionLabel = 'Action';
 let missingItemsActivityLabel = 'Activity';
 let missingItemsGradeItemLabel = 'Grade item';
-let missingItemsSkipLabel = 'Skip';
+let missingItemsSkipLabel = 'Skip (not included)';
 let missingItemsSubmitLabel = 'Submit';
 let missingItemsPartialFailedLabel = 'Created some items, but these failed. Resolve the remaining rows and submit again:';
 let missingItemsSuggestedSuffixLabel = ' (suggested)';
@@ -653,19 +654,43 @@ const shouldShowBaselineDeleteWarning = () => {
     return finalized && (baselineApplied || getRevertAvailable() || hasBaselineSnapshotApply(result));
 };
 
+const PROPOSAL_ACTIONS_LOCKED_MESSAGE =
+    'Finish the chat steps first (syllabus, activities, as-is/YorkU, and missing items). Proposal, Generate mapping, and Finalize unlock after the full proposal is ready.';
+
+const rememberProposalActionsUnlocked = (payload) => {
+    if (!payload || typeof payload !== 'object') {
+        return;
+    }
+    const nested = (payload.session && typeof payload.session === 'object') ? payload.session : payload;
+    if (Object.prototype.hasOwnProperty.call(nested, 'proposal_actions_unlocked')) {
+        proposalActionsUnlocked = nested.proposal_actions_unlocked === true;
+        return;
+    }
+    if (Object.prototype.hasOwnProperty.call(payload, 'proposal_actions_unlocked')) {
+        proposalActionsUnlocked = payload.proposal_actions_unlocked === true;
+    }
+};
+
+const areProposalActionsUnlocked = () => proposalActionsUnlocked === true;
+
+const notifyProposalActionsLocked = () => {
+    appendSystemMessageSafely(PROPOSAL_ACTIONS_LOCKED_MESSAGE);
+};
+
 const syncButtonsFromPhase = (phase) => {
     const phaseUpper = String(phase || '').toUpperCase();
     const blockedByWeight = latestProposalWeightCheck.known && !latestProposalWeightCheck.valid;
+    const unlocked = areProposalActionsUnlocked();
 
     const proposalBtn = el('btn-gradebook-proposal');
     if (proposalBtn) {
-        proposalBtn.disabled = false;
+        proposalBtn.disabled = !unlocked;
     }
 
     const acceptPhase = phaseUpper === 'PROPOSAL' || phaseUpper === 'REFINEMENT';
     const acceptBtn = el('btn-gradebook-accept');
     if (acceptBtn) {
-        acceptBtn.disabled = !acceptPhase || blockedByWeight;
+        acceptBtn.disabled = !unlocked || !acceptPhase || blockedByWeight;
     }
 
     const finalizePhase = [
@@ -681,7 +706,7 @@ const syncButtonsFromPhase = (phase) => {
     ['btn-gradebook-finalize', 'btn-gradebook-generate'].forEach((id) => {
         const btn = el(id);
         if (btn) {
-            btn.disabled = !finalizePhase || blockedByWeight;
+            btn.disabled = !unlocked || !finalizePhase || blockedByWeight;
         }
     });
 };
@@ -786,15 +811,47 @@ const extractResponseErrorMessage = (parsed, fallback = 'Request failed.') => {
         return fallback;
     }
 
-    const direct = String(parsed.message || parsed.error || parsed.detail || '').trim();
-    if (direct) {
+    const coerceText = (value) => {
+        if (value === null || value === undefined) {
+            return '';
+        }
+        if (typeof value === 'string') {
+            return value.trim();
+        }
+        if (typeof value === 'number' || typeof value === 'boolean') {
+            return String(value).trim();
+        }
+        if (typeof value === 'object') {
+            const nested = extractResponseErrorMessage(value, '');
+            if (nested) {
+                return nested;
+            }
+            try {
+                const serialized = JSON.stringify(value);
+                return serialized && serialized !== '{}' ? serialized : '';
+            } catch (e) {
+                return '';
+            }
+        }
+        return String(value).trim();
+    };
+
+    const direct = coerceText(parsed.message || parsed.error || parsed.detail || parsed.reason);
+    if (direct && direct !== '[object Object]') {
         return direct;
+    }
+
+    if (parsed.exception && typeof parsed.exception === 'object') {
+        const nested = coerceText(parsed.exception.message || parsed.exception.error || parsed.exception.detail);
+        if (nested && nested !== '[object Object]') {
+            return nested;
+        }
     }
 
     if (Array.isArray(parsed.detail) && parsed.detail.length > 0) {
         const first = parsed.detail[0] || {};
         const loc = Array.isArray(first.loc) ? first.loc.join('.') : '';
-        const msg = String(first.msg || '').trim();
+        const msg = coerceText(first.msg);
         if (loc && msg) {
             return `${loc}: ${msg}`;
         }
@@ -803,7 +860,41 @@ const extractResponseErrorMessage = (parsed, fallback = 'Request failed.') => {
         }
     }
 
+    const errorCode = coerceText(parsed.errorcode || parsed.code);
+    if (errorCode) {
+        return errorCode;
+    }
+
     return fallback;
+};
+
+const formatCaughtErrorMessage = (error, fallback = 'Request failed.') => {
+    if (!error) {
+        return fallback;
+    }
+    if (typeof error === 'string') {
+        const text = error.trim();
+        return text || fallback;
+    }
+    if (error instanceof Error) {
+        const text = String(error.message || '').trim();
+        return text || fallback;
+    }
+    if (typeof error === 'object') {
+        const fromObject = extractResponseErrorMessage(error, '');
+        if (fromObject) {
+            return fromObject;
+        }
+        try {
+            const serialized = JSON.stringify(error);
+            if (serialized && serialized !== '{}') {
+                return serialized;
+            }
+        } catch (e) {
+        }
+    }
+    const text = String(error).trim();
+    return text && text !== '[object Object]' ? text : fallback;
 };
 
 const getStringSafe = async (key, fallback) => {
@@ -1239,7 +1330,7 @@ const syncMissingItemsContext = async () => {
     return callWs('block_ai_assistant_gradebook_sync_context', {
         courseid: getCourseId(),
         session_id: getSessionId(),
-        refresh_proposal_candidates: true
+        refresh_proposal_candidates: false
     });
 };
 
@@ -1268,7 +1359,12 @@ const buildMissingItemsTablePanel = (uiPayload) => {
 
     rows.forEach((row, index) => {
         const name = String((row && row.name) || '').trim();
-        const suggested = String((row && row.suggested_action) || '').trim().toLowerCase();
+        const decided = lastMissingItemDecisions.find((item) => (
+            String((item && item.name) || '').trim().toLowerCase() === name.toLowerCase()
+        ));
+        const suggested = String(
+            (decided && decided.action) || (row && row.suggested_action) || ''
+        ).trim().toLowerCase();
         if (!name) {
             return;
         }
@@ -1379,7 +1475,7 @@ const buildMissingItemsTablePanel = (uiPayload) => {
                     }
                     succeeded.push(decision);
                 } catch (e) {
-                    const msg = String((e && e.message) || e || '').trim() || 'Creation request failed.';
+                    const msg = formatCaughtErrorMessage(e, 'Creation request failed.');
                     createErrors.push(`${decision.name}: ${msg}`);
                 }
             }
@@ -1394,10 +1490,10 @@ const buildMissingItemsTablePanel = (uiPayload) => {
                 try {
                     await syncMissingItemsContext();
                 } catch (e) {
-                    const msg = String((e && e.message) || e || '').trim() || 'Context sync failed.';
-                    appendSystemMessage(`Created items, but session sync failed: ${msg}. Retry submit.`);
-                    submitBtn.disabled = false;
-                    return;
+                    const msg = formatCaughtErrorMessage(e, 'Context sync failed.');
+                    appendSystemMessage(
+                        `Created items, but session sync failed: ${msg}. Continuing with your submit — new activities will refresh on the next chat turn.`
+                    );
                 }
             }
 
@@ -1416,7 +1512,7 @@ const buildMissingItemsTablePanel = (uiPayload) => {
                 }
             });
         } catch (e) {
-            const msg = String((e && e.message) || e || '').trim() || 'Submit failed.';
+            const msg = formatCaughtErrorMessage(e, 'Submit failed.');
             appendSystemMessage(`Missing-item submit failed: ${msg}`);
             submitBtn.disabled = false;
         }
@@ -1726,14 +1822,28 @@ const renderHistory = (history) => {
         return false;
     }
     chatMessages.innerHTML = '';
-    history.forEach((item) => {
+    let lastBotIndex = -1;
+    history.forEach((item, index) => {
+        if (item && item.role === 'bot') {
+            lastBotIndex = index;
+        }
+    });
+    history.forEach((item, index) => {
+        let ui = item.role === 'bot' ? item.ui : null;
+        if (
+            ui
+            && String(ui.type || '').trim() === 'missing_items_table'
+            && index !== lastBotIndex
+        ) {
+            ui = null;
+        }
         appendMessage(
             chatMessages,
             String(item.text || ''),
             item.role === 'human',
             true,
             item.role === 'bot' ? item.quick_replies : [],
-            item.role === 'bot' ? item.ui : null
+            ui
         );
     });
     return true;
@@ -1811,6 +1921,37 @@ const ensureChatRenderedFromAnySource = (parsedStatus, serverState) => {
     return false;
 };
 
+const friendlyMissingItemsSubmitText = (text) => {
+    const raw = String(text || '').trim();
+    const marker = 'missing_items_submit:';
+    if (!raw.toLowerCase().startsWith(marker)) {
+        return String(text || '');
+    }
+    const labels = {
+        activity: 'Activity',
+        grade_item: 'Grade item',
+        skip: 'Skip (not included)'
+    };
+    try {
+        const rows = JSON.parse(raw.slice(marker.length).trim());
+        if (!Array.isArray(rows) || rows.length < 1) {
+            return 'Submitted missing-item decisions.';
+        }
+        const lines = ['Submitted missing-item decisions:'];
+        rows.forEach((row) => {
+            const name = String((row && row.name) || '').trim();
+            const action = String((row && row.action) || '').trim().toLowerCase();
+            if (!name) {
+                return;
+            }
+            lines.push(`- ${name}: ${labels[action] || action}`);
+        });
+        return lines.length > 1 ? lines.join('\n') : 'Submitted missing-item decisions.';
+    } catch (e) {
+        return 'Submitted missing-item decisions.';
+    }
+};
+
 const normalizeChatHistoryEntries = (raw) => {
     const normalizeQuickReplies = (rawReplies) => {
         if (!Array.isArray(rawReplies)) {
@@ -1868,7 +2009,9 @@ const normalizeChatHistoryEntries = (raw) => {
         .filter((item) => item && typeof item === 'object')
         .map((item) => {
             const role = item.role === 'human' ? 'human' : (item.role === 'bot' ? 'bot' : '');
-            const text = String(item.text || '');
+            const text = role === 'human'
+                ? friendlyMissingItemsSubmitText(String(item.text || ''))
+                : String(item.text || '');
             const normalized = {role, text};
             if (role === 'bot') {
                 const quickReplies = normalizeQuickReplies(item.quick_replies || item.quickReplies || []);
@@ -1937,7 +2080,20 @@ const stickyGateExtrasFromExtraction = (statusPayload) => {
     const phase = String(payload.phase || '').trim().toUpperCase();
 
     if (Boolean(extraction.missing_items_pending)) {
+        const demoStatus = String(extraction.demo_preview_status || '').trim().toLowerCase();
+        if (demoStatus === 'pending' || demoStatus === 'adjusting') {
+            return {quick_replies: [], ui: null};
+        }
         const rows = Array.isArray(extraction.missing_items_rows) ? extraction.missing_items_rows : [];
+        const decided = Array.isArray(extraction.missing_item_decisions) ? extraction.missing_item_decisions : [];
+        const decidedByName = {};
+        decided.forEach((item) => {
+            const key = String((item && item.name) || '').trim().toLowerCase();
+            const action = String((item && item.action) || '').trim().toLowerCase();
+            if (key && action) {
+                decidedByName[key] = action;
+            }
+        });
         const normalizedRows = rows
             .filter((row) => row && typeof row === 'object')
             .map((row) => {
@@ -1949,6 +2105,7 @@ const stickyGateExtrasFromExtraction = (statusPayload) => {
                     name,
                     category: String(row.category || '').trim(),
                     subcategory: String(row.subcategory || '').trim(),
+                    suggested_action: decidedByName[name.toLowerCase()] || String(row.suggested_action || '').trim(),
                 };
             })
             .filter(Boolean);
@@ -2761,7 +2918,7 @@ const setFinalizeEnabled = (enabled) => {
     ['btn-gradebook-finalize', 'btn-gradebook-generate'].forEach((id) => {
         const btn = el(id);
         if (btn) {
-            btn.disabled = !enabled || blockedByWeight;
+            btn.disabled = !areProposalActionsUnlocked() || !enabled || blockedByWeight;
         }
     });
 };
@@ -2770,7 +2927,7 @@ const setAcceptEnabled = (enabled) => {
     const blockedByWeight = latestProposalWeightCheck.known && !latestProposalWeightCheck.valid;
     const btn = el('btn-gradebook-accept');
     if (btn) {
-        btn.disabled = !enabled || blockedByWeight;
+        btn.disabled = !areProposalActionsUnlocked() || !enabled || blockedByWeight;
     }
 };
 
@@ -2827,8 +2984,7 @@ const applyProposalWeightGate = (proposal) => {
         appendSystemMessage(`Weight check: total is ${total.toFixed(1)}% (expected 100%). Update weights before accepting or generating mapping.`);
     } else {
         clearWeightCheckSystemMessages();
-        setAcceptEnabled(true);
-        setFinalizeEnabled(true);
+        syncButtonsFromPhase(getPhase());
     }
 };
 
@@ -2850,7 +3006,7 @@ const setUiBusy = (isBusy) => {
     });
 
     if (!isBusy) {
-        setFinalizeEnabled(true);
+        syncButtonsFromPhase(getPhase());
     }
 };
 
@@ -3495,6 +3651,8 @@ const hydrateFromStatusPayload = (parsed, serverState = null) => {
     });
 
     applyRevertFlagsFromPayload(parsed);
+    rememberProposalActionsUnlocked(parsed);
+    rememberProposalActionsUnlocked(statusPayload);
 
     const statusPhase = String(statusPayload.phase || parsed.phase || parsed.state || '-');
     let effectivePhase = statusPhase;
@@ -3517,13 +3675,13 @@ const hydrateFromStatusPayload = (parsed, serverState = null) => {
 
     setPhase(effectivePhase || '-');
     const phaseUpper = String(effectivePhase || '-').toUpperCase();
-
-    ingestBackendChatHistory(statusPayload.chat_history || parsed.chat_history || [], true);
-    reattachStickyGateUiFromExtraction(statusPayload, {forceRender: renderedChatLength() > 0});
     const extraction = (statusPayload.extraction && typeof statusPayload.extraction === 'object')
         ? statusPayload.extraction
         : {};
     setMissingItemDecisions(extraction.missing_item_decisions || []);
+
+    ingestBackendChatHistory(statusPayload.chat_history || parsed.chat_history || [], true);
+    reattachStickyGateUiFromExtraction(statusPayload, {forceRender: renderedChatLength() > 0});
 
     const statusProposal = statusPayload.proposal || null;
     const cats = extractProposalCategories(statusProposal);
@@ -3565,7 +3723,7 @@ const hydrateFromStatusPayload = (parsed, serverState = null) => {
     const statusData = (parsed && typeof parsed.data === 'object') ? parsed.data : {};
     const missingAfterFinalize = Boolean(statusData.grade_setup_missing_after_finalize);
     const deletedEventDetected = Boolean(statusData.grade_setup_deleted_event_detected);
-    if (missingAfterFinalize || deletedEventDetected) {
+    if (isFinalizeCompletedPhase(phaseUpper) && (missingAfterFinalize || deletedEventDetected)) {
         const mappingNode = el('gradebook-confirmed-mapping');
         if (mappingNode) {
             mappingNode.value = '[]';
@@ -4596,6 +4754,7 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
             })();
             const backendAlreadyHasReply = backendHistoryContainsReply(parsed.chat_history || [], replyText);
             ingestBackendChatHistory(parsed.chat_history || [], false);
+            rememberProposalActionsUnlocked(parsed);
             await runWithinProposalPanelSync(async () => {
                 setPhase(parsed.phase || parsed.state || '-');
                 const currentPhase = String(parsed.phase || parsed.state || '-').toUpperCase();
@@ -4705,10 +4864,21 @@ const loadProposalPanel = async (announceLoaded = false) => {
         return parseResponse(raw);
     });
 
+    rememberProposalActionsUnlocked(parsed);
     const proposal = parsed.proposal || null;
     setPhase(parsed.phase || parsed.state || '-');
     if (announceLoaded) {
-        appendChatNotice('Proposal refreshed.');
+        if (!areProposalActionsUnlocked()) {
+            notifyProposalActionsLocked();
+        } else {
+            appendChatNotice('Proposal refreshed.');
+        }
+    }
+
+    if (!areProposalActionsUnlocked()) {
+        setAcceptEnabled(false);
+        setFinalizeEnabled(false);
+        return parsed;
     }
 
     if (proposal && Array.isArray(proposal.categories)) {
@@ -4731,6 +4901,10 @@ const loadProposalPanel = async (announceLoaded = false) => {
 const fetchProposal = async () => {
     await withRequestLock(async () => {
         await ensureSession();
+        if (!areProposalActionsUnlocked()) {
+            notifyProposalActionsLocked();
+            return;
+        }
         await runWithinProposalPanelSync(async () => {
             await loadProposalPanel(true);
         });
@@ -4741,6 +4915,11 @@ const fetchProposal = async () => {
 const acceptProposal = async () => {
     await withRequestLock(async () => {
         await ensureSession();
+
+        if (!areProposalActionsUnlocked()) {
+            notifyProposalActionsLocked();
+            return;
+        }
 
         if (isWeightGateBlocked()) {
             appendSystemMessage(getWeightGateMessage());
@@ -4755,6 +4934,7 @@ const acceptProposal = async () => {
             return parseResponse(raw);
         });
 
+        rememberProposalActionsUnlocked(parsed);
         setPhase(parsed.phase || parsed.state || '-');
 
         if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
@@ -4842,6 +5022,10 @@ const highlightMissingRows = (missingIdx) => {
 const finalizeGradebook = async () => {
     await withRequestLock(async () => {
         await ensureSession();
+        if (!areProposalActionsUnlocked()) {
+            notifyProposalActionsLocked();
+            return;
+        }
         await refreshMappingBeforeFinalize();
 
         if (isWeightGateBlocked()) {
@@ -4947,6 +5131,7 @@ const finalizeGradebook = async () => {
             return parseResponse(raw);
         });
 
+        rememberProposalActionsUnlocked(parsed);
         const finalizePhase = String(parsed.phase || parsed.state || '').toUpperCase();
         const finalizeData = (parsed && typeof parsed === 'object' && parsed.data && typeof parsed.data === 'object')
             ? parsed.data
@@ -5162,6 +5347,7 @@ const handleFileUpload = async () => {
                 });
 
                 if (parsed.phase) {
+                    rememberProposalActionsUnlocked(parsed);
                     setPhase(parsed.phase);
                 }
 

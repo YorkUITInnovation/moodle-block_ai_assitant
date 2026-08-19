@@ -152,6 +152,8 @@ class block_ai_assistant_gradebook_ws extends external_api
         $statusphase = strtoupper(trim((string)($status['phase'] ?? ($status['session']['phase'] ?? ''))));
         $finalizedphase = in_array($statusphase, ['COMPLETED', 'FINALIZED'], true);
         $missingafterfinalize = $finalizedphase && !$hasaitree;
+        // Ignore stale flags from activity create/rollback before the AI tree was applied.
+        $deletedevent = $finalizedphase && $missingtreeflag;
 
         $status['revert_available'] = $revertavailable;
         $status['data'] = array_merge(
@@ -160,7 +162,7 @@ class block_ai_assistant_gradebook_ws extends external_api
                 'revert_available' => $revertavailable,
                 'grade_setup_present' => $hasaitree,
                 'grade_setup_missing_after_finalize' => $missingafterfinalize,
-                'grade_setup_deleted_event_detected' => $missingtreeflag,
+                'grade_setup_deleted_event_detected' => $deletedevent,
             ]
         );
         $status_json = json_encode($status);
@@ -210,7 +212,7 @@ class block_ai_assistant_gradebook_ws extends external_api
                 'revert_available' => $revertavailable,
                 'grade_setup_present' => $hasaitree,
                 'grade_setup_missing_after_finalize' => $missingafterfinalize,
-                'grade_setup_deleted_event_detected' => $missingtreeflag,
+                'grade_setup_deleted_event_detected' => $deletedevent,
                 'grade_setup_skipped' => !empty($localdata['grade_setup_skipped']) || !empty($localdata['grade_setup_apply_rolled_back']),
                 'grade_setup_apply_rolled_back' => !empty($localdata['grade_setup_apply_rolled_back']),
                 'grade_setup_skip_reason' => (string)($localdata['grade_setup_skip_reason'] ?? 'local_state_reconciliation'),

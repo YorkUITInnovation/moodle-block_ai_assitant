@@ -325,6 +325,12 @@ function xmldb_block_ai_assistant_upgrade($oldversion)
         upgrade_block_savepoint(true, 2026073001, 'ai_assistant');
     }
 
+    if ($oldversion < 2026081801) {
+        require_once($CFG->libdir . '/upgradelib.php');
+        external_update_descriptions('block_ai_assistant');
+        upgrade_block_savepoint(true, 2026081801, 'ai_assistant');
+    }
+
     return true;
 
 }
