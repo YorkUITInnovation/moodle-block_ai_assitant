@@ -2513,7 +2513,7 @@ class cria
             'session_id' => trim($session_id),
             'keep_extraction' => $keep_extraction,
         );
-        return webservice::exec($method, $data);
+        return self::decorate_gradebook_json_response(webservice::exec($method, $data));
     }
 
     public static function gradebook_delete(string $session_id, int $courseid = 0): string

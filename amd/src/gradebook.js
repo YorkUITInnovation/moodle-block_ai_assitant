@@ -1161,7 +1161,7 @@ const convertMarkdownToHtml = (text) => {
     return html;
 };
 
-const appendMessage = (container, text, isHuman, skipPersist, quickReplies, uiPayload) => {
+const appendMessage = (container, text, isHuman, skipPersist, quickReplies, uiPayload, options = {}) => {
     if (!container) {
         return;
     }
@@ -1199,7 +1199,14 @@ const appendMessage = (container, text, isHuman, skipPersist, quickReplies, uiPa
 
     div.appendChild(content);
     container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
+    if (options.scroll !== false) {
+        // Deferred helper exists later in module; call at runtime.
+        if (typeof scrollChatToLatest === 'function') {
+            scrollChatToLatest(container);
+        } else {
+            container.scrollTop = container.scrollHeight;
+        }
+    }
 
     if (!skipPersist) {
         const history = loadJson(getStorageKey('chat_history'), []);
@@ -1622,85 +1629,38 @@ const isSyllabusPrepGateText = (text) => {
     );
 };
 
-const replaceBotMessageContent = (botNode, text, quickReplies) => {
-    if (!botNode) {
-        return false;
-    }
-    let content = botNode.querySelector('.message-content');
-    if (!content) {
-        content = document.createElement('div');
-        content.className = 'message-content';
-        botNode.appendChild(content);
-    }
-    content.innerHTML = convertMarkdownToHtml(text || '');
-    const replies = Array.isArray(quickReplies) ? quickReplies : [];
-    const actions = buildQuickReplyActions(replies);
-    if (actions) {
-        content.appendChild(actions);
-    }
-    return true;
+const isActivityPrepGateText = (text) => {
+    const lowered = String(text || '').toLowerCase();
+    return lowered.includes('add your course activities')
+        && (lowered.includes('continue') || lowered.includes('eclass') || lowered.includes('moodle'));
 };
 
-const findLastSyllabusPrepBotMessage = (container) => {
-    if (!container) {
-        return null;
-    }
-    const bots = Array.from(container.querySelectorAll('.chat-message.bot-message'));
-    for (let i = bots.length - 1; i >= 0; i -= 1) {
-        const node = bots[i];
-        const text = String(node.textContent || '');
-        if (isSyllabusPrepGateText(text)) {
-            return node;
-        }
-    }
-    return null;
-};
-
-const updateChatHistoryBotTextInPlace = (previousText, nextText, quickReplies) => {
-    const history = loadJson(getStorageKey('chat_history'), []);
-    if (!Array.isArray(history) || history.length < 1) {
+const removeProgressiveLoader = (id = 'gradebook-loading-indicator') => {
+    const indicator = document.getElementById(id);
+    if (!indicator) {
         return;
     }
-    for (let i = history.length - 1; i >= 0; i -= 1) {
-        const entry = history[i];
-        if (!entry || entry.role !== 'bot') {
-            continue;
-        }
-        const entryText = String(entry.text || '');
-        if (entryText === previousText || isSyllabusPrepGateText(entryText)) {
-            entry.text = nextText || '';
-            if (Array.isArray(quickReplies) && quickReplies.length > 0) {
-                entry.quick_replies = quickReplies;
-            } else {
-                delete entry.quick_replies;
-            }
-            persistChatHistoryLocal(history);
-            const normalizedHistory = normalizeChatHistoryEntries(history);
-            persistStarterChatHistory(normalizedHistory, getSessionId());
-            scheduleServerSave();
-            return;
-        }
+    if (indicator.dataset.loaderIntervalId) {
+        clearInterval(Number(indicator.dataset.loaderIntervalId));
     }
+    indicator.remove();
 };
 
 /**
- * Soften Continue-without-syllabus UX: refresh the existing gate bubble instead of
- * stacking a near-duplicate bot message (avoids the chat jump/shake).
+ * Scroll chat so the newest content is visible without mid-flight jumps.
+ * Prefer a single scroll after DOM settles (loader removed, reply appended).
  */
-const updateSyllabusPrepGateInPlace = (container, text, quickReplies) => {
-    const target = findLastSyllabusPrepBotMessage(container);
-    if (!target) {
-        return false;
+const scrollChatToLatest = (container) => {
+    if (!container) {
+        return;
     }
-    const previousText = String(target.textContent || '').trim();
-    const scrollTop = container.scrollTop;
-    if (!replaceBotMessageContent(target, text, quickReplies)) {
-        return false;
+    const run = () => {
+        container.scrollTop = container.scrollHeight;
+    };
+    run();
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(run);
     }
-    updateChatHistoryBotTextInPlace(previousText, text, quickReplies);
-    // Keep viewport steady — do not force scroll to bottom.
-    container.scrollTop = scrollTop;
-    return true;
 };
 
 const waitForDomSettle = () => new Promise((resolve) => {
@@ -3045,7 +3005,7 @@ const appendProgressiveLoader = (container, id, initialText) => {
             </div>
         </div>`;
     container.appendChild(loadingDiv);
-    container.scrollTop = container.scrollHeight;
+    scrollChatToLatest(container);
 
     const stageNode = loadingDiv.querySelector('.cria-loader-stage');
     let stageIndex = 0;
@@ -3056,7 +3016,7 @@ const appendProgressiveLoader = (container, id, initialText) => {
         }
         stageIndex = Math.min(stageIndex + 1, CHAT_LOADER_STAGES.length - 1);
         stageNode.textContent = CHAT_LOADER_STAGES[stageIndex];
-        container.scrollTop = container.scrollHeight;
+        // Do not scroll on stage ticks — that causes visible jump while waiting.
     }, CHAT_LOADER_STEP_MS);
     loadingDiv.dataset.loaderIntervalId = String(intervalId);
     return loadingDiv;
@@ -4399,8 +4359,18 @@ const resetSession = async (systemMessageKey) => {
                 appendSystemMessage(msg);
             } catch (e) {
             }
-        } else if (resetResponse && resetResponse.message) {
-            appendSystemMessage(String(resetResponse.message));
+        } else {
+            const reply = String((resetResponse && resetResponse.reply) || '').trim();
+            if (reply) {
+                const replyQuickReplies = Array.isArray(resetResponse.quick_replies) ? resetResponse.quick_replies : [];
+                if (replyQuickReplies.length > 0) {
+                    appendSystemMessageWithQuickReplies(reply, replyQuickReplies);
+                } else {
+                    appendSystemMessage(reply);
+                }
+            } else if (resetResponse && resetResponse.message) {
+                appendSystemMessage(String(resetResponse.message));
+            }
         }
         await serverSaveState();
         return nextSessionId;
@@ -4684,21 +4654,8 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
 
     await withRequestLock(async () => {
         const chatContainer = getChatMessages();
-        const continueLikePrompt = /^(continue|go on|next|ok|okay)$/i.test(String(normalized || '').trim());
-        const hadSyllabusGateBeforeSend = Boolean(findLastSyllabusPrepBotMessage(chatContainer));
-        // Avoid stacking a human "Continue" bubble when we may only refresh the gate in place.
-        const suppressHumanContinue = continueLikePrompt && hadSyllabusGateBeforeSend;
-        if (!suppressHumanContinue) {
-            appendMessage(chatContainer, prepared.displayText, true, false);
-        } else {
-            // Mark prior Continue buttons spent without adding a jump-causing human row.
-            document.querySelectorAll('.gradebook-quick-replies:not(.is-spent)').forEach((node) => {
-                node.classList.add('is-spent');
-                node.querySelectorAll('button').forEach((btn) => {
-                    btn.disabled = true;
-                });
-            });
-        }
+        // Keep full transcript: always append human + bot turns (no in-place rewrite).
+        appendMessage(chatContainer, prepared.displayText, true, false);
         rememberPrompt(typed);
         input.value = '';
         if (prepared.usedFormulaInput) {
@@ -4750,6 +4707,12 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                         {label: 'Continue without syllabus', prompt: 'continue without syllabus'},
                     ];
                 }
+                if (isActivityPrepGateText(replyText)) {
+                    return [
+                        {label: 'Open course to add activities', action: 'open_url', url: buildCourseOpenUrl()},
+                        {label: 'Continue', prompt: 'continue'},
+                    ];
+                }
                 return inferAnalysisQuickRepliesFromText(replyText, parsed.phase || parsed.state || '');
             })();
             const backendAlreadyHasReply = backendHistoryContainsReply(parsed.chat_history || [], replyText);
@@ -4790,18 +4753,17 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
                     renderResultPanel(null);
                 }
 
-                const updatedGateInPlace = isSyllabusPrepGateText(replyText)
-                    && updateSyllabusPrepGateInPlace(chatContainer, replyText, effectiveQuickReplies);
-                if (!updatedGateInPlace) {
-                    appendMessage(
-                        chatContainer,
-                        replyText,
-                        false,
-                        backendAlreadyHasReply,
-                        effectiveQuickReplies,
-                        replyUiPayload
-                    );
-                }
+                // Remove loader before appending the reply so height doesn't shrink after scroll
+                // (that shrink-after-append was the main chat jump). Keep prior questions intact.
+                removeProgressiveLoader();
+                appendMessage(
+                    chatContainer,
+                    replyText,
+                    false,
+                    backendAlreadyHasReply,
+                    effectiveQuickReplies,
+                    replyUiPayload
+                );
                 if (parsed.proposal && Array.isArray(parsed.proposal.categories)) {
                     const cats = extractProposalCategories(parsed.proposal);
                     const catsWithItems = extractProposalCategoriesWithItems(parsed.proposal);
@@ -4823,13 +4785,7 @@ const sendPreparedPrompt = async ({typed, prepared}) => {
             appendSystemMessageSafely('Chat request failed. Please try again.');
             notification.exception(error);
         } finally {
-            const indicator = document.getElementById('gradebook-loading-indicator');
-            if (indicator) {
-                if (indicator.dataset.loaderIntervalId) {
-                    clearInterval(Number(indicator.dataset.loaderIntervalId));
-                }
-                indicator.remove();
-            }
+            removeProgressiveLoader();
             focusPromptInput();
         }
     });
