@@ -4916,20 +4916,280 @@ class cria
         return $moddata;
     }
 
-    public static function gradebook_create_assignment_activity(int $courseid, string $activityname, int $sectionnum = 0): array
+    /**
+     * Fill required quiz instance fields so add_moduleinfo can insert without NULL columns.
+     *
+     * Same class of bug as apply_assign_activity_defaults(); prefers admin config the same way.
+     * Live-verified 2026-08-26: mod_quiz's form field is `quizpassword`, not `password` (dodges
+     * browser autofill), and quiz_process_options() unconditionally copies it over ours - watch
+     * for this same DB-column-vs-form-field quirk elsewhere here or in workshop/forum's tables.
+     * Review-option bitmasks (reviewattempt etc.) are still unverified literals, not config-read.
+     */
+    private static function apply_quiz_activity_defaults(\stdClass $moddata): \stdClass
     {
+        $adminconfig = get_config('quiz');
+        // These intentionally never fall back to admin config: timeopen/timeclose are absolute
+        // timestamps (no sane "site default" concept, matching assign's date fields); the review
+        // bitmasks are left as literals per the docblock note above.
+        $noconfigfallback = [
+            'timeopen', 'timeclose',
+            'reviewattempt', 'reviewcorrectness', 'reviewmarks', 'reviewspecificfeedback',
+            'reviewgeneralfeedback', 'reviewrightanswer', 'reviewoverallfeedback',
+        ];
+        $defaults = [
+            'timeopen' => 0,
+            'timeclose' => 0,
+            'timelimit' => 0,
+            'overduehandling' => 'autosubmit',
+            'graceperiod' => 0,
+            'preferredbehaviour' => 'deferredfeedback',
+            'canredoquestions' => 0,
+            'attempts' => 0,
+            'attemptonlast' => 0,
+            'grademethod' => 1,
+            'decimalpoints' => 2,
+            'questiondecimalpoints' => -1,
+            'reviewattempt' => 69904,
+            'reviewcorrectness' => 4368,
+            'reviewmarks' => 4368,
+            'reviewspecificfeedback' => 4368,
+            'reviewgeneralfeedback' => 4368,
+            'reviewrightanswer' => 4368,
+            'reviewoverallfeedback' => 4368,
+            'questionsperpage' => 1,
+            'navmethod' => 'free',
+            'shuffleanswers' => 1,
+            'sumgrades' => 0,
+            'grade' => 100,
+            // Both needed - see docblock above (mod_form's field is quizpassword, not password).
+            'password' => '',
+            'quizpassword' => '',
+            'subnet' => '',
+            'browsersecurity' => '-',
+            'delay1' => 0,
+            'delay2' => 0,
+            'showuserpicture' => 0,
+            'showblocks' => 0,
+            'completionattemptsexhausted' => 0,
+            'completionminattempts' => 0,
+            'allowofflineattempts' => 0,
+        ];
+
+        foreach ($defaults as $name => $fallback) {
+            if (isset($moddata->{$name}) && $moddata->{$name} !== '' && $moddata->{$name} !== null) {
+                continue;
+            }
+            $fromadmin = is_object($adminconfig) && isset($adminconfig->{$name}) && $adminconfig->{$name} !== '';
+            $useconfig = $fromadmin && !in_array($name, $noconfigfallback, true);
+            $moddata->{$name} = $useconfig ? $adminconfig->{$name} : $fallback;
+        }
+
+        if (!isset($moddata->intro) || $moddata->intro === null) {
+            $moddata->intro = '';
+        }
+        if (!isset($moddata->introformat) || $moddata->introformat === null) {
+            $moddata->introformat = FORMAT_HTML;
+        }
+
+        return $moddata;
+    }
+
+    /**
+     * Fill required forum instance fields so add_moduleinfo can insert without NULL columns.
+     *
+     * Same class of bug as apply_assign_activity_defaults(). `grade_forum`/`scale`/`gradepass`/
+     * `assessed` are never pulled from admin config - this activity always needs whole-forum
+     * grading on (`grade_forum => 100`), regardless of the site's own forum default. Everything
+     * else prefers `get_config('forum')` the same way. NOTE: not yet live-verified against a
+     * running Moodle instance - confirm during the smoke test, including the `grade_forum`
+     * column name in this Moodle version.
+     */
+    private static function apply_forum_activity_defaults(\stdClass $moddata): \stdClass
+    {
+        $adminconfig = get_config('forum');
+        // Absolute timestamps (no sane site default) plus the deliberate always-graded override
+        // fields explained above - both intentionally never fall back to admin config.
+        $noconfigfallback = ['assesstimestart', 'assesstimefinish', 'duedate', 'cutoffdate', 'grade_forum', 'scale', 'gradepass', 'assessed'];
+        $defaults = [
+            'type' => 'general',
+            'assessed' => 0,
+            'assesstimestart' => 0,
+            'assesstimefinish' => 0,
+            'scale' => 100,
+            'grade_forum' => 100,
+            'gradepass' => 0,
+            'maxbytes' => 0,
+            'maxattachments' => 9,
+            'forcesubscribe' => 0,
+            'trackingtype' => 1,
+            'rsstype' => 0,
+            'rssarticles' => 0,
+            'warnafter' => 0,
+            'blockafter' => 0,
+            'blockperiod' => 0,
+            'completiondiscussions' => 0,
+            'completionreplies' => 0,
+            'completionposts' => 0,
+            'displaywordcount' => 0,
+            'lockdiscussionafter' => 0,
+            'duedate' => 0,
+            'cutoffdate' => 0,
+        ];
+
+        foreach ($defaults as $name => $fallback) {
+            if (isset($moddata->{$name}) && $moddata->{$name} !== '' && $moddata->{$name} !== null) {
+                continue;
+            }
+            $fromadmin = is_object($adminconfig) && isset($adminconfig->{$name}) && $adminconfig->{$name} !== '';
+            $useconfig = $fromadmin && !in_array($name, $noconfigfallback, true);
+            $moddata->{$name} = $useconfig ? $adminconfig->{$name} : $fallback;
+        }
+
+        if (!isset($moddata->intro) || $moddata->intro === null) {
+            $moddata->intro = '';
+        }
+        if (!isset($moddata->introformat) || $moddata->introformat === null) {
+            $moddata->introformat = FORMAT_HTML;
+        }
+
+        return $moddata;
+    }
+
+    /**
+     * Fill required workshop instance fields so add_moduleinfo can insert without NULL columns.
+     *
+     * Same class of bug as apply_assign_activity_defaults(); prefers admin config the same way.
+     * NOTE: not yet live-verified. Workshop creates **two** grade items per instance (submission
+     * at itemnumber 0, assessment at 1) - gradebook_create_activity() queries with an explicit
+     * `itemnumber => 0` for this reason.
+     */
+    private static function apply_workshop_activity_defaults(\stdClass $moddata): \stdClass
+    {
+        $adminconfig = get_config('workshop');
+        // Absolute timestamps (no sane site default) never fall back to admin config.
+        $noconfigfallback = ['submissionstart', 'submissionend', 'assessmentstart', 'assessmentend'];
+        $defaults = [
+            'instructauthors' => '',
+            'instructauthorsformat' => FORMAT_HTML,
+            'instructreviewers' => '',
+            'instructreviewersformat' => FORMAT_HTML,
+            'useexamples' => 0,
+            'usepeerassessment' => 1,
+            'useselfassessment' => 0,
+            'grade' => 80,
+            'gradinggrade' => 20,
+            'strategy' => 'accumulative',
+            'evaluation' => 'best',
+            'gradedecimals' => 0,
+            'nattachments' => 1,
+            'latesubmissions' => 0,
+            'maxbytes' => 0,
+            'examplesmode' => 0,
+            'submissionstart' => 0,
+            'submissionend' => 0,
+            'assessmentstart' => 0,
+            'assessmentend' => 0,
+            'phase' => 10,
+            'phaseswitchassessment' => 0,
+            'conclusion' => '',
+            'conclusionformat' => FORMAT_HTML,
+            'overallfeedbackmode' => 1,
+            'overallfeedbackfiles' => 0,
+            'overallfeedbackmaxbytes' => 0,
+            'overallfeedbackmaxfiles' => 0,
+        ];
+
+        foreach ($defaults as $name => $fallback) {
+            if (isset($moddata->{$name}) && $moddata->{$name} !== '' && $moddata->{$name} !== null) {
+                continue;
+            }
+            $fromadmin = is_object($adminconfig) && isset($adminconfig->{$name}) && $adminconfig->{$name} !== '';
+            $useconfig = $fromadmin && !in_array($name, $noconfigfallback, true);
+            $moddata->{$name} = $useconfig ? $adminconfig->{$name} : $fallback;
+        }
+
+        if (!isset($moddata->intro) || $moddata->intro === null) {
+            $moddata->intro = '';
+        }
+        if (!isset($moddata->introformat) || $moddata->introformat === null) {
+            $moddata->introformat = FORMAT_HTML;
+        }
+
+        return $moddata;
+    }
+
+    /**
+     * Modules with a per-module defaults table above; the only modules the dropdown may offer.
+     *
+     * Common gradable set, not exhaustive. Excluded on purpose: `lesson` (serialized `conditions`
+     * column, too risky to guess blind), `glossary`/`database` (rarely the actual use case),
+     * `scorm`/`lti`/`h5pactivity` (need real content/tool provisioning an empty placeholder can't
+     * give). To add one: a new `apply_<module>_activity_defaults()` here plus a matching entry in
+     * criabot's `activity_types.py`. Public because `gradebook_ws` builds its parameter
+     * description from it.
+     */
+    public const SUPPORTED_ACTIVITY_MODULES = ['assign', 'quiz', 'forum', 'workshop'];
+
+    private static function apply_activity_module_defaults(string $module, \stdClass $moddata): \stdClass
+    {
+        switch ($module) {
+            case 'quiz':
+                return self::apply_quiz_activity_defaults($moddata);
+            case 'forum':
+                return self::apply_forum_activity_defaults($moddata);
+            case 'workshop':
+                return self::apply_workshop_activity_defaults($moddata);
+            case 'assign':
+            default:
+                return self::apply_assign_activity_defaults($moddata);
+        }
+    }
+
+    /**
+     * List activity types this plugin can create: SUPPORTED_ACTIVITY_MODULES intersected with
+     * what's actually installed, visible, and gradable on this site.
+     */
+    public static function gradebook_list_activity_types(): array
+    {
+        global $DB;
+        $types = [];
+        foreach (self::SUPPORTED_ACTIVITY_MODULES as $module) {
+            $exists = $DB->record_exists('modules', ['name' => $module, 'visible' => 1]);
+            if (!$exists) {
+                continue;
+            }
+            if (!plugin_supports('mod', $module, FEATURE_GRADE_HAS_GRADE, true)) {
+                continue;
+            }
+            $types[] = [
+                'module' => $module,
+                'label' => get_string('modulename', 'mod_' . $module),
+            ];
+        }
+        return ['success' => true, 'activity_types' => $types];
+    }
+
+    public static function gradebook_create_activity(
+        int $courseid,
+        string $activityname,
+        string $module = 'assign',
+        int $sectionnum = 0,
+        int $groupmode = 0,
+        int $groupingid = 0
+    ): array {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/course/lib.php');
         require_once($CFG->dirroot . '/course/modlib.php');
 
+        $cleanmodule = in_array($module, self::SUPPORTED_ACTIVITY_MODULES, true) ? $module : 'assign';
         $cleanname = trim($activityname);
         if ($courseid <= 0 || $cleanname === '') {
             return [
                 'success' => false,
-                'message' => 'Assignment activity name is required.',
+                'message' => 'Activity name is required.',
                 'activity_name' => '',
                 'moodle_cmid' => 0,
-                'module' => 'assign',
+                'module' => $cleanmodule,
                 'grade_item_id' => 0,
                 'reused' => false,
             ];
@@ -4938,30 +5198,33 @@ class cria
         try {
             $modinfo = get_fast_modinfo($courseid);
             foreach ($modinfo->get_cms() as $cm) {
-                if ((string)$cm->modname !== 'assign') {
+                if ((string)$cm->modname !== $cleanmodule) {
                     continue;
                 }
                 if (\core_text::strtolower(trim((string)$cm->name)) !== \core_text::strtolower($cleanname)) {
                     continue;
                 }
 
+                // itemnumber => 0: some modules (e.g. workshop) create more than one grade item
+                // per instance; without this, get_field() throws on multiple matches.
                 $gradeitemid = (int)$DB->get_field(
                     'grade_items',
                     'id',
                     [
                         'courseid' => $courseid,
                         'itemtype' => 'mod',
-                        'itemmodule' => 'assign',
+                        'itemmodule' => $cleanmodule,
                         'iteminstance' => (int)$cm->instance,
+                        'itemnumber' => 0,
                     ]
                 );
 
                 return [
                     'success' => true,
-                    'message' => 'Assignment activity already exists.',
+                    'message' => 'Activity already exists.',
                     'activity_name' => $cleanname,
                     'moodle_cmid' => (int)$cm->id,
-                    'module' => 'assign',
+                    'module' => $cleanmodule,
                     'grade_item_id' => $gradeitemid > 0 ? $gradeitemid : 0,
                     'reused' => true,
                 ];
@@ -4972,26 +5235,30 @@ class cria
                 throw new \moodle_exception('Course not found.');
             }
 
-            $module = $DB->get_record('modules', ['name' => 'assign'], 'id', MUST_EXIST);
+            $moduletable = $DB->get_record('modules', ['name' => $cleanmodule], 'id', MUST_EXIST);
             $moddata = new \stdClass();
             $moddata->course = $courseid;
-            $moddata->module = (int)$module->id;
-            $moddata->modulename = 'assign';
+            $moddata->module = (int)$moduletable->id;
+            $moddata->modulename = $cleanmodule;
             $moddata->name = $cleanname;
             $moddata->intro = '';
             $moddata->introformat = FORMAT_HTML;
             $moddata->section = max(0, (int)$sectionnum);
             $moddata->visible = 1;
             $moddata->cmidnumber = '';
-            $moddata->groupmode = NOGROUPS;
-            $moddata->groupingid = 0;
-            $moddata = self::apply_assign_activity_defaults($moddata);
+            // A course with groupmodeforce overrides the per-activity setting anyway (Moodle
+            // enforces this at display/access time) - passed through as requested regardless.
+            $moddata->groupmode = in_array($groupmode, [NOGROUPS, SEPARATEGROUPS, VISIBLEGROUPS], true)
+                ? $groupmode
+                : NOGROUPS;
+            $moddata->groupingid = max(0, $groupingid);
+            $moddata = self::apply_activity_module_defaults($cleanmodule, $moddata);
 
             $created = add_moduleinfo($moddata, $course);
             $cmid = (int)($created->coursemodule ?? 0);
             $instanceid = (int)($created->instance ?? 0);
             if ($cmid <= 0 || $instanceid <= 0) {
-                throw new \moodle_exception('Assignment creation did not return valid module identifiers.');
+                throw new \moodle_exception('Activity creation did not return valid module identifiers.');
             }
 
             $gradeitemid = (int)$DB->get_field(
@@ -5000,8 +5267,9 @@ class cria
                 [
                     'courseid' => $courseid,
                     'itemtype' => 'mod',
-                    'itemmodule' => 'assign',
+                    'itemmodule' => $cleanmodule,
                     'iteminstance' => $instanceid,
+                    'itemnumber' => 0,
                 ]
             );
 
@@ -5009,10 +5277,10 @@ class cria
 
             return [
                 'success' => true,
-                'message' => 'Assignment activity created.',
+                'message' => 'Activity created.',
                 'activity_name' => $cleanname,
                 'moodle_cmid' => $cmid,
-                'module' => 'assign',
+                'module' => $cleanmodule,
                 'grade_item_id' => $gradeitemid > 0 ? $gradeitemid : 0,
                 'reused' => false,
             ];
@@ -5020,20 +5288,26 @@ class cria
             if ($DB->is_transaction_started()) {
                 $DB->force_transaction_rollback();
             }
-            debugging('Could not create assignment activity: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            debugging('Could not create activity: ' . $e->getMessage(), DEBUG_DEVELOPER);
             $detail = trim((string)$e->getMessage());
             return [
                 'success' => false,
                 'message' => $detail !== ''
-                    ? 'Could not create assignment activity: ' . $detail
-                    : 'Could not create assignment activity.',
+                    ? 'Could not create activity: ' . $detail
+                    : 'Could not create activity.',
                 'activity_name' => '',
                 'moodle_cmid' => 0,
-                'module' => 'assign',
+                'module' => $cleanmodule,
                 'grade_item_id' => 0,
                 'reused' => false,
             ];
         }
+    }
+
+    /** @deprecated Kept for old cached JS builds; new callers use gradebook_create_activity(). */
+    public static function gradebook_create_assignment_activity(int $courseid, string $activityname, int $sectionnum = 0): array
+    {
+        return self::gradebook_create_activity($courseid, $activityname, 'assign', $sectionnum, NOGROUPS, 0);
     }
 
     /**

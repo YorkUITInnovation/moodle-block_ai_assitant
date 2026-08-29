@@ -18,6 +18,8 @@ const CHAT_LOADER_STAGES = [
 ];
 const CHAT_LOADER_STEP_MS = 2200;
 let sessionInitPromise = null;
+let cachedLiveActivityTypes = null;
+let activityTypesFetchPromise = null;
 let requestInFlight = false;
 let proposalCategories = [];
 let proposalCategoriesWithItems = [];
@@ -50,6 +52,16 @@ let missingItemsSkipLabel = 'Skip (not included)';
 let missingItemsSubmitLabel = 'Submit';
 let missingItemsPartialFailedLabel = 'Created some items, but these failed. Resolve the remaining rows and submit again:';
 let missingItemsSuggestedSuffixLabel = ' (suggested)';
+let missingItemsTypeLabel = 'Type';
+let missingItemsGroupModeLabel = 'Group mode';
+// Localized via Moodle core strings, not criabot's English-only GROUP_MODE_CHOICES payload.
+let groupModeLabelsByValue = {0: 'No groups', 1: 'Separate groups', 2: 'Visible groups'};
+let demoPreviewCategoryLabel = 'Category';
+let demoPreviewWeightLabel = 'Weight';
+let demoPreviewScoreLabel = 'Score';
+let demoPreviewApplyLabel = 'Apply';
+let demoPreviewResetLabel = 'Reset';
+let demoPreviewTotalWeightLabel = 'Total weight';
 let lastMissingItemDecisions = [];
 let noSubcategoryLabel = '— None (Parent Category) —';
 let subcategorySelectTitle = 'Optional: choose a subcategory, or keep None to stay in the parent category.';
@@ -1011,6 +1023,22 @@ const callWsWithTimeout = async (methodname, args, timeoutMs = GRADEBOOK_CHAT_TI
     }
 };
 
+const ensureLiveActivityTypesLoaded = () => {
+    if (cachedLiveActivityTypes || activityTypesFetchPromise) {
+        return activityTypesFetchPromise;
+    }
+    activityTypesFetchPromise = callWs('block_ai_assistant_gradebook_list_activity_types', {
+        courseid: getCourseId()
+    }).then((response) => {
+        const types = Array.isArray(response && response.activity_types) ? response.activity_types : [];
+        if (types.length > 0) {
+            cachedLiveActivityTypes = types;
+        }
+        return cachedLiveActivityTypes;
+    }).catch(() => null);
+    return activityTypesFetchPromise;
+};
+
 const isSessionNotFound = (parsed) => {
     if (!parsed || typeof parsed !== 'object') {
         return false;
@@ -1185,6 +1213,8 @@ const appendMessage = (container, text, isHuman, skipPersist, quickReplies, uiPa
     if (!isHuman && uiPayload && typeof uiPayload === 'object') {
         const panel = buildStructuredChatPanel(uiPayload);
         if (panel) {
+            // Panels carry tables/controls, so the bubble drops its 75% width cap.
+            content.classList.add('has-structured-panel');
             content.appendChild(panel);
         }
     }
@@ -1293,6 +1323,9 @@ const buildStructuredChatPanel = (uiPayload) => {
     if (type === 'missing_items_table') {
         return buildMissingItemsTablePanel(uiPayload);
     }
+    if (type === 'demo_preview_table') {
+        return buildDemoPreviewTablePanel(uiPayload);
+    }
     return null;
 };
 
@@ -1316,10 +1349,12 @@ const getDecidedMissingItemNames = () => new Set(
 );
 
 const createMissingItemActivity = async (row) => {
-    return callWs('block_ai_assistant_gradebook_create_assignment_activity', {
+    return callWs('block_ai_assistant_gradebook_create_activity', {
         courseid: getCourseId(),
         activity_name: String((row && row.name) || '').trim(),
-        section_num: 0
+        module: String((row && row.module) || 'assign').trim() || 'assign',
+        section_num: 0,
+        group_mode: Number.isFinite(Number(row && row.group_mode)) ? Number(row.group_mode) : 0
     });
 };
 
@@ -1348,15 +1383,34 @@ const buildMissingItemsTablePanel = (uiPayload) => {
     }
 
     const wrapper = document.createElement('div');
-    wrapper.className = 'mt-2 p-2 border rounded bg-white';
+    wrapper.className = 'gb-panel';
 
-    const table = document.createElement('table');
-    table.className = 'table table-sm mb-2';
-    const head = document.createElement('thead');
-    head.innerHTML = `<tr><th>${missingItemsAssessmentLabel}</th><th>${missingItemsActionLabel}</th></tr>`;
-    table.appendChild(head);
+    // init() already warms this cache; this is just a safety net (idempotent) for a resumed
+    // session that skipped that prefetch.
+    void ensureLiveActivityTypesLoaded();
+    const activityTypes = (cachedLiveActivityTypes && cachedLiveActivityTypes.length > 0)
+        ? cachedLiveActivityTypes
+        : ((Array.isArray(uiPayload.activity_types) && uiPayload.activity_types.length > 0)
+            ? uiPayload.activity_types
+            : [{module: 'assign', label: missingItemsActivityLabel}]);
+    const groupModes = (Array.isArray(uiPayload.group_modes) && uiPayload.group_modes.length > 0)
+        ? uiPayload.group_modes
+        : [{value: 0, label: 'No groups'}, {value: 1, label: 'Separate groups'}, {value: 2, label: 'Visible groups'}];
+    const groupModeForced = uiPayload.group_mode_forced;
 
-    const body = document.createElement('tbody');
+    const head = document.createElement('div');
+    head.className = 'gb-panel-head';
+    const headTitle = document.createElement('h4');
+    headTitle.className = 'gb-panel-title';
+    headTitle.textContent = missingItemsAssessmentLabel;
+    const headProgress = document.createElement('span');
+    headProgress.className = 'gb-panel-hint';
+    head.appendChild(headTitle);
+    head.appendChild(headProgress);
+    wrapper.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'gb-panel-body gb-missing-list';
     const optionKeys = ['activity', 'grade_item', 'skip'];
     const optionLabels = {
         activity: missingItemsActivityLabel,
@@ -1376,53 +1430,191 @@ const buildMissingItemsTablePanel = (uiPayload) => {
             return;
         }
 
-        const tr = document.createElement('tr');
-        const nameTd = document.createElement('td');
-        nameTd.textContent = name;
-        tr.appendChild(nameTd);
+        const card = document.createElement('div');
+        card.className = 'gb-missing-row';
 
-        const actionTd = document.createElement('td');
-        const radioName = `missing-item-action-${Date.now()}-${index}`;
+        const headRow = document.createElement('div');
+        headRow.className = 'gb-missing-head';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'gb-missing-name';
+        nameEl.textContent = name;
+        headRow.appendChild(nameEl);
+
+        const category = String((row && row.category) || '').trim();
+        const subcategory = String((row && row.subcategory) || '').trim();
+        const pathText = [category, subcategory].filter(Boolean).join(' › ');
+        if (pathText) {
+            const pathEl = document.createElement('div');
+            pathEl.className = 'gb-missing-path';
+            pathEl.textContent = pathText;
+            headRow.appendChild(pathEl);
+        }
+        card.appendChild(headRow);
+
+        const uid = `${Date.now()}-${index}`;
+        const segGroup = document.createElement('div');
+        segGroup.className = 'gb-seg-group';
+        segGroup.setAttribute('role', 'radiogroup');
+        segGroup.setAttribute('aria-label', `${missingItemsActionLabel}: ${name}`);
+        const radioName = `missing-item-action-${uid}`;
+        const radios = [];
         optionKeys.forEach((actionKey) => {
-            const label = document.createElement('label');
-            label.className = 'mr-2 mb-0';
+            const seg = document.createElement('div');
+            seg.className = 'gb-seg';
 
             const input = document.createElement('input');
             input.type = 'radio';
+            input.id = `${radioName}-${actionKey}`;
             input.name = radioName;
             input.value = actionKey;
             input.dataset.assessmentName = name;
-            input.dataset.category = String((row && row.category) || '').trim();
-            input.dataset.subcategory = String((row && row.subcategory) || '').trim();
-            input.className = 'mr-1';
-            if (suggested && suggested === actionKey) {
+            input.dataset.category = category;
+            input.dataset.subcategory = subcategory;
+            const isSuggested = Boolean(suggested) && suggested === actionKey;
+            if (isSuggested) {
                 input.checked = true;
             }
+            radios.push(input);
 
-            label.appendChild(input);
-            const suffix = suggested && suggested === actionKey ? missingItemsSuggestedSuffixLabel : '';
-            label.appendChild(document.createTextNode(`${optionLabels[actionKey]}${suffix}`));
-            actionTd.appendChild(label);
+            const label = document.createElement('label');
+            label.className = 'gb-seg-label';
+            label.setAttribute('for', input.id);
+            label.appendChild(document.createTextNode(optionLabels[actionKey]));
+            if (isSuggested) {
+                // Dot instead of an inline "(suggested)" string - the text made the
+                // segments uneven and wrapped badly at chat width.
+                const dot = document.createElement('span');
+                dot.className = 'gb-suggested-dot';
+                dot.setAttribute('aria-hidden', 'true');
+                label.appendChild(dot);
+                label.title = `${optionLabels[actionKey]}${missingItemsSuggestedSuffixLabel}`;
+                input.setAttribute('aria-describedby', `${radioName}-suggested`);
+            }
+
+            seg.appendChild(input);
+            seg.appendChild(label);
+            segGroup.appendChild(seg);
         });
+        card.appendChild(segGroup);
 
-        tr.appendChild(actionTd);
-        body.appendChild(tr);
+        if (suggested) {
+            const sr = document.createElement('span');
+            sr.id = `${radioName}-suggested`;
+            sr.className = 'sr-only visually-hidden';
+            sr.textContent = missingItemsSuggestedSuffixLabel;
+            card.appendChild(sr);
+        }
+
+        const settings = document.createElement('div');
+        settings.className = 'gb-missing-settings';
+
+        const suggestedModule = String((row && row.suggested_module) || 'assign').trim().toLowerCase();
+        const typeField = document.createElement('div');
+        typeField.className = 'gb-field';
+        const typeFieldLabel = document.createElement('label');
+        typeFieldLabel.className = 'gb-field-label';
+        typeFieldLabel.setAttribute('for', `missing-item-module-${uid}`);
+        typeFieldLabel.textContent = missingItemsTypeLabel;
+        const typeSelect = document.createElement('select');
+        typeSelect.id = `missing-item-module-${uid}`;
+        typeSelect.className = 'missing-item-module-select';
+        const populateTypeOptions = () => {
+            typeSelect.innerHTML = '';
+            activityTypes.forEach((choice) => {
+                const module = String((choice && choice.module) || '').trim();
+                if (!module) {
+                    return;
+                }
+                const option = document.createElement('option');
+                option.value = module;
+                const suggestedSuffix = module === suggestedModule ? missingItemsSuggestedSuffixLabel : '';
+                option.textContent = `${String((choice && choice.label) || module)}${suggestedSuffix}`;
+                if (module === suggestedModule) {
+                    option.selected = true;
+                }
+                typeSelect.appendChild(option);
+            });
+        };
+        populateTypeOptions();
+        typeField.appendChild(typeFieldLabel);
+        typeField.appendChild(typeSelect);
+        settings.appendChild(typeField);
+
+        const groupField = document.createElement('div');
+        groupField.className = 'gb-field';
+        const groupFieldLabel = document.createElement('label');
+        groupFieldLabel.className = 'gb-field-label';
+        groupFieldLabel.setAttribute('for', `missing-item-group-mode-${uid}`);
+        groupFieldLabel.textContent = missingItemsGroupModeLabel;
+        const groupModeSelect = document.createElement('select');
+        groupModeSelect.id = `missing-item-group-mode-${uid}`;
+        groupModeSelect.className = 'missing-item-group-mode-select';
+        const effectiveGroupModes = (groupModeForced !== null && groupModeForced !== undefined)
+            ? groupModes.filter((choice) => Number(choice && choice.value) === Number(groupModeForced))
+            : groupModes;
+        const populateGroupModeOptions = () => {
+            groupModeSelect.innerHTML = '';
+            effectiveGroupModes.forEach((choice) => {
+                const value = Number(choice && choice.value) || 0;
+                const option = document.createElement('option');
+                option.value = String(value);
+                // Prefer the localized Moodle core label over the server's English-only text.
+                option.textContent = groupModeLabelsByValue[value] || String((choice && choice.label) || value);
+                groupModeSelect.appendChild(option);
+            });
+        };
+        populateGroupModeOptions();
+        groupField.appendChild(groupFieldLabel);
+        groupField.appendChild(groupModeSelect);
+        settings.appendChild(groupField);
+        card.appendChild(settings);
+
+        // Type + group mode only mean anything for "activity" - hide the whole block for
+        // grade item / skip rather than leaving stale disabled selects on screen.
+        const refreshTypeControlsEnabled = () => {
+            const selectedRadio = radios.find((input) => input.checked);
+            const action = selectedRadio ? selectedRadio.value : '';
+            const activitySelected = action === 'activity';
+            const groupModeIsForced = groupModeForced !== null && groupModeForced !== undefined;
+            settings.hidden = !activitySelected;
+            typeSelect.disabled = !activitySelected;
+            groupModeSelect.disabled = !activitySelected || groupModeIsForced;
+            card.classList.toggle('is-decided', Boolean(action));
+        };
+        radios.forEach((input) => input.addEventListener('change', refreshTypeControlsEnabled));
+        refreshTypeControlsEnabled();
+
+        typeSelect.dataset.assessmentName = name;
+        groupModeSelect.dataset.assessmentName = name;
+
+        body.appendChild(card);
     });
 
-    table.appendChild(body);
-    wrapper.appendChild(table);
+    wrapper.appendChild(body);
 
+    const foot = document.createElement('div');
+    foot.className = 'gb-panel-foot';
+    const footHint = document.createElement('span');
+    footHint.className = 'gb-panel-hint';
     const submitBtn = document.createElement('button');
     submitBtn.type = 'button';
-    submitBtn.className = 'btn btn-sm btn-primary';
+    submitBtn.className = 'gb-panel-btn';
     submitBtn.textContent = missingItemsSubmitLabel;
     submitBtn.disabled = true;
-    wrapper.appendChild(submitBtn);
+    foot.appendChild(footHint);
+    foot.appendChild(submitBtn);
+    wrapper.appendChild(foot);
 
     const refreshSubmitEnabled = () => {
-        const groups = Array.from(body.querySelectorAll('tr')).map((tr) => tr.querySelectorAll('input[type="radio"]'));
-        const allSelected = groups.every((group) => Array.from(group).some((input) => input.checked));
-        submitBtn.disabled = !allSelected;
+        const cards = Array.from(body.querySelectorAll('.gb-missing-row'));
+        const decidedCount = cards.filter(
+            (node) => node.querySelector('input[type="radio"]:checked')
+        ).length;
+        submitBtn.disabled = decidedCount < cards.length;
+        const progress = `${decidedCount}/${cards.length}`;
+        headProgress.textContent = progress;
+        footHint.textContent = submitBtn.disabled ? progress : '';
     };
 
     body.addEventListener('change', refreshSubmitEnabled);
@@ -1434,17 +1626,25 @@ const buildMissingItemsTablePanel = (uiPayload) => {
         }
 
         const decisions = [];
-        body.querySelectorAll('tr').forEach((tr) => {
-            const selected = tr.querySelector('input[type="radio"]:checked');
+        body.querySelectorAll('.gb-missing-row').forEach((cardNode) => {
+            const selected = cardNode.querySelector('input[type="radio"]:checked');
             if (!selected) {
                 return;
             }
-            decisions.push({
+            const action = String(selected.value || '').trim();
+            const decision = {
                 name: String(selected.dataset.assessmentName || '').trim(),
-                action: String(selected.value || '').trim(),
+                action,
                 category: String(selected.dataset.category || '').trim(),
                 subcategory: String(selected.dataset.subcategory || '').trim()
-            });
+            };
+            if (action === 'activity') {
+                const typeSelect = cardNode.querySelector('.missing-item-module-select');
+                const groupModeSelect = cardNode.querySelector('.missing-item-group-mode-select');
+                decision.module = String((typeSelect && typeSelect.value) || 'assign').trim() || 'assign';
+                decision.group_mode = Number((groupModeSelect && groupModeSelect.value) || 0) || 0;
+            }
+            decisions.push(decision);
         });
 
         submitBtn.disabled = true;
@@ -1524,6 +1724,258 @@ const buildMissingItemsTablePanel = (uiPayload) => {
             submitBtn.disabled = false;
         }
     });
+
+    return wrapper;
+};
+
+const buildDemoPreviewTablePanel = (uiPayload) => {
+    const rows = Array.isArray(uiPayload.rows) ? uiPayload.rows : [];
+    if (rows.length < 1) {
+        return null;
+    }
+    const editableFields = new Set(
+        Array.isArray(uiPayload.editable_fields) ? uiPayload.editable_fields : ['weight']
+    );
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'gb-panel';
+
+    const head = document.createElement('div');
+    head.className = 'gb-panel-head';
+    const headTitle = document.createElement('h4');
+    headTitle.className = 'gb-panel-title';
+    const studentName = String(uiPayload.student_name || 'Alex').trim();
+    headTitle.textContent = studentName
+        ? `${studentName} · ${demoPreviewScoreLabel}`
+        : demoPreviewScoreLabel;
+    head.appendChild(headTitle);
+    const methodName = String(uiPayload.aggregation_method_name || '').trim();
+    if (methodName) {
+        const methodEl = document.createElement('span');
+        methodEl.className = 'gb-panel-hint';
+        methodEl.textContent = methodName;
+        head.appendChild(methodEl);
+    }
+    wrapper.appendChild(head);
+
+    const body = document.createElement('div');
+    body.className = 'gb-panel-body';
+
+    // Server-computed total (see compute_demo_student_grade) - never recalculated client-side.
+    const hero = document.createElement('div');
+    hero.className = 'gb-demo-hero';
+    const totalPercent = Number(uiPayload.total_percent);
+    if (Number.isFinite(totalPercent)) {
+        const totalEl = document.createElement('span');
+        totalEl.className = 'gb-demo-total';
+        totalEl.textContent = `${totalPercent.toFixed(1)}%`;
+        hero.appendChild(totalEl);
+    }
+    const letter = String(uiPayload.letter || '').trim();
+    if (letter) {
+        const gradePoint = uiPayload.grade_point;
+        const letterEl = document.createElement('span');
+        const band = Number.isFinite(totalPercent)
+            ? (totalPercent >= 75 ? 'is-high' : (totalPercent >= 60 ? 'is-mid' : 'is-low'))
+            : '';
+        letterEl.className = `gb-demo-letter ${band}`.trim();
+        letterEl.textContent = (gradePoint === null || gradePoint === undefined)
+            ? letter
+            : `${letter} · ${gradePoint}/9`;
+        hero.appendChild(letterEl);
+    }
+    if (hero.childNodes.length > 0) {
+        body.appendChild(hero);
+    }
+
+    const list = document.createElement('div');
+    list.className = 'gb-demo-rows';
+
+    const listHead = document.createElement('div');
+    listHead.className = 'gb-demo-row gb-demo-head';
+    listHead.setAttribute('aria-hidden', 'true');
+    [demoPreviewCategoryLabel, demoPreviewWeightLabel, '', demoPreviewScoreLabel].forEach((text) => {
+        const cell = document.createElement('div');
+        cell.textContent = text;
+        listHead.appendChild(cell);
+    });
+    list.appendChild(listHead);
+
+    const weightInputs = new Map();
+    const weightBars = new Map();
+
+    rows.forEach((row, index) => {
+        const name = String((row && row.name) || '').trim();
+        if (!name) {
+            return;
+        }
+
+        const rowEl = document.createElement('div');
+        rowEl.className = 'gb-demo-row';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'gb-demo-cat';
+        nameEl.textContent = name;
+        rowEl.appendChild(nameEl);
+
+        const weightValue = Number(row.weight || 0);
+        const weightWrap = document.createElement('div');
+        weightWrap.className = 'gb-demo-weight-wrap';
+        if (editableFields.has('weight')) {
+            const inputId = `demo-weight-${Date.now()}-${index}`;
+            const srLabel = document.createElement('label');
+            srLabel.className = 'sr-only visually-hidden';
+            srLabel.setAttribute('for', inputId);
+            srLabel.textContent = `${demoPreviewWeightLabel}: ${name}`;
+
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.id = inputId;
+            input.step = '0.1';
+            input.min = '0';
+            input.className = 'gb-demo-weight-input';
+            input.value = weightValue;
+            input.dataset.categoryName = name;
+            weightInputs.set(name, {input, original: weightValue});
+
+            const suffix = document.createElement('span');
+            suffix.className = 'gb-demo-weight-suffix';
+            suffix.textContent = '%';
+
+            weightWrap.appendChild(srLabel);
+            weightWrap.appendChild(input);
+            weightWrap.appendChild(suffix);
+        } else {
+            weightWrap.textContent = `${weightValue.toFixed(1)}%`;
+        }
+        rowEl.appendChild(weightWrap);
+
+        const bar = document.createElement('div');
+        bar.className = 'gb-demo-bar';
+        bar.setAttribute('aria-hidden', 'true');
+        const fill = document.createElement('span');
+        fill.style.width = `${Math.max(0, Math.min(100, weightValue))}%`;
+        bar.appendChild(fill);
+        weightBars.set(name, fill);
+        rowEl.appendChild(bar);
+
+        const scoreEl = document.createElement('div');
+        scoreEl.className = 'gb-demo-score';
+        scoreEl.textContent = (row.score_percent === null || row.score_percent === undefined)
+            ? '–'
+            : `${Number(row.score_percent).toFixed(1)}%`;
+        rowEl.appendChild(scoreEl);
+
+        list.appendChild(rowEl);
+    });
+
+    body.appendChild(list);
+    wrapper.appendChild(body);
+
+    if (weightInputs.size > 0) {
+        const foot = document.createElement('div');
+        foot.className = 'gb-panel-foot';
+
+        const totalWeightEl = document.createElement('span');
+        totalWeightEl.className = 'gb-demo-totalweight';
+
+        const actions = document.createElement('div');
+        actions.className = 'gb-panel-actions';
+        const resetBtn = document.createElement('button');
+        resetBtn.type = 'button';
+        resetBtn.className = 'gb-panel-btn is-ghost';
+        resetBtn.textContent = demoPreviewResetLabel;
+        const applyBtn = document.createElement('button');
+        applyBtn.type = 'button';
+        applyBtn.className = 'gb-panel-btn';
+        applyBtn.textContent = demoPreviewApplyLabel;
+        actions.appendChild(resetBtn);
+        actions.appendChild(applyBtn);
+
+        foot.appendChild(totalWeightEl);
+        foot.appendChild(actions);
+        wrapper.appendChild(foot);
+
+        // Live feedback while typing: weight sum + per-row bar. Purely informational -
+        // it never blocks Apply, and the demo grade itself still comes from the server.
+        const refreshLiveState = () => {
+            let sum = 0;
+            let dirty = false;
+            weightInputs.forEach(({input, original}, name) => {
+                const value = Number(input.value);
+                const usable = Number.isFinite(value) && value >= 0;
+                if (usable) {
+                    sum += value;
+                }
+                const changed = usable && Math.abs(value - original) > 0.001;
+                dirty = dirty || changed;
+                input.classList.toggle('is-changed', changed);
+                const fill = weightBars.get(name);
+                if (fill && usable) {
+                    fill.style.width = `${Math.max(0, Math.min(100, value))}%`;
+                }
+            });
+            totalWeightEl.textContent = `${demoPreviewTotalWeightLabel}: ${sum.toFixed(1)}%`;
+            totalWeightEl.classList.toggle('is-off', Math.abs(sum - 100) > 0.05);
+            applyBtn.disabled = !dirty;
+            resetBtn.disabled = !dirty;
+        };
+
+        weightInputs.forEach(({input}) => {
+            input.addEventListener('input', refreshLiveState);
+        });
+        refreshLiveState();
+
+        resetBtn.addEventListener('click', () => {
+            weightInputs.forEach(({input, original}) => {
+                input.value = original;
+            });
+            refreshLiveState();
+        });
+
+        applyBtn.addEventListener('click', async () => {
+            if (applyBtn.disabled) {
+                return;
+            }
+
+            const changed = [];
+            weightInputs.forEach(({input, original}, name) => {
+                const newWeight = Number(input.value);
+                if (!Number.isFinite(newWeight) || newWeight < 0) {
+                    return;
+                }
+                if (Math.abs(newWeight - original) > 0.001) {
+                    changed.push({name, weight: newWeight});
+                }
+            });
+
+            if (changed.length < 1) {
+                return;
+            }
+
+            applyBtn.disabled = true;
+            resetBtn.disabled = true;
+            try {
+                const prefix = String(uiPayload.submit_prompt_prefix || 'demo_weights_submit:').trim()
+                    || 'demo_weights_submit:';
+                const prompt = `${prefix} ${JSON.stringify(changed)}`;
+                await sendPreparedPrompt({
+                    typed: prompt,
+                    prepared: {
+                        prompt,
+                        displayText: 'Submitted demo weight changes.',
+                        usedFormulaInput: false
+                    }
+                });
+            } catch (e) {
+                const msg = formatCaughtErrorMessage(e, 'Submit failed.');
+                appendSystemMessage(`Demo weight submit failed: ${msg}`);
+            } finally {
+                // Restores the dirty-state gating rather than blindly re-enabling.
+                refreshLiveState();
+            }
+        });
+    }
 
     return wrapper;
 };
@@ -1792,7 +2244,7 @@ const renderHistory = (history) => {
         let ui = item.role === 'bot' ? item.ui : null;
         if (
             ui
-            && String(ui.type || '').trim() === 'missing_items_table'
+            && ['missing_items_table', 'demo_preview_table'].includes(String(ui.type || '').trim())
             && index !== lastBotIndex
         ) {
             ui = null;
@@ -1881,8 +2333,34 @@ const ensureChatRenderedFromAnySource = (parsedStatus, serverState) => {
     return false;
 };
 
+const friendlyDemoWeightsSubmitText = (raw) => {
+    const marker = 'demo_weights_submit:';
+    try {
+        const rows = JSON.parse(raw.slice(marker.length).trim());
+        if (!Array.isArray(rows) || rows.length < 1) {
+            return 'Submitted demo weight changes.';
+        }
+        const lines = ['Submitted demo weight changes:'];
+        rows.forEach((row) => {
+            const name = String((row && row.name) || '').trim();
+            const weight = row && row.weight;
+            if (!name || weight === undefined || weight === null) {
+                return;
+            }
+            lines.push(`- ${name}: ${Number(weight).toFixed(1)}%`);
+        });
+        return lines.length > 1 ? lines.join('\n') : 'Submitted demo weight changes.';
+    } catch (e) {
+        return 'Submitted demo weight changes.';
+    }
+};
+
 const friendlyMissingItemsSubmitText = (text) => {
     const raw = String(text || '').trim();
+    const demoMarker = 'demo_weights_submit:';
+    if (raw.toLowerCase().startsWith(demoMarker)) {
+        return friendlyDemoWeightsSubmitText(raw);
+    }
     const marker = 'missing_items_submit:';
     if (!raw.toLowerCase().startsWith(marker)) {
         return String(text || '');
@@ -2039,11 +2517,57 @@ const stickyGateExtrasFromExtraction = (statusPayload) => {
     const extraction = (payload.extraction && typeof payload.extraction === 'object') ? payload.extraction : {};
     const phase = String(payload.phase || '').trim().toUpperCase();
 
-    if (Boolean(extraction.missing_items_pending)) {
-        const demoStatus = String(extraction.demo_preview_status || '').trim().toLowerCase();
-        if (demoStatus === 'pending' || demoStatus === 'adjusting') {
+    const demoStatusEarly = String(extraction.demo_preview_status || '').trim().toLowerCase();
+    if (
+        (demoStatusEarly === 'pending' || demoStatusEarly === 'adjusting')
+        && (phase === 'PROPOSAL' || phase === 'REFINEMENT')
+    ) {
+        // Reattach the editable weight table without re-deriving the demo score math (server-only,
+        // see compute_demo_student_grade); score/contribution are placeholders until the next turn.
+        const categories = Array.isArray(payload.proposal && payload.proposal.categories)
+            ? payload.proposal.categories
+            : [];
+        const demoRows = categories
+            .map((category) => {
+                const name = String((category && category.name) || '').trim();
+                if (!name) {
+                    return null;
+                }
+                return {
+                    name,
+                    weight: Number((category && category.weight) || 0),
+                    score_percent: null,
+                    contribution: null,
+                    items_count: Array.isArray(category && category.items) ? category.items.length : 0,
+                    extra_credit: Boolean(category && category.extra_credit),
+                    drop_lowest: Number((category && category.drop_lowest) || 0),
+                    keep_highest: Number((category && category.keep_highest) || 0),
+                    grade_max: Number((category && category.grade_max) || 100),
+                };
+            })
+            .filter(Boolean);
+        if (demoRows.length < 1) {
             return {quick_replies: [], ui: null};
         }
+        const totalWeight = demoRows.reduce((sum, row) => sum + Number(row.weight || 0), 0);
+        return {
+            quick_replies: [],
+            ui: {
+                type: 'demo_preview_table',
+                student_name: 'Alex',
+                aggregation_method: Number((payload.proposal && payload.proposal.aggregation_method) || 13),
+                rows: demoRows,
+                total_weight: Math.round(totalWeight * 100) / 100,
+                editable_fields: ['weight'],
+                submit_prompt_prefix: 'demo_weights_submit:',
+                recompute_locally: false,
+            },
+        };
+    }
+
+    if (Boolean(extraction.missing_items_pending)) {
+        // Note: demo_preview_status pending/adjusting is handled above, before this
+        // branch, since the backend's get_ui_payload() checks demo status first too.
         const rows = Array.isArray(extraction.missing_items_rows) ? extraction.missing_items_rows : [];
         const decided = Array.isArray(extraction.missing_item_decisions) ? extraction.missing_item_decisions : [];
         const decidedByName = {};
@@ -2066,6 +2590,7 @@ const stickyGateExtrasFromExtraction = (statusPayload) => {
                     category: String(row.category || '').trim(),
                     subcategory: String(row.subcategory || '').trim(),
                     suggested_action: decidedByName[name.toLowerCase()] || String(row.suggested_action || '').trim(),
+                    suggested_module: String(row.suggested_module || 'assign').trim().toLowerCase() || 'assign',
                 };
             })
             .filter(Boolean);
@@ -2079,6 +2604,20 @@ const stickyGateExtrasFromExtraction = (statusPayload) => {
                 rows: normalizedRows,
                 submit_prompt_prefix: 'missing_items_submit:',
                 actions: ['activity', 'grade_item', 'skip'],
+                // Reload-only fallback mirroring criabot's activity_types.py; live turns
+                // carry the real list.
+                activity_types: [
+                    {module: 'assign', label: 'Assignment'},
+                    {module: 'quiz', label: 'Quiz'},
+                    {module: 'forum', label: 'Forum'},
+                    {module: 'workshop', label: 'Workshop'},
+                ],
+                group_modes: [
+                    {value: 0, label: 'No groups'},
+                    {value: 1, label: 'Separate groups'},
+                    {value: 2, label: 'Visible groups'},
+                ],
+                group_mode_forced: null,
             },
         };
     }
@@ -5387,6 +5926,9 @@ export const init = (courseId) => {
         return;
     }
 
+    // Warm the live-activity-types cache early, well before any missing-items panel can appear.
+    void ensureLiveActivityTypesLoaded();
+
     restoreChatHistory();
     syncMappingUIFromJson();
 
@@ -5645,6 +6187,66 @@ export const init = (courseId) => {
     Str.get_string('gradebook_missing_items_suggested_suffix', 'block_ai_assistant').then((label) => {
         if (label) {
             missingItemsSuggestedSuffixLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_missing_items_type', 'block_ai_assistant').then((label) => {
+        if (label) {
+            missingItemsTypeLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_missing_items_group_mode', 'block_ai_assistant').then((label) => {
+        if (label) {
+            missingItemsGroupModeLabel = label;
+        }
+    }).catch(() => {
+    });
+    Promise.all([
+        Str.get_string('groupsnone', 'moodle'),
+        Str.get_string('groupsseparate', 'moodle'),
+        Str.get_string('groupsvisible', 'moodle')
+    ]).then(([none, separate, visible]) => {
+        groupModeLabelsByValue = {
+            0: none || groupModeLabelsByValue[0],
+            1: separate || groupModeLabelsByValue[1],
+            2: visible || groupModeLabelsByValue[2]
+        };
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_demo_category', 'block_ai_assistant').then((label) => {
+        if (label) {
+            demoPreviewCategoryLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_demo_weight', 'block_ai_assistant').then((label) => {
+        if (label) {
+            demoPreviewWeightLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_demo_score', 'block_ai_assistant').then((label) => {
+        if (label) {
+            demoPreviewScoreLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_demo_apply', 'block_ai_assistant').then((label) => {
+        if (label) {
+            demoPreviewApplyLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_demo_reset', 'block_ai_assistant').then((label) => {
+        if (label) {
+            demoPreviewResetLabel = label;
+        }
+    }).catch(() => {
+    });
+    Str.get_string('gradebook_demo_total_weight', 'block_ai_assistant').then((label) => {
+        if (label) {
+            demoPreviewTotalWeightLabel = label;
         }
     }).catch(() => {
     });

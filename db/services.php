@@ -238,8 +238,26 @@ $functions = array(
         'classname' => 'block_ai_assistant_gradebook_ws',
         'methodname' => 'create_assignment_activity',
         'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
-        'description' => 'Create or reuse an Assignment activity during missing-item resolution.',
+        'description' => 'Deprecated: use gradebook_create_activity. Kept for cached JS builds.',
         'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_create_activity' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'create_activity',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'Create or reuse an activity (assign/quiz/forum) during missing-item resolution.',
+        'type' => 'write',
+        'capabilities' => '',
+        'ajax' => true
+    ),
+    'block_ai_assistant_gradebook_list_activity_types' => array(
+        'classname' => 'block_ai_assistant_gradebook_ws',
+        'methodname' => 'list_activity_types',
+        'classpath' => 'blocks/ai_assistant/classes/external/gradebook_ws.php',
+        'description' => 'List activity modules this plugin can create for missing gradebook items.',
+        'type' => 'read',
         'capabilities' => '',
         'ajax' => true
     ),

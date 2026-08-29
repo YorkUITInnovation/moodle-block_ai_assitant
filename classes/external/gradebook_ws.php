@@ -493,6 +493,109 @@ class block_ai_assistant_gradebook_ws extends external_api
         );
     }
 
+    public static function create_activity_parameters(): external_function_parameters
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'activity_name' => new external_value(PARAM_TEXT, 'Activity name', VALUE_REQUIRED),
+                'module' => new external_value(
+                    PARAM_ALPHA,
+                    // Built from the constant so the list cannot drift from what is accepted.
+                    'Activity module (' . implode('|', cria::SUPPORTED_ACTIVITY_MODULES) . ')',
+                    VALUE_DEFAULT,
+                    'assign'
+                ),
+                'section_num' => new external_value(PARAM_INT, 'Course section number (default 0)', VALUE_DEFAULT, 0),
+                'group_mode' => new external_value(
+                    PARAM_INT,
+                    'Moodle group mode: 0=none, 1=separate, 2=visible (default 0)',
+                    VALUE_DEFAULT,
+                    0
+                ),
+            )
+        );
+    }
+
+    public static function create_activity(
+        int $courseid,
+        string $activity_name,
+        string $module = 'assign',
+        int $section_num = 0,
+        int $group_mode = 0
+    ): array {
+        self::validate_parameters(
+            self::create_activity_parameters(),
+            [
+                'courseid' => $courseid,
+                'activity_name' => $activity_name,
+                'module' => $module,
+                'section_num' => $section_num,
+                'group_mode' => $group_mode,
+            ]
+        );
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        return cria::gradebook_create_activity($courseid, $activity_name, $module, $section_num, $group_mode, 0);
+    }
+
+    public static function create_activity_returns(): external_description
+    {
+        return new external_single_structure(
+            array(
+                'success' => new external_value(PARAM_BOOL, 'Whether the activity was created or reused.'),
+                'message' => new external_value(PARAM_TEXT, 'Result message.'),
+                'activity_name' => new external_value(PARAM_TEXT, 'Activity display name.'),
+                'moodle_cmid' => new external_value(PARAM_INT, 'CMID for the activity.'),
+                'module' => new external_value(PARAM_ALPHA, 'Module type actually used.'),
+                'grade_item_id' => new external_value(PARAM_INT, 'Grade item id if available.'),
+                'reused' => new external_value(PARAM_BOOL, 'True when an existing activity with the same name was reused.'),
+            )
+        );
+    }
+
+    public static function list_activity_types_parameters(): external_function_parameters
+    {
+        return new external_function_parameters(
+            array(
+                'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+            )
+        );
+    }
+
+    public static function list_activity_types(int $courseid): array
+    {
+        self::validate_parameters(
+            self::list_activity_types_parameters(),
+            ['courseid' => $courseid]
+        );
+
+        $context = \context_course::instance($courseid);
+        self::validate_context($context);
+
+        return cria::gradebook_list_activity_types();
+    }
+
+    public static function list_activity_types_returns(): external_description
+    {
+        return new external_single_structure(
+            array(
+                'success' => new external_value(PARAM_BOOL, 'Whether the lookup succeeded.'),
+                'activity_types' => new external_multiple_structure(
+                    new external_single_structure(
+                        array(
+                            'module' => new external_value(PARAM_ALPHA, 'Module name.'),
+                            'label' => new external_value(PARAM_TEXT, 'Human-readable module label.'),
+                        )
+                    ),
+                    'Modules this plugin can create for missing gradebook items.'
+                ),
+            )
+        );
+    }
+
     public static function sync_context_parameters(): external_function_parameters
     {
         return new external_function_parameters(
