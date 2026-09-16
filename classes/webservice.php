@@ -326,7 +326,14 @@ class webservice
      */
     public static function exec($method, $data)
     {
+        global $USER;
+
         $cfg = self::get_effective_config();
+
+        // Criabot verifies that this matches the session's stored owner, so a
+        // professor cannot drive another professor's gradebook session by
+        // guessing its UUID. Sent on every mutating gradebook call.
+        $professor_id = (string)($data['professor_id'] ?? ($USER->id ?? ''));
 
         $has_criabot = $cfg['criabot_url'] !== '';
         $api_key = $cfg['criadex_api_key'];
@@ -391,6 +398,7 @@ class webservice
                     $session_id = trim((string)($data['session_id'] ?? ''));
                     $body = [
                         'prompt' => (string)($data['prompt'] ?? ''),
+                        'professor_id' => $professor_id,
                     ];
                     $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/chat', $headers, $body, 60);
                     return $resp['raw'];
@@ -410,7 +418,7 @@ class webservice
 
                 case 'cria_gradebook_accept': {
                     $session_id = trim((string)($data['session_id'] ?? ''));
-                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/accept', $headers, [], 30);
+                    $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/accept', $headers, ['professor_id' => $professor_id], 30);
                     return $resp['raw'];
                 }
 
@@ -418,6 +426,7 @@ class webservice
                     $session_id = trim((string)($data['session_id'] ?? ''));
                     $body = [
                         'keep_extraction' => isset($data['keep_extraction']) ? (bool)$data['keep_extraction'] : true,
+                        'professor_id' => $professor_id,
                     ];
                     $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/reset', $headers, $body, 30);
                     return $resp['raw'];
@@ -425,7 +434,7 @@ class webservice
 
                 case 'cria_gradebook_delete': {
                     $session_id = trim((string)($data['session_id'] ?? ''));
-                    $resp = self::request_json('DELETE', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id), $headers, null, 30);
+                    $resp = self::request_json('DELETE', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '?professor_id=' . rawurlencode($professor_id), $headers, null, 30);
                     return $resp['raw'];
                 }
 
@@ -435,6 +444,7 @@ class webservice
                         'confirmed_mapping' => $data['confirmed_mapping'] ?? [],
                         'create_categories' => isset($data['create_categories']) ? (bool)$data['create_categories'] : true,
                         'reorganize_resources' => isset($data['reorganize_resources']) ? (bool)$data['reorganize_resources'] : false,
+                        'professor_id' => $professor_id,
                     ];
                     $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/finalize', $headers, $body, 60);
                     return $resp['raw'];
@@ -444,6 +454,7 @@ class webservice
                     $session_id = trim((string)($data['session_id'] ?? ''));
                     $body = [
                         'course_activities' => $data['course_activities'] ?? [],
+                        'professor_id' => $professor_id,
                     ];
                     if (array_key_exists('confirmed_mapping', $data)) {
                         $body['confirmed_mapping'] = $data['confirmed_mapping'];
@@ -467,6 +478,7 @@ class webservice
                         'filename' => (string)($data['filename'] ?? ''),
                         'filetype' => (string)($data['filetype'] ?? ''),
                         'base64' => (string)($data['base64'] ?? ''),
+                        'professor_id' => $professor_id,
                     ];
                     $resp = self::request_json('POST', $criabot_url . '/gradebook/sessions/' . rawurlencode($session_id) . '/upload', $headers, $body, 120);
                     return $resp['raw'];
