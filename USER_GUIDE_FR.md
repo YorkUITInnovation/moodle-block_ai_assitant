@@ -296,6 +296,50 @@ Si votre instructeur a créé des tutoriels Assistant d'apprentissage, vous verr
 
 **💡 Conseil** : Utilisez les tutoriels régulièrement dans le cadre de votre routine d'étude, pas seulement avant les examens. Ils sont conçus pour renforcer l'apprentissage tout au long du cours.
 
+### Gestion de votre historique de chat
+
+Vos conversations de chat provenant des tutoriels Quiz Me et Study Tutor sont automatiquement sauvegardées. Vous pouvez les consulter, les organiser et les gérer à partir de votre historique de chat.
+
+#### Accéder à l'historique du chat
+
+1. Dans le bloc Assistant IA, cliquez sur **"Historique"** ou **"Afficher l'historique de chat"**
+2. Vous verrez une liste de toutes vos conversations sauvegardées organisées par type et date
+3. Chaque chat affiche :
+   - Nom du chat (généré automatiquement ou personnalisé)
+   - Type de tutoriel (Quiz Me, Study Tutor, etc.)
+   - Date de création
+   - Options d'action (afficher ou supprimer)
+
+#### Consulter un chat sauvegardé
+
+1. Cliquez sur n'importe quel nom de chat pour ouvrir et examiner la conversation complète
+2. Vous pouvez parcourir tout l'historique pour :
+   - Revoir les réponses précédentes et les commentaires
+   - Voir la progression de votre apprentissage
+   - Copier des informations pour vos notes d'étude
+   - Vous reconnecter avec un sujet que vous étudiiez
+
+#### Supprimer des chats
+
+**Suppression d'un seul chat** :
+1. Dans la vue historique, cliquez sur l'icône de corbeille à côté d'un chat
+2. Confirmez la suppression quand vous y êtes invité
+3. Le chat est définitivement supprimé de l'historique
+
+**Suppression en masse de plusieurs chats** :
+1. Cochez les cases à côté des chats que vous souhaitez supprimer
+2. Utilisez "Sélectionner tout" pour sélectionner rapidement tous les chats
+3. Cliquez sur le bouton "Supprimer la sélection"
+4. Confirmez la suppression en masse quand vous y êtes invité
+5. Les chats sélectionnés sont définitivement supprimés
+
+#### Conseils pour gérer votre historique de chat
+
+- **Gardez les chats importants** : Ne supprimez que les conversations dont vous n'avez plus besoin
+- **Organisez en apprenant** : Examinez régulièrement votre historique de chat pour suivre vos progrès
+- **Utilisez pour la révision** : Avant les examens, parcourez votre historique pour revisiter les sujets clés que vous avez étudiés
+- **Confidentialité** : Les chats supprimés sont définitivement supprimés de votre historique ; ils ne peuvent pas être récupérés
+
 ### Ce que l'IA ne peut pas faire
 - Accéder à vos notes ou dossiers académiques personnels
 - Fournir des réponses aux questions d'examen ou devoirs

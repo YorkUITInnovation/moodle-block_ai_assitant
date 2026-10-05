@@ -194,6 +194,13 @@
                         >{{name}}</button>
                     </li>
                 {{/tutorials}}
+                <li class="list-group-item">
+                    <a href="{{config.wwwroot}}/blocks/ai_assistant/history.php?courseid={{courseid}}"
+                       class="btn btn-link btn-sm"
+                       title="{{#str}}chat_history_nav_title, block_ai_assistant{{/str}}">
+                        <i class="fa fa-history"></i> {{#str}}chat_history_nav, block_ai_assistant{{/str}}
+                    </a>
+                </li>
             </ul>
             {{^publish_tutorials}}
                 <button type="button" class="btn btn-primary btn-sm mt-1" id="btn-enable-tutorials"

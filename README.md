@@ -2,18 +2,47 @@
 
 The AI Course Assistant is a Moodle block designed to enhance the student experience and reduce the administrative burden on professors. By leveraging AI, this tool provides quick and accurate responses to student inquiries, streamlines course management, and ensures that students have access to essential course information at all times.
 
-## Features ##
+## Features
 
-### 1. Syllabus Upload
+### 1. AI Chat Assistant
+Students can interact with an intelligent chatbot to get answers to questions about course content, deadlines, and policies. The chat supports real-time responses based on:
+- Syllabus content
+- Course materials and training documents
+- Frequently asked questions (Q&A)
+- Course announcements and dates
+
+### 2. Chat History Management
+Students can access and manage their saved chat conversations:
+- View all past conversations organized by type (Quiz Me, Study Tutor)
+- Bulk select and delete chats
+- Individual chat deletion with ownership verification
+- Chat timestamps for easy tracking
+
+### 3. Quiz Me Feature
+An interactive quiz mode that asks students one question at a time with immediate feedback. Features:
+- Customizable quiz prompts with strict single-question-per-message format
+- Automatic answer validation (accepts A/B/C/D in multiple formats)
+- Per-question feedback before advancing
+- Final score summary with improvement suggestions
+- Session continuation support for resumed quizzes
+
+### 4. Study Tutor Feature
+An AI-powered tutoring mode for personalized learning:
+- One-on-one conversational tutoring
+- Adaptive questioning based on student understanding
+- Focus on active learning and engagement
+- Session persistence for continued learning
+
+### 5. Syllabus Upload
 Professors can easily upload their course syllabus, allowing the AI Course Assistant to provide students with detailed information about the course structure, objectives, and policies.
 
-### 2. Q&A File Upload
+### 6. Q&A File Upload
 Professors can upload a Q&A file to address common questions that may not be covered in the syllabus. This ensures that students receive consistent and accurate answers to their queries.
 
-### 3. Automated Training on Course Dates
+### 7. Automated Training on Course Dates
 The AI Course Assistant is automatically trained on all important course dates, including assessments, activities, and assignments. This helps students stay informed about upcoming deadlines and events.
 
-### 4. Training on Existing Course Content
+### 8. Training on Existing Course Content
 Instructors can train the AI on existing course content, enabling it to provide detailed and context-specific answers to student questions. This feature ensures that the AI Course Assistant is always up-to-date with the latest course materials.
 
 ---
@@ -30,7 +59,7 @@ The AI Course Assistant block relies on the AI RAG platform called **Cria**, whi
 ---
 
 
-## Installing via uploaded ZIP file ##
+## Installing via uploaded ZIP file
 
 1. Log in to your Moodle site as an admin and go to _Site administration >
    Plugins > Install plugins_.
@@ -38,7 +67,7 @@ The AI Course Assistant block relies on the AI RAG platform called **Cria**, whi
    extra details if your plugin type is not automatically detected.
 3. Check the plugin validation report and finish the installation.
 
-## Installing manually ##
+## Installing manually
 
 The plugin can be also installed by putting the contents of this directory to
 
@@ -53,7 +82,7 @@ Alternatively, you can run
 
 to complete the installation from the command line.
 
-## License ##
+## License
 
 2022 UIT Innovation  <thibaud@yorku.ca>
 
@@ -68,6 +97,4 @@ PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
 this program.  If not, see <https://www.gnu.org/licenses/>.
-
-
 

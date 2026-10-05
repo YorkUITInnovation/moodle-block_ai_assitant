@@ -55,6 +55,7 @@ $tutorialchatid = $DB->get_field(
 $tutorial_label = block_ai_assistant_normalize_tutorial_label((string)($chat_session->tutorial_name ?? 'AI Assistant'));
 
 $messages = json_decode($chat_session->messages, true);
+
 $data = [
     'courseid' => $courseid,
     'botname' => $chat_session->bot_name,
@@ -66,6 +67,7 @@ $data = [
     'userid' => $USER->id,
     'saved_chats' => chat::get_saved_chats($courseid, $USER->id),
     'profileimageurl' => $user_picture->get_url($PAGE)->out(),
+    'config' => ['wwwroot' => $CFG->wwwroot],
 ];
 
 // set_context must come before set_title/set_heading in Moodle.
@@ -75,6 +77,7 @@ $PAGE->set_pagelayout('standard');
 $chatpagetitle = $tutorial_label . ' · ' . get_string('tutorial_chat_title_suffix', 'block_ai_assistant');
 $PAGE->set_title($chatpagetitle);
 $PAGE->set_heading($chatpagetitle);
+
 $PAGE->requires->js_call_amd('block_ai_assistant/chat', 'sendMessage');
 $PAGE->requires->js_call_amd('block_ai_assistant/chat', 'initChatMenu');
 $PAGE->requires->js_call_amd('block_ai_assistant/learning_assistant', 'init');

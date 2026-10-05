@@ -16,6 +16,11 @@ const CHAT_LOADER_STAGES = [
     'Synthesizing response draft...',
     'Finalizing answer... almost there.'
 ];
+const CHAT_LOADER_LONG_WAIT_STAGES = [
+    'Still working through the gradebook context...',
+    'Checking the proposal details...',
+    'Preparing the final response...'
+];
 const CHAT_LOADER_STEP_MS = 2200;
 let sessionInitPromise = null;
 let cachedLiveActivityTypes = null;
@@ -3548,13 +3553,19 @@ const appendProgressiveLoader = (container, id, initialText) => {
 
     const stageNode = loadingDiv.querySelector('.cria-loader-stage');
     let stageIndex = 0;
+    let waitIndex = 0;
     const intervalId = setInterval(() => {
         if (!loadingDiv.isConnected || !stageNode) {
             clearInterval(intervalId);
             return;
         }
-        stageIndex = Math.min(stageIndex + 1, CHAT_LOADER_STAGES.length - 1);
-        stageNode.textContent = CHAT_LOADER_STAGES[stageIndex];
+        if (stageIndex < CHAT_LOADER_STAGES.length - 1) {
+            stageIndex++;
+            stageNode.textContent = CHAT_LOADER_STAGES[stageIndex];
+        } else {
+            stageNode.textContent = CHAT_LOADER_LONG_WAIT_STAGES[waitIndex % CHAT_LOADER_LONG_WAIT_STAGES.length];
+            waitIndex++;
+        }
         // Do not scroll on stage ticks — that causes visible jump while waiting.
     }, CHAT_LOADER_STEP_MS);
     loadingDiv.dataset.loaderIntervalId = String(intervalId);

@@ -48,6 +48,7 @@ class block_ai_assistant_chat_ws extends external_api
         return new external_function_parameters(
             array(
                 'courseid' => new external_value(PARAM_INT, 'Course id', VALUE_REQUIRED),
+                'tutorialid' => new external_value(PARAM_INT, 'Tutorial id', VALUE_REQUIRED),
                 'tutorialchatid' => new external_value(PARAM_INT, 'Tutorial chat id', VALUE_REQUIRED),
                 'botname' => new external_value(PARAM_RAW, 'Cria bot name', VALUE_REQUIRED),
                 'prompt' => new external_value(PARAM_TEXT, 'User prompt', VALUE_REQUIRED),
@@ -67,13 +68,14 @@ class block_ai_assistant_chat_ws extends external_api
      * @throws invalid_parameter_exception
      * @throws Exception
      */
-    public static function chat(int $courseid, $tutorialchatid, $bot_name, $prompt, $chatid): string
+    public static function chat(int $courseid, int $tutorialid, $tutorialchatid, $bot_name, $prompt, $chatid): string
     {
         global $DB, $USER;
         self::validate_parameters(
             self::chat_parameters(),
             [
                 'courseid' => $courseid,
+                'tutorialid' => $tutorialid,
                 'tutorialchatid' => $tutorialchatid,
                 'botname' => $bot_name,
                 'prompt' => $prompt,
@@ -84,6 +86,12 @@ class block_ai_assistant_chat_ws extends external_api
         // Validate context
         $context = \context_course::instance($courseid);
         self::validate_context($context);
+
+        // Enforce ownership: a user may only post to their own tutorial chat.
+        $owner = $DB->get_field('block_aia_tutorial_chats', 'userid', ['id' => $tutorialchatid]);
+        if (!$owner || (int)$owner !== (int)$USER->id) {
+            throw new \moodle_exception('nopermission', 'error');
+        }
 
         // Insert the new prompt into the chat history.
         $params = [
@@ -98,42 +106,10 @@ class block_ai_assistant_chat_ws extends external_api
         // Tutorial/quiz personas are free-form conversations, not Moodle-support
         // Q&A - FAQ fallback on a low-confidence short reply (e.g. a quiz answer
         // like "c") would otherwise inject unrelated FAQ content and derail them.
-        $tutorialid = $DB->get_field('block_aia_tutorial_chats', 'tutorialid', ['id' => $tutorialchatid]);
         $is_tutorial_chat = !empty($tutorialid);
 
         // Get chat response
         $response = cria::chat_send($chatid, $prompt, $bot_name, $is_tutorial_chat);
-
-        // The response is in HTML format. Get all images into an array. You must capture the id attribute and teh src attribute.
-        $dom = new DOMDocument();
-        @$dom->loadHTML($response);
-        $images = $dom->getElementsByTagName('img');
-        $image_data = [];
-        foreach ($images as $image) {
-            $src = $image->getAttribute('src');
-            $id = str_replace('-', '', $image->getAttribute('id'));
-
-            if (!empty($src) && !empty($id)) {
-                // If the src is a data URI, we can use it directly.
-                if (strpos($src, 'data:') === 0) {
-                    // Split the data URI into mimetype and base64 content
-                    if (preg_match('#^data:([^;]+);base64,(.+)$#', $src, $m)) {
-                        // Save the data to the database.
-                        $asset = new \stdClass();
-                        $asset->assetid = $id;
-                        $asset->courseid = $courseid;
-                        $asset->chatid = $chatid;
-                        $asset->mimetype = $m[1];
-                        $asset->data = $m[2];
-
-//                        if (!$DB->record_exists('block_aia_tutor_chat_assets', ['assetid' => $id, 'chatid' => $chatid])) {
-//                            // Insert the asset into the database.
-//                            $DB->insert_record('block_aia_tutor_chat_assets', $asset);
-//                        }
-                    }
-                }
-            }
-        }
 
         // now insert response into the chat history.
         $params = [
@@ -259,6 +235,9 @@ class block_ai_assistant_chat_ws extends external_api
 
             // Store the original chatid to update the assets table later.
             $original_chatid = $chatid;
+            // Only regenerate the "continue" summary when the backend session was
+            // actually recreated; reopening a live session should not call the LLM again.
+            $session_recreated = false;
             // Now let's check if the chat_id still exists on cria
             $cria_chat_exists = cria::chat_exists($original_chatid);
             if (!$cria_chat_exists->exists) {
@@ -275,11 +254,13 @@ class block_ai_assistant_chat_ws extends external_api
                 );
                 // Train the bot to continue the chat session.
                 chat::continue_chat($tutorialid, $chatid, $bot_name);
+                $session_recreated = true;
             }
 
-            // Get messages and tutorial name
+            // Get messages and tutorial name. Only surface the continue summary
+            // when the session was just recreated, to avoid repeating it on reopen.
             $data = chat::get_messages(
-                $chat_exists->id, true
+                $chat_exists->id, $session_recreated
             );
 
             $tutorial_name = $data['tutorial_name'];
@@ -343,7 +324,7 @@ class block_ai_assistant_chat_ws extends external_api
      */
     public static function delete(string $chatid): bool
     {
-        global $DB;
+        global $DB, $USER;
 
         self::validate_parameters(
             self::delete_parameters(),
@@ -356,22 +337,71 @@ class block_ai_assistant_chat_ws extends external_api
         $context = \context_system::instance();
         self::validate_context($context);
 
-        // Delete chat session.
-        cria::chat_end($chatid);
-        // Get tutorial chat ID from the database.
-        $id = $DB->get_field(
+        // Verify ownership: only the owner can delete their own chat
+        $chat_record = $DB->get_record(
             'block_aia_tutorial_chats',
-            'id',
             ['chatid' => $chatid]
         );
-        if ($DB->delete_records('block_aia_tutorial_chats', ['id' => $id])) {
+        if (!$chat_record || $chat_record->userid != $USER->id) {
+            throw new \moodle_exception('nopermission', 'error');
+        }
+
+        // Delete chat session.
+        cria::chat_end($chatid);
+
+        if ($DB->delete_records('block_aia_tutorial_chats', ['id' => $chat_record->id])) {
             // Delete assets related to this chat session.
-            $DB->delete_records('block_aia_chat_history', ['tutorialchatid' => $id]);
-            // If the chat session was deleted, return true.
+            $DB->delete_records('block_aia_chat_history', ['tutorialchatid' => $chat_record->id]);
             return true;
         }
 
         return false;
+    }
+
+    /**
+     * Bulk delete multiple chats
+     */
+    public static function bulk_delete_chats(array $chatids): array
+    {
+        global $DB, $USER;
+
+        self::validate_parameters(
+            self::bulk_delete_chats_parameters(),
+            ['chatids' => $chatids]
+        );
+
+        // Validate context
+        $context = \context_system::instance();
+        self::validate_context($context);
+
+        $deleted = 0;
+        foreach ($chatids as $chatid) {
+            // Verify ownership: only the owner can delete their own chat
+            $chat_record = $DB->get_record('block_aia_tutorial_chats', ['chatid' => $chatid]);
+            if (!$chat_record || $chat_record->userid != $USER->id) {
+                continue; // Skip if user doesn't own this chat
+            }
+
+            cria::chat_end($chatid);
+            if ($DB->delete_records('block_aia_tutorial_chats', ['id' => $chat_record->id])) {
+                $DB->delete_records('block_aia_chat_history', ['tutorialchatid' => $chat_record->id]);
+                $deleted++;
+            }
+        }
+
+        return ['deleted' => $deleted, 'total' => count($chatids)];
+    }
+
+    /**
+     * Parameters for bulk delete
+     */
+    public static function bulk_delete_chats_parameters(): external_function_parameters
+    {
+        return new external_function_parameters([
+            'chatids' => new external_multiple_structure(
+                new external_value(PARAM_TEXT, 'Chat ID to delete')
+            )
+        ]);
     }
 
     /**
@@ -384,6 +414,17 @@ class block_ai_assistant_chat_ws extends external_api
     }
 
     /**
+     * Returns bulk delete result
+     */
+    public static function bulk_delete_chats_returns(): external_single_structure
+    {
+        return new external_single_structure([
+            'deleted' => new external_value(PARAM_INT, 'Number of chats deleted'),
+            'total' => new external_value(PARAM_INT, 'Total chats requested to delete')
+        ]);
+    }
+
+    /**
      * @param int $courseid
      * @param int $tutorialid
      * @param int $userid
@@ -393,6 +434,25 @@ class block_ai_assistant_chat_ws extends external_api
      * @return stdClass
      * @throws dml_exception
      */
+    /**
+     * Generate a descriptive chat title combining tutorial type and resource name
+     * Examples: "Quiz Coach · Chapter 3" or "Study Tutor · Photosynthesis"
+     */
+    private static function generate_chat_title(string $tutorial_name, string $resource_name): string
+    {
+        $tutorial_name = trim($tutorial_name);
+        $resource_name = trim($resource_name);
+
+        if (empty($resource_name)) {
+            return $tutorial_name;
+        }
+        if (empty($tutorial_name)) {
+            return $resource_name;
+        }
+
+        return $tutorial_name . ' · ' . $resource_name;
+    }
+
     private static function start_cria_session(
         int    $courseid,
         int    $cmid,
@@ -409,14 +469,16 @@ class block_ai_assistant_chat_ws extends external_api
 
         $chat_id = cria::chat_start();
 
-        $curent_lang = current_language();
-        $topic_prompt = 'Give me oly a topic title for ' . $name . ' in ' . $curent_lang . ' language. Nothing else!';
-        $topic_title = cria::chat_send($chat_id, $topic_prompt, $bot_name, true);
+        // Use the resource/module name directly as the topic instead of making an extra LLM call
+        $topic_title = $name;
         $initial_prompt = str_replace(
             '[topic]',
             $topic_title,
             $tutorial->prompt
         );
+
+        // Generate a better chat title: "Tutorial Name · Resource Name" instead of just "Tutorial Name"
+        $chat_title = self::generate_chat_title($tutorial->name, $name);
         // Add the chat ID to the database.
         $tutorialchatid = $DB->insert_record('block_aia_tutorial_chats', [
             'courseid' => $courseid,
@@ -424,7 +486,7 @@ class block_ai_assistant_chat_ws extends external_api
             'chatid' => $chat_id,
             'userid' => $userid,
             'cmid' => $cmid,
-            'name' => $name,
+            'name' => $chat_title,
             'timecreated' => time(),
         ]);
 

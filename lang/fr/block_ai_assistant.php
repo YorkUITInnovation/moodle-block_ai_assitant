@@ -351,6 +351,25 @@ $string['chat_delete_confirm_title'] = 'Supprimer la discussion';
 $string['chat_delete_confirm_body'] = 'Êtes-vous sûr de vouloir supprimer cette discussion ?';
 $string['chat_delete_success'] = 'Discussion supprimée avec succès.';
 $string['chat_delete_failed'] = 'Échec de la suppression de la discussion. Veuillez réessayer.';
+$string['chat_history_title'] = 'Historique des discussions';
+$string['chat_history_subtitle'] = 'Gérez vos discussions sauvegardées de Quiz Me et Tuteur d\'étude';
+$string['chat_history_select_all'] = 'Tout sélectionner';
+$string['chat_history_delete_selected'] = 'Supprimer la sélection';
+$string['chat_history_selected_count'] = '{$a} sélectionnée(s)';
+$string['chat_history_col_name'] = 'Nom de la discussion';
+$string['chat_history_col_type'] = 'Type';
+$string['chat_history_col_date'] = 'Date';
+$string['chat_history_col_actions'] = 'Actions';
+$string['chat_history_delete_title'] = 'Supprimer cette discussion';
+$string['chat_history_delete_info'] = 'La suppression d\'une discussion la retire de l\'historique. Les sessions de clavardage dans Criabot seront également terminées.';
+$string['chat_history_empty'] = 'Aucun historique de discussion. Commencez une conversation depuis Quiz Me ou Tuteur d\'étude pour voir vos discussions ici.';
+$string['chat_history_bulk_confirm_title'] = 'Supprimer les discussions';
+$string['chat_history_bulk_confirm_body'] = 'Supprimer {$a} discussion(s) ? Cette action est irréversible.';
+$string['chat_history_bulk_deleted'] = '{$a} discussion(s) supprimée(s)';
+$string['chat_history_delete_error'] = 'Erreur lors de la suppression de la(des) discussion(s). Veuillez réessayer.';
+$string['chat_history_nav'] = 'Historique';
+$string['chat_history_nav_title'] = 'Voir et gérer l\'historique des discussions';
+$string['chat_history_view_all'] = 'Voir toutes les discussions';
 $string['tutorial_tutor_description'] = 'L\'invite est conçue pour guider un Tuteur-IA dans l\'aide aux étudiants universitaires'
     . ' à apprendre activement et comprendre un sujet en les engageant dans une conversation personnalisée, interactive et soutenante.';
 $string['tutorial_tutor_prompt'] = "- Commencez par vous présenter à l\'étudiant universitaire comme leur Tuteur-IA, qui est heureux de les aider avec toutes questions. 
@@ -377,12 +396,37 @@ $string['tutorial_quiz_description'] = 'Cette activité est conçue pour aider l
     . ' soutenir l\'apprentissage et la réflexion. Le quiz est livré une question à la fois pour encourager la concentration et'
     . ' l\'engagement. À la fin, les étudiants reçoivent un résumé de leur performance avec des suggestions d\'amélioration.'
     . ' Le format est destiné à être interactif, auto-rythmé et soutenant l\'apprentissage indépendant.';
-$string['tutorial_quiz_prompt'] = "- Veuillez préparer un quiz à choix multiples sur le sujet : [topic] avec 20 questions avec quatre choix possibles, étiquetés A, B, C et D.
-- Créez toutes les questions à partir de votre base de connaissances sur le sujet [topic] 
-- Attendez que je réponde avec une étiquette après chaque question, fournissez des commentaires sur ma réponse, puis posez la question suivante. 
-- Lorsque vous avez posé toutes les questions, veuillez fournir un résumé amical de mes résultats et toute suggestion d\'amélioration.
-- Si vous continuez une session précédente, continuez à poser des questions. Commencez au dernier numéro plus 1.
-- Si un étudiant commence à poser des questions au lieu de répondre aux questions du quiz, dites à l\'étudiant que vous ne faites que des quiz.";
+$string['tutorial_quiz_prompt'] = "Vous êtes un coach de quiz pour [topic]. Vous posez exactement 20 questions, strictement une à la fois.
+
+RÈGLE CRITIQUE - À LIRE D'ABORD :
+- Chaque réponse que vous envoyez doit contenir AU PLUS UNE question. Ne listez, regroupez ou prévisualisez JAMAIS plusieurs questions dans un même message.
+- Après avoir posé une question, vous DEVEZ VOUS ARRÊTER et attendre silencieusement la réponse de l\'étudiant. Ne posez PAS la question suivante avant sa réponse.
+- Si vous êtes sur le point d\'écrire 'Question 2' (ou toute question ultérieure) dans le même message qu\'une autre question, ARRÊTEZ - supprimez-la et n\'envoyez que la question actuelle.
+
+FORMAT DES QUESTIONS (exactement une par message) :
+- Format : 'Question X (X/20) :' suivi du texte de la question
+- Fournir exactement 4 options : A) option B) option C) option D) option
+- Terminez par : 'Répondez avec A, B, C ou D uniquement.'
+- Puis n\'envoyez RIEN d\'autre jusqu\'à ce que l\'étudiant réponde.
+
+GESTION DES RÉPONSES (L\'étudiant répond avec A, B, C ou D) :
+- Accepter SEULEMENT la lettre (A, B, C ou D) - ignorer le texte supplémentaire ou le formatage
+- Si l\'étudiant dit 'A', 'A)', 'réponse A', '(A)', traiter comme réponse valide A
+- NE PAS lui demander de reformater - accepter et traiter simplement
+
+RETOUR D\'INFORMATION (Après réception d\'une réponse valide, en UN message) :
+- Commencez par exactement '[Correct]' ou '[Incorrect]'
+- Expliquez la bonne réponse brièvement (1-2 phrases)
+- Puis posez immédiatement UNIQUEMENT la question suivante dans ce même message (n\'attendez pas de réponse 'prêt').
+
+PROGRESSION :
+- Après Question 20, fournissez : '=== QUIZ TERMINÉ ===' suivi du score et des conseils
+- Suivez le numéro de question en interne - l\'étudiant fournit seulement A/B/C/D
+
+SPÉCIAL :
+- Si vous reprenez une session, continuez à partir du dernier numéro de question + 1 (toujours une question par message)
+- Redirigez poliment les sujets sans rapport avec les quiz
+- Si incertain sur les connaissances, déclarez-le clairement puis évaluez équitablement";
 
 // Template instructions
 $string['syllabus_template_instructions'] = '<h3>Instructions pour utiliser le modèle de plan de cours</h3>

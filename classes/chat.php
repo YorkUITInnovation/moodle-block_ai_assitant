@@ -34,11 +34,10 @@ class chat
     {
         global $DB;
 
-        $tutorial_name = $DB->get_field(
-            'block_aia_tutorial_chats',
-            'name',
-            ['id' => $tutorial_chat_id]
-        );
+        // Fetch all needed tutorial_chats data in one query instead of multiple get_field() calls
+        $tutorial_chat = $DB->get_record('block_aia_tutorial_chats', ['id' => $tutorial_chat_id], 'name, chatid, courseid');
+        $tutorial_name = $tutorial_chat ? $tutorial_chat->name : 'AI Assistant Chat';
+
         $history_records = $DB->get_records(
             'block_aia_chat_history',
             ['tutorialchatid' => $tutorial_chat_id],
@@ -48,8 +47,6 @@ class chat
         $i = 0;
         foreach ($history_records as $history) {
             if ($i > 0) {
-
-                // Process markdown HTML and convert any base64 links to <img> tags with proper data URI prefix
                 $is_human = $history->is_human;
                 $message = $history->message;
 
@@ -61,24 +58,13 @@ class chat
             $i++;
         }
         // If continue_chat is true, add a message to indicate that the chat can be continued.
-        if ($continue_chat) {
-            // Get chat chat id and bot name.
-            $chat_id = $DB->get_field(
-                'block_aia_tutorial_chats',
-                'chatid',
-                ['id' => $tutorial_chat_id]
-            );
-            $course_id = $DB->get_field(
-                'block_aia_tutorial_chats',
-                'courseid',
-                ['id' => $tutorial_chat_id]
-            );
+        if ($continue_chat && $tutorial_chat) {
             $bot_name = $DB->get_field(
                 'block_aia_settings',
                 'bot_name',
-                ['courseid' => $course_id]
+                ['courseid' => $tutorial_chat->courseid]
             );
-            $message = chat::continue_chat($tutorial_chat_id, $chat_id, $bot_name);
+            $message = chat::continue_chat($tutorial_chat_id, $tutorial_chat->chatid, $bot_name);
             $messages[] = [
                 'is_human' => false,
                 'message' => $message,

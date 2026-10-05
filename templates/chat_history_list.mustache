@@ -1,0 +1,167 @@
+<div class="chat-history-container">
+    <div class="history-header">
+        <h3>{{#str}}chat_history_title, block_ai_assistant{{/str}}</h3>
+        <p class="text-muted">{{#str}}chat_history_subtitle, block_ai_assistant{{/str}}</p>
+    </div>
+
+    {{#haschats}}
+    <div class="history-toolbar">
+        <div class="bulk-actions">
+            <label class="select-all-checkbox">
+                <input type="checkbox" id="select-all-chats">
+                {{#str}}chat_history_select_all, block_ai_assistant{{/str}}
+            </label>
+            <button id="bulk-delete-btn" class="btn btn-danger" disabled>
+                <i class="fa fa-trash"></i> {{#str}}chat_history_delete_selected, block_ai_assistant{{/str}}
+            </button>
+            <span id="selection-count" class="text-muted ml-3"></span>
+        </div>
+    </div>
+
+    <div class="history-table-wrapper">
+        <table class="table table-hover history-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;"></th>
+                    <th>{{#str}}chat_history_col_name, block_ai_assistant{{/str}}</th>
+                    <th>{{#str}}chat_history_col_type, block_ai_assistant{{/str}}</th>
+                    <th>{{#str}}chat_history_col_date, block_ai_assistant{{/str}}</th>
+                    <th style="width: 80px;">{{#str}}chat_history_col_actions, block_ai_assistant{{/str}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{#chats}}
+                <tr class="chat-row" data-chatid="{{chatid}}" data-id="{{id}}">
+                    <td>
+                        <input type="checkbox" class="chat-checkbox" data-id="{{id}}">
+                    </td>
+                    <td>
+                        <a href="{{config.wwwroot}}/blocks/ai_assistant/chat.php?chatid={{chatid}}&courseid={{courseid}}&tutorialid={{tutorialid}}&cmid={{cmid}}" class="chat-link">
+                            {{name}}
+                        </a>
+                    </td>
+                    <td>
+                        <span class="badge badge-info">{{tutorial_name}}</span>
+                    </td>
+                    <td>
+                        {{#userdate}}
+                            {{timecreated}},
+                            {{#str}}strftimedate, core_langconfig{{/str}}
+                        {{/userdate}}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger delete-single-chat" data-id="{{id}}" title="{{#str}}chat_history_delete_title, block_ai_assistant{{/str}}">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                {{/chats}}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="history-info alert alert-info mt-3">
+        <i class="fa fa-info-circle"></i>
+        {{#str}}chat_history_delete_info, block_ai_assistant{{/str}}
+    </div>
+
+    {{/haschats}}
+
+    {{^haschats}}
+    <div class="alert alert-info">
+        <i class="fa fa-inbox"></i> {{#str}}chat_history_empty, block_ai_assistant{{/str}}
+    </div>
+    {{/haschats}}
+</div>
+
+<style>
+.chat-history-container {
+    max-width: 1000px;
+    margin: 20px auto;
+}
+
+.history-header {
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 15px;
+}
+
+.history-header h3 {
+    margin-bottom: 5px;
+}
+
+.history-toolbar {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.bulk-actions {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.select-all-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.select-all-checkbox input[type="checkbox"] {
+    cursor: pointer;
+}
+
+#bulk-delete-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.history-table-wrapper {
+    overflow-x: auto;
+    border-radius: 4px;
+    border: 1px solid #dee2e6;
+}
+
+.history-table {
+    margin-bottom: 0;
+}
+
+.history-table tbody tr {
+    transition: background-color 0.2s;
+}
+
+.history-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.history-table tbody tr.selected {
+    background-color: #e7f3ff;
+}
+
+.chat-link {
+    color: #0066cc;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.chat-link:hover {
+    text-decoration: underline;
+}
+
+.delete-single-chat {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.history-info {
+    font-size: 0.875rem;
+    margin-top: 15px;
+}
+</style>

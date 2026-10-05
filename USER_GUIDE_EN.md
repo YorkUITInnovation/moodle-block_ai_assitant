@@ -281,6 +281,50 @@ If your instructor has created Learning Assistant tutorials, you'll see addition
 
 **💡 Tip**: Use tutorials regularly as part of your study routine, not just before exams. They're designed to reinforce learning throughout the course.
 
+### Managing Your Chat History
+
+Your chat conversations from Quiz Me and Study Tutor tutorials are automatically saved. You can view, organize, and manage them from your chat history.
+
+#### Accessing Chat History
+
+1. In the AI Assistant block, click **"History"** or **"View Chat History"**
+2. You'll see a list of all your saved conversations organized by type and date
+3. Each chat shows:
+   - Chat name (automatically generated or custom)
+   - Tutorial type (Quiz Me, Study Tutor, etc.)
+   - Date created
+   - Action options (view or delete)
+
+#### Viewing a Saved Chat
+
+1. Click on any chat name to open and review the full conversation
+2. You can scroll through the entire history to:
+   - Review previous answers and feedback
+   - See the progression of your learning
+   - Copy information for study notes
+   - Reconnect with a topic you were learning about
+
+#### Deleting Chats
+
+**Single Chat Deletion**:
+1. In the history view, click the trash icon next to a chat
+2. Confirm deletion when prompted
+3. The chat is permanently removed from history
+
+**Bulk Delete Multiple Chats**:
+1. Check the boxes next to the chats you want to delete
+2. Use "Select All" to quickly select all chats
+3. Click "Delete Selected" button
+4. Confirm the bulk deletion when prompted
+5. The selected chats are permanently removed
+
+#### Tips for Managing Chat History
+
+- **Keep Important Chats**: Only delete conversations you no longer need
+- **Organize as You Learn**: Regularly review your chat history to track progress
+- **Use for Review**: Before exams, scan your history to revisit key topics you studied
+- **Privacy**: Deleted chats are permanently removed from your history; they cannot be recovered
+
 ---
 
 ## Troubleshooting

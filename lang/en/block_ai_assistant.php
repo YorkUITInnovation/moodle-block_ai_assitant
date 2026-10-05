@@ -351,6 +351,25 @@ $string['chat_delete_confirm_title'] = 'Delete chat';
 $string['chat_delete_confirm_body'] = 'Are you sure you want to delete this chat?';
 $string['chat_delete_success'] = 'Chat deleted successfully.';
 $string['chat_delete_failed'] = 'Failed to delete chat. Please try again.';
+$string['chat_history_title'] = 'Chat History';
+$string['chat_history_subtitle'] = 'Manage your saved chats from Quiz Me and Study Tutor';
+$string['chat_history_select_all'] = 'Select All';
+$string['chat_history_delete_selected'] = 'Delete Selected';
+$string['chat_history_selected_count'] = '{$a} selected';
+$string['chat_history_col_name'] = 'Chat Name';
+$string['chat_history_col_type'] = 'Type';
+$string['chat_history_col_date'] = 'Date';
+$string['chat_history_col_actions'] = 'Actions';
+$string['chat_history_delete_title'] = 'Delete this chat';
+$string['chat_history_delete_info'] = 'Deleting a chat removes it from history. Chat sessions in Criabot will also be ended.';
+$string['chat_history_empty'] = 'No chat history yet. Start a conversation from Quiz Me or Study Tutor to see your chats here.';
+$string['chat_history_bulk_confirm_title'] = 'Delete Chats';
+$string['chat_history_bulk_confirm_body'] = 'Delete {$a} chat(s)? This cannot be undone.';
+$string['chat_history_bulk_deleted'] = 'Deleted {$a} chat(s)';
+$string['chat_history_delete_error'] = 'Error deleting chat(s). Please try again.';
+$string['chat_history_nav'] = 'History';
+$string['chat_history_nav_title'] = 'View and manage chat history';
+$string['chat_history_view_all'] = 'View all chats';
 $string['tutorial_tutor_description'] = 'The prompt is designed to guide an AI-Tutor in helping university students'
     . ' actively learn and understand a topic by engaging them in a personalized, interactive, and supportive conversation.';
 $string['tutorial_tutor_prompt'] = "- Start by introducing yourself to the university student as their AI-Tutor, who is happy to help them with any questions. 
@@ -377,12 +396,37 @@ $string['tutorial_quiz_description'] = 'This activity is designed to help studen
     . ' support learning and reflection. The quiz is delivered one question at a time to encourage focus and'
     . ' engagement. At the end, students receive a summary of their performance along with suggestions for improvement.'
     . ' The format is intended to be interactive, self-paced, and supportive of independent learning.';
-$string['tutorial_quiz_prompt'] = "- Please prepare a multiple-choice quiz on topic: [topic] with 20 questions with four possible choices, labelled A, B, C, and D.
-- Create all questions from your knowledge base on the topic [topic] 
-- Wait for me to respond with a label after each question, provide feedback on my answer, and then ask the next question. 
-- When you have asked all the questions, please provide a friendly summary of my results and any suggestions for improvement.
-- If you are continuing a previous session, continue asking questions. Start at the last number plus 1.
-- If a student starts asking questions instead of answering the quiz questions, tell the student that you only do quizzes.";
+$string['tutorial_quiz_prompt'] = "You are a quiz coach for [topic]. You ask exactly 20 questions, strictly one at a time.
+
+CRITICAL RULE - READ FIRST:
+- Each reply you send must contain AT MOST ONE question. NEVER list, batch, or preview multiple questions in a single message.
+- After asking a question you MUST STOP and wait silently for the student's answer. Do NOT ask the next question until they reply.
+- If you are about to write 'Question 2' (or any later question) in the same message as another question, STOP - delete it and send only the single current question.
+
+QUESTION FORMAT (exactly one per message):
+- Format: 'Question X (X/20):' followed by the question text
+- Provide exactly 4 options: A) option B) option C) option D) option
+- End with: 'Reply with A, B, C, or D only.'
+- Then send NOTHING else until the student answers.
+
+ANSWER HANDLING (Student replies with A, B, C, or D):
+- Accept ONLY the letter (A, B, C, or D) - ignore extra text or formatting
+- If student says 'A', 'A)', 'answer A', '(A)', treat it as valid answer A
+- DO NOT ask them to reformat - just accept and process
+
+FEEDBACK (After receiving a valid answer, in ONE message):
+- Start with exactly '[Correct]' or '[Incorrect]'
+- Explain the correct answer briefly (1-2 sentences)
+- Then immediately ask ONLY the next single question in that same message (do not wait for a 'ready' reply).
+
+PROGRESSION:
+- After Question 20, provide: '=== QUIZ COMPLETE ===' followed by score and tips
+- Track the question number internally - the student only provides A/B/C/D
+
+SPECIAL:
+- If resuming a session, continue from the last question number + 1 (still one question per message)
+- Redirect non-quiz topics politely
+- If uncertain about knowledge, state clearly then judge fairly";
 
 // Template instructions
 $string['syllabus_template_instructions'] = '<h3>Instructions for Using the Syllabus Template</h3>
